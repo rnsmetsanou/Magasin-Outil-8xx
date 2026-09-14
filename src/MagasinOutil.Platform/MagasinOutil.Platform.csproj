@@ -2,8 +2,8 @@
   <Import Project="../../config/platform/Pilot.props" />
   <ItemGroup>
     <ProjectReference Include="../MagasinOutil.Core/MagasinOutil.Core.csproj" />
-    <PackageReference Include="Platform.Poc.Application.Contracts" Version="[0.1.0-pilot.t01.1]" />
-    <PackageReference Include="Platform.Poc.Machine.Runtime" Version="[0.1.0-pilot.t01.1]" />
-    <PackageReference Include="Platform.Poc.Technology.Simulator" Version="[0.1.0-pilot.t01.1]" />
+    <PackageReference Include="Platform.Poc.Application.Contracts" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Machine.Runtime" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Technology.Simulator" Version="[0.1.0-pilot.t21.1]" />
   </ItemGroup>
 </Project>
