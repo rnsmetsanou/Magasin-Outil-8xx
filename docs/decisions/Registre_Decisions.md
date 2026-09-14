@@ -40,10 +40,11 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Destination externe des sauvegardes, responsabilité d’exploitation et restauration produit complète : à définir ; les paramètres pilotes de fréquence/rétention sont acquis pour la qualification.
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
+- T2.2 : bibliothèque de dérivation de mot de passe Argon2id et paramètres de coût à qualifier avant stockage de mots de passe produit ; ne pas inventer de cryptographie maison.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est implémenté et vérifié en simulation sur Windows (T0/T1). T2.1-A, consacré aux contrats d’autorité durable et aux invariants de session/admission, est également PASS LOCAL. T2.1-B, consacré à l’adaptateur SQLite de l’admission durable, est en qualification. Les comptes réels, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est également clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. Les comptes réels, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -57,31 +58,25 @@ La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reste le document déta
 
 Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Les quatre choix techniques sont validés ; le plan détaillé de première tranche est disponible. SQLite et gRPC sont explicitement remplaçables sans dépendance fournisseur dans les contrats métier. La migration des données et la qualification d’un nouvel adaptateur restent nécessaires. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web.
 
-## Plan de première tranche — T0/T1 autorisés
-
-Le [plan T0–T6](../plan/Premiere_Tranche_Integration_V0.1.md) détaille l’intégration simulée et les critères de sortie. Il ne modifie pas les choix acquis et ne résout pas implicitement les décisions ouvertes. Le passage au code T0/T1 a été explicitement autorisé : contrats communs et frontière de processus, avec changements plateforme isolés et consommation depuis le pilote.
-
-## Préparation de T0/T1 — 14 septembre 2026
-
-La branche `pilot/t0-t1-contracts-process-boundary` a été créée dans les deux dépôts :
-
-- Pilote : depuis `182096f1bae32290d537f3ba4e95aa4635fc083a` (`hmi/avalonia-magazine-v1`).
-- Plateforme : depuis `bc0819d0774c67e920481a7e0312d12f55a291a8` (`p6-7-live-commissioning-impl`).
-
-Cet état est historique : les validations locales ont depuis été exécutées et sont décrites ci-dessous.
-
 ## T0/T1 — socle de lecture vérifié sur Windows
 
-Le journal reçu le 14 septembre 2026 confirme les contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : PASS LOCAL. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites.
+Le journal reçu le 14 septembre 2026 confirme les contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : **PASS LOCAL**. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites.
 
 ## T2 — décisions A à F validées
 
-La [proposition T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) constitue le document de discussion initial. Les choix A à F ont été validés le 15 septembre 2026 avec deux ajustements explicités dans le présent registre : délai d’inactivité de 30 minutes pour l’interactif local et 10 minutes pour l’interactif distant ; aucune consultation métier OPC UA anonyme. Un éventuel sujet `Guest` local strictement lecture seule reste une capacité future à étudier, pas un contournement d’authentification. Les politiques commerciales de licence, la destination externe des sauvegardes et certains prérequis matériels restent ouverts sans bloquer T2.1.
+La [proposition T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) constitue le document de discussion initial. Les choix A à F ont été validés le 15 septembre 2026 avec deux ajustements explicités dans le présent registre : délai d’inactivité de 30 minutes pour l’interactif local et 10 minutes pour l’interactif distant ; aucune consultation métier OPC UA anonyme. Un éventuel sujet `Guest` local strictement lecture seule reste une capacité future à étudier, pas un contournement d’authentification. Les politiques commerciales de licence, la destination externe des sauvegardes et certains prérequis matériels restent ouverts sans bloquer l’avancement technique.
 
-## T2.1-A — contrats d’autorités durables vérifiés localement
+## T2.1 — autorités durables et stockage clôturés en simulation
 
-Le journal reçu le 15 septembre 2026 confirme la régression T0/T1 puis neuf contrôles T2.1-A : indépendance SQLite/gRPC des contrats, session valide uniquement après résolution autoritative, impossibilité de rebinding client/cible, conservation canonique versionnée, incertitude de commit explicite et distinction entre conflit de propriété et conflit de contenu. Résultat : **PASS LOCAL**. Voir [le dossier de preuve T2.1-A](../implementation/T2_1_A_Validation_Contrats_Autorites_2026-09-15.md).
+Le journal reçu le 15 septembre 2026 confirme simultanément :
 
-## T2.1-B — persistance SQLite en qualification
+- **T2.1-C PASS LOCAL** : composition réelle de `Platform.Poc.Persistence.Sqlite` par `MagasinOutil.CoreHost`, base durable créée, module métier et client de lecture non couplés à SQLite ;
+- **T2.1-A PASS LOCAL** : invariants de sessions et d’admission provider-indépendants ;
+- **T2.1-B PASS LOCAL** : migration, atomicité admission + audit, rollback, déduplication concurrente, persistance et sauvegarde/restauration ;
+- régression **T0/T1 PASS LOCAL**.
 
-La micro-tranche suivante implémente `IDurableAdmissionStore` dans un adaptateur SQLite séparé des contrats. La recette prévue couvre migration de schéma, atomicité admission + audit, déduplication d’une intention concurrente, absence de divulgation entre propriétaires, persistance après recréation et sauvegarde/restauration cohérente. Tant que la recette locale n’est pas reçue, T2.1-B reste **implémenté/en qualification**, pas PASS.
+Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. T2.1 est clôturé ; aucune qualification Beckhoff réelle n’en découle.
+
+## T2.2 — prochaine tranche
+
+La prochaine tranche porte sur les **identités locales, authentification, sessions révocables et résolution des permissions**. Elle doit prouver au minimum deux identités nominatives distinctes, liaison de session au client et à la cible, expiration et révocation autoritatives, et prise en compte immédiate d’un retrait de droit avant toute nouvelle admission. Le stockage des mots de passe ne sera implémenté qu’après qualification d’une bibliothèque Argon2id et de ses paramètres ; aucune cryptographie maison n’est autorisée.
