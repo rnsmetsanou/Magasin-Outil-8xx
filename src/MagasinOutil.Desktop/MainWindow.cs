@@ -20,7 +20,7 @@ public sealed class MainWindow : Window
     private readonly Bitmap _whiteLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-white.png")));
     private readonly Grid _shell = new() { RowDefinitions = new("Auto,Auto,*,Auto") };
     private readonly Grid _body = new() { ColumnDefinitions = new("1.2*,*") };
-    private readonly StackPanel _left = new() { Spacing = 6 };
+    private readonly StackPanel _left = new() { Spacing = 4 };
     private readonly StackPanel _detail = new() { Spacing = 6 };
     private readonly TextBlock _notice = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly Image _logo = new() { Width = 156, Height = 62, Stretch = Stretch.Uniform };
@@ -162,7 +162,7 @@ public sealed class MainWindow : Window
         {
             var palette = StatusPalette(entry.Item1);
             _legend.Children.Add(new Border { Background = palette.Background, CornerRadius = new(4),
-                Padding = new(6, 4), Margin = new(0, 0, 5, 5), Child = new TextBlock
+                Padding = new(6, 2), Margin = new(0, 0, 5, 5), Child = new TextBlock
                 { Text = entry.Item2, FontSize = 12, Foreground = palette.Foreground } });
         }
         var query = (_search.Text ?? "").Trim();
