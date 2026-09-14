@@ -61,8 +61,8 @@ public sealed class MainWindow : Window
         title.Children.Add(Label("Plateforme Multi-Technologie · Données simulées", 13));
         Put(header, title, 0, 1);
         var themes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        themes.Children.Add(Action("Clair", () => Theme(false)));
-        themes.Children.Add(Action("Sombre", () => Theme(true)));
+        themes.Children.Add(Action("Clair", () => ApplyTheme(false)));
+        themes.Children.Add(Action("Sombre", () => ApplyTheme(true)));
         Put(header, themes, 0, 2);
         Put(_shell, header, 0, 0);
         var current = new Grid { ColumnDefinitions = new("*,*"), Margin = new(16, 0, 16, 10) };
@@ -87,7 +87,7 @@ public sealed class MainWindow : Window
         KeyDown += (_, e) => { if (e.Key == Key.F11) { WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen; e.Handled = true; } };
         Closed += (_, _) => { _blueLogo.Dispose(); _whiteLogo.Dispose(); };
         Content = _shell;
-        Theme(false);
+        ApplyTheme(false);
     }
     private static void Put(Grid parent, Control child, int row, int column)
     { Grid.SetRow(child, row); Grid.SetColumn(child, column); parent.Children.Add(child); }
@@ -105,7 +105,7 @@ public sealed class MainWindow : Window
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } };
         _panels.Add(border); return border;
     }
-    private void Theme(bool dark)
+    private void ApplyTheme(bool dark)
     {
         _dark = dark; RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
         Background = Back; Foreground = Ink;
@@ -114,11 +114,11 @@ public sealed class MainWindow : Window
         Render();
     }
     private static string Number(decimal value) => value.ToString("F3", Culture);
-    private static string Position(ToolPosition position) => position switch
+    private static string PositionLabel(ToolPosition position) => position switch
     { ToolPosition.Spindle => "En broche", ToolPosition.Prepared => "Préparé (simulation)", _ => "Dans le magasin" };
-    private static string State(Location l) => l.Forbidden ? "Interdit" : l.Blocked ? "Bloqué" : l.Tool is null ? "Vide" :
+    private static string State(MagasinOutil.Core.Location l) => l.Forbidden ? "Interdit" : l.Blocked ? "Bloqué" : l.Tool is null ? "Vide" :
         l.Tool.Condition == ToolCondition.Defective ? "Défectueux" : l.Tool.Condition == ToolCondition.EndOfLife ? "Fin de vie" :
-        l.Present ? "Présent" : Position(l.Tool.Position);
+        l.Present ? "Présent" : PositionLabel(l.Tool.Position);
     private void Select(int location)
     {
         if (_draft is not null) return;
@@ -222,7 +222,7 @@ public sealed class MainWindow : Window
             actions.Children.Add(Action("Vérifier", Review)); _detail.Children.Add(actions); return;
         }
         _detail.Children.Add(Label(tool.Name, 18));
-        _detail.Children.Add(Label($"Place fixe : {location.Number}\nPosition actuelle : {Position(tool.Position)}\nPrésence à la place : {(location.Present ? "Oui" : "Non")}"));
+        _detail.Children.Add(Label($"Place fixe : {location.Number}\nPosition actuelle : {PositionLabel(tool.Position)}\nPrésence à la place : {(location.Present ? "Oui" : "Non")}"));
         var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         tabs.Children.Add(Action("Données", () => { _offsets = false; RenderDetail(); }));
         tabs.Children.Add(Action("Correcteurs", () => { _offsets = true; RenderDetail(); })); _detail.Children.Add(tabs);
