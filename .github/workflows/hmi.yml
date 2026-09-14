@@ -1,0 +1,18 @@
+name: HMI Avalonia
+on:
+  push:
+    branches: ['hmi/**']
+    paths: ['src/MagasinOutil.*/**', 'tests/MagasinOutil.*/**', 'MagasinOutil.Hmi.slnx', '.github/workflows/hmi.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build MagasinOutil.Hmi.slnx --configuration Release
+      - run: dotnet run --project tests/MagasinOutil.Checks --configuration Release --no-build

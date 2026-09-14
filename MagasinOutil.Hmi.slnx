@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <Project Path="src/MagasinOutil.Desktop/MagasinOutil.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/"><Project Path="tests/MagasinOutil.Checks/MagasinOutil.Checks.csproj" /></Folder>
+</Solution>
