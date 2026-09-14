@@ -70,4 +70,10 @@ Pour débloquer la validation, vérifier les annotations de cette exécution Git
 
 ### Validation locale retenue
 
-L'utilisateur confirme que les crédits GitHub Actions sont épuisés. Le nouveau workflow plateforme est rendu manuel uniquement. Il n'est pas nécessaire d'acheter des crédits pour la validation : sur Windows, avec SDK .NET 10 et PowerShell 7.4 ou ultérieur, utiliser `eng/Test-Pilot.ps1` du dépôt plateforme en lui passant le chemin de ce dépôt. Le journal est écrit dans `artifacts/pilot-validation.log` du dépôt plateforme.
+L'utilisateur confirme que les crédits GitHub Actions sont épuisés. Le nouveau workflow plateforme est rendu manuel uniquement. Il n'est pas nécessaire d'acheter des crédits pour la validation : sur Windows, avec SDK .NET 10 et Windows PowerShell 5.1 ou PowerShell 7, utiliser `eng/Test-Pilot.ps1` du dépôt plateforme en lui passant le chemin de ce dépôt. Le journal est écrit dans `artifacts/pilot-validation.log` du dépôt plateforme.
+
+## Correctif du lanceur Windows PowerShell
+
+Le lanceur accepte désormais Windows PowerShell 5.1, fourni avec Windows, ainsi que PowerShell 7. Il n'est plus nécessaire d'invoquer `pwsh`. Le script de vérification du pilote utilise les API de processus disponibles dans .NET Framework : arguments cités, lecture asynchrone avec délai global de 30 secondes et arrêt du seul processus Core créé par le test. Le Core de qualification ne démarre aucun processus enfant. Les deux dépôts doivent être mis à jour sur leur branche dédiée avant de relancer.
+
+Le SDK .NET 10 reste requis pour l'application. Correction relue statiquement ; exécution Windows encore à confirmer. Aucun pipeline GitHub n'est déclenché pour cette correction.
