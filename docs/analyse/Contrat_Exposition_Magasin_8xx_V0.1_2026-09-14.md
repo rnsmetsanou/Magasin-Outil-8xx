@@ -1,6 +1,6 @@
 # Magasin 8xx — contrat d’exposition V0.1
 
-Date : 14 septembre 2026. Statut : proposition fonctionnelle, sans modification de code.
+Date : 14 septembre 2026. Statut : proposition fonctionnelle avec décision maintenance V1 validée, sans modification de code.
 
 ## 1. Décisions et portée
 
@@ -32,6 +32,7 @@ Le cahier des charges demande explicitement création/modification des données 
 | Correcteurs tournage | ListCorrToolT[0..4] | Longueur, usure, rayon, PositionW, Y/Z, quadrant | Sens de LontZ, unités et quadrant ; pas de correction silencieuse du nom natif |
 | Outil préparé et en broche | Contrats sémantiques plateforme ; mapping 8xx à compléter | Identifiant et observation indépendante de la place au magasin | Symboles autoritatifs et échanges PLC/CNC |
 | Opérations | Runtime Application/Machine | Identifiants, état, motif, résultat observé | Reprise autorisée après changement de session |
+| Réglages et états de maintenance | Structures de réglage magasin/pince et états PLC à mapper | Consultation seule validée en V1, sous permissions ; liste utile à préciser | Sémantique, unités, source, qualité/fraîcheur ; aucun déclenchement d’action |
 | Alarmes | Plateforme et intégration Beckhoff à préciser | Lecture proposée selon données réellement disponibles | Événements couverts et partage avec HMI Beckhoff |
 
 La machine décrite possède 140 emplacements théoriques et 137 physiques, avec 1, 2 et 96 interdits. Ce sont les valeurs de la configuration fournie, pas une constante universelle du contrat plateforme. Les numéros d’emplacement ne sont pas des numéros d’outil.
@@ -52,7 +53,7 @@ Les noms ci-dessous décrivent des cas d’usage ; ils ne constituent pas des si
 | Charger un outil en broche | Parcours discuté et sémantique plateforme | Protocole réel 8xx et preuve observée ; pas d’affectation directe de l’état « en broche » |
 | Consulter une opération | Nécessaire au suivi | Contrôle de visibilité et corrélation durable selon politique retenue |
 
-Aucune suppression de fiche, décharge physique, remise à zéro de durée de vie, commande teach, changement de mode, contrôle complet du magasin ou mouvement de pince n’est ajouté implicitement. Ces fonctions restent dans la matrice à instruire ; elles ne sont pas déclarées définitivement hors périmètre.
+Les commandes de maintenance (modification de réglages, teach, changement de mode, lancement de contrôles et mouvements de pince) sont exclues de l’exposition HMI/OPC UA V1 selon la décision ci-dessous. Suppression de fiche, décharge physique et remise à zéro de durée de vie ne sont pas ajoutées implicitement : leur périmètre reste à instruire.
 
 ## 5. Règles communes proposées
 
@@ -84,8 +85,16 @@ L’export de la table complète des outils et des correcteurs n’est pas requi
 7. Paramètres en mm/pouces : conversion vérifiée, arrondi explicite et aucun changement silencieux des données publiées aux autres clients.
 8. Fleet indisponible : fonctionnement local préservé et absence de rapports anciens présentés comme frais.
 
-## 8. Prochaine décision métier
+## 8. Décision maintenance V1 — validée le 14 septembre 2026
 
-Le point à trancher en priorité est la responsabilité des fonctions de maintenance : teach, réglages de pince et modes magasin restent-ils uniquement dans la HMI Beckhoff pour la V1, ou doivent-ils aussi être disponibles dans la nouvelle application et son exposition OPC UA ?
+Validation utilisateur : « V1 consultation des réglages et états utiles ».
+
+La nouvelle HMI et OPC UA exposeront les informations de maintenance utiles en lecture seule, selon les permissions. Les modifications de réglages, l’apprentissage des positions (teach), les changements de mode et les commandes de maintenance restent dans la HMI Beckhoff pour V1. Leur extension future demandera une décision et une qualification propres.
+
+Cette restriction concerne les fonctions de maintenance. Elle ne retire pas la création/modification des données et correcteurs d’outils, ni les opérations Préparer/Charger du périmètre métier à contractualiser.
+
+La liste exacte des informations consultables reste à établir à partir du programme PLC : signification, unité, source autoritative, qualité/fraîcheur et permissions. La présence d’un booléen de demande dans les structures ne permet pas de l’exposer en écriture. Une lecture ne doit déclencher ni mouvement ni sauvegarde ni cycle de contrôle.
+
+Critère de recette à ajouter : aucune commande ou écriture de maintenance accessible via la nouvelle HMI ou OPC UA ; les tentatives doivent être refusées sans effet PLC, même avec un compte administrateur. Les états absents ou périmés doivent rester explicitement identifiés.
 
 Les détails du mapping PLC, des échelles et du protocole seront ensuite présentés comme questions techniques précises à l’équipe concernée, après inspection du programme complet. Aucun message à cette équipe n’est envoyé par cette analyse.

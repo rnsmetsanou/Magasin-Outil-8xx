@@ -12,6 +12,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 | Clients | Plusieurs clients souhaités ; actions selon autorisations. La tablette est un exemple de client. |
 | Profils | Local isolé, Intégration usine, Rattaché au parc et Intégration complète, suivant la matrice de l’analyse de déploiement. Aucun profil par défaut choisi. |
 | OPC UA | Exposition des données et actions en V1 ; connexion à des équipements OPC UA ensuite. |
+| Maintenance V1 | Consultation des réglages et états utiles dans la HMI et OPC UA. Modification des réglages, apprentissage des positions (teach), changements de mode et mouvements de maintenance hors exposition V1 ; restent dans la HMI Beckhoff. La gestion des données d’outils et les opérations Préparer/Charger restent dans leur périmètre distinct. |
 | Fleet | Reprendre son rôle dans la plateforme et le raccordement commun, en supervision en lecture seule dans le périmètre examiné. |
 | Comptes | Comptes locaux utilisables sans Microsoft ni réseau externe ; Microsoft est l’environnement de comptes existant chez WM. Actions et administration sous identités nominatives. |
 | Licences | Mécanisme WM commun à construire ; licences temporaires dès V1, vérifiables localement. À expiration : nouvelles modifications et commandes bloquées, consultation selon droits et poursuite des opérations admises. |
@@ -25,7 +26,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 ## Propositions et questions ouvertes
 
 - Contrat d’exposition V0.1 : matrice de données et d’actions à valider ; lecture d’une structure PLC ne vaut pas autorisation de l’exposer en écriture.
-- Question métier active : teach, modes magasin et réglages de pince restent-ils uniquement dans la HMI Beckhoff ou doivent-ils aussi rejoindre la nouvelle application et OPC UA ? Aucun arbitrage reçu.
+- Maintenance : périmètre lecture seule validé pour V1. Liste précise des réglages et états utiles, mapping, unités, fraîcheur et droits de consultation à préciser ; aucune écriture de maintenance autorisée par ce choix.
 - Blazor Interactive Server et MudBlazor : candidats à qualifier, pas dépendances adoptées dans le code.
 - Implantation du collecteur Fleet, transports internes, isolations additionnelles, démarrage système, certificats et packaging : à définir.
 - Permissions détaillées, identités de service OPC UA, politique de lecture anonyme, binding et renouvellement des licences : à définir.
