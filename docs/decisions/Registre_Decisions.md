@@ -40,11 +40,11 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Destination externe des sauvegardes, responsabilité d’exploitation et restauration produit complète : à définir ; les paramètres pilotes de fréquence/rétention sont acquis pour la qualification.
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
-- T2.2 : bibliothèque de dérivation de mot de passe Argon2id et paramètres de coût à qualifier avant stockage de mots de passe produit ; ne pas inventer de cryptographie maison.
+- T2.2-B : bibliothèque de dérivation de mot de passe Argon2id et paramètres de coût à qualifier avant stockage de mots de passe produit ; ne pas inventer de cryptographie maison.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est également clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. Les comptes réels, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A est maintenant implémenté et en attente de qualification locale** ; aucun PASS n’est déclaré avant exécution de `Test-T22.ps1`. Les mots de passe, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -77,6 +77,10 @@ Le journal reçu le 15 septembre 2026 confirme simultanément :
 
 Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. T2.1 est clôturé ; aucune qualification Beckhoff réelle n’en découle.
 
-## T2.2 — prochaine tranche
+## T2.2-A — noyau d’autorité implémenté, qualification locale requise
 
-La prochaine tranche porte sur les **identités locales, authentification, sessions révocables et résolution des permissions**. Elle doit prouver au minimum deux identités nominatives distinctes, liaison de session au client et à la cible, expiration et révocation autoritatives, et prise en compte immédiate d’un retrait de droit avant toute nouvelle admission. Le stockage des mots de passe ne sera implémenté qu’après qualification d’une bibliothèque Argon2id et de ses paramètres ; aucune cryptographie maison n’est autorisée.
+La première micro-tranche T2.2 est implémentée dans `Platform.Poc.Identity.Runtime` et décrite dans le [dossier T2.2-A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md). Elle introduit deux identités nominatives possibles, références de session opaques, liaison sujet/client/cible, délais d’inactivité local/distant, activité humaine explicite, révocation, désactivation et reconstruction des permissions à chaque résolution.
+
+La recette `eng/Test-T22.ps1` rejoue T0/T1 + T2.1 avant les contrôles T2.2-A. **État : implémenté/en qualification, pas PASS.**
+
+Le stockage des mots de passe, le commissioning du premier administrateur, les secrets temporaires et la récupération signée restent volontairement hors de T2.2-A et appartiennent à T2.2-B après qualification Argon2id.
