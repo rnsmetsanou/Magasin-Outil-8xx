@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : proposition à valider, rôles configurables, droits communs HMI/OPC UA et limites du mécanisme actuel.
+
 - [Matrice maintenance V1](contrats/Maintenance_Lecture_V1.md) : sources PLC examinées, unités établies ou à confirmer, valeurs configurées/appliquées et questions automatisme.
 
 - [Décisions et points ouverts](decisions/Registre_Decisions.md).

@@ -40,3 +40,7 @@ Le code actuel reste un prototype Avalonia simulé. Les décisions de cible ne s
 ## Avancement — matrice maintenance
 
 La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie les sources PLC et les points à confirmer. Sa liste détaillée et sa présentation restent proposées ; le périmètre lecture seule est validé. L’analyse relève une affectation Y/Z suspecte, des compensations forcées à zéro et une différence d’usage du contrôle capteur entre manuel et automatique. Ces constats ne sont pas des défauts confirmés sur machine et n’ont entraîné aucune modification PLC.
+
+## Proposition en revue — permissions et rôles
+
+La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Question prioritaire : l’Opérateur doit-il pouvoir modifier les données ou correcteurs, notamment l’usure ? Aucun code de sécurité ni compte n’a été modifié.
