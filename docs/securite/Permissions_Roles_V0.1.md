@@ -1,6 +1,6 @@
 # Permissions et rôles V0.1 — pilote Magasin 8xx
 
-Date : 14 septembre 2026. Statut : proposition à valider. Aucun rôle, compte, paramètre de sécurité ou code modifié. Les identifiants nouveaux ci-dessous sont candidats ; seul le périmètre maintenance en consultation est déjà validé.
+Date : 14 septembre 2026. Statut : proposition avec modification des seules usures par l’Opérateur validée. Aucun rôle, compte, paramètre de sécurité ou code modifié. Les identifiants nouveaux ci-dessous sont candidats ; le périmètre maintenance en consultation et la limitation de l’édition Opérateur aux usures sont validés.
 
 ## 1. Base existante vérifiée
 
@@ -30,6 +30,7 @@ Chaque permission correspond à une capacité métier commune. Les autorités do
 | `maintenance.read` | Réglages et diagnostics de maintenance sélectionnés | Nouveau proposé ; consultation seule |
 | `tool.create` | Création de fiche selon règles d’affectation validées | Nouveau proposé |
 | `tool.data.edit` | Modification des paramètres d’outil autorisés | Nouveau proposé |
+| `tool.wear.edit` | Modification des seuls champs d’usure applicables | Nouveau proposé ; capacité Opérateur validée |
 | `tool.correctors.edit` | Modification des correcteurs applicables | Nouveau proposé |
 | `tool.spindle.edit` | Autorisation supplémentaire pour éditer l’outil actuellement en broche | Nouveau proposé |
 | `tool.prepare` | Préparer un outil | Existant plateforme |
@@ -43,7 +44,7 @@ Chaque permission correspond à une capacité métier commune. Les autorités do
 | `audit.policy.manage` | Rétention et budgets selon politique produit | Nouveau proposé ; ne permet pas d’effacer librement l’audit |
 | `fleet.publish` | Publication de la projection Fleet par un service identifié | Nouveau proposé ; pas de commande machine |
 
-L’édition d’un correcteur en broche demande `tool.correctors.edit` ET `tool.spindle.edit`. L’édition d’autres données en broche demande `tool.data.edit` ET `tool.spindle.edit`. La position et la révision sont revérifiées à l’admission ; sélectionner un outil au magasin puis attendre son chargement ne doit pas contourner le contrôle.
+L’édition d’un correcteur en broche demande la permission correspondant aux champs modifiés ET `tool.spindle.edit`. Pour une usure seule, cette permission est `tool.wear.edit` ou la permission plus large `tool.correctors.edit` ; pour les autres correcteurs, `tool.correctors.edit` est exigée. L’édition d’autres données en broche demande `tool.data.edit` ET `tool.spindle.edit`. La position et la révision sont revérifiées à l’admission ; sélectionner un outil au magasin puis attendre son chargement ne doit pas contourner le contrôle.
 
 La permission d’édition ne rend pas tous les champs PLC éditables. Le catalogue de champs, les bornes et la propriété PLC/CNC/application restent une règle métier indépendante.
 
@@ -58,7 +59,8 @@ Oui = attribution de départ proposée. Non = absence d’attribution par ce rô
 | Consulter magasin | Oui | Oui | Oui | Oui |
 | Consulter maintenance | Non | Non | Oui | Oui |
 | Créer / modifier données outils | Non | Non | Oui | Non |
-| Modifier correcteurs | Non | Non | Oui | Non |
+| Modifier uniquement les usures | Non | Oui — validé | Oui | Non |
+| Modifier les autres correcteurs | Non | Non | Oui | Non |
 | Éditer l’outil en broche | Non | Non | Oui, avec permission d’édition correspondante | Non |
 | Préparer / charger | Non | Oui | Oui | Non |
 | Suivre ses opérations | Non | Oui | Oui | Oui pour ses opérations administratives |
@@ -71,7 +73,19 @@ Oui = attribution de départ proposée. Non = absence d’attribution par ce rô
 
 La séparation administration/exploitation évite une attribution automatique de commandes machine. Elle n’est pas une séparation organisationnelle absolue : un administrateur autorisé à attribuer les rôles pourrait accorder un rôle d’exploitation. Toute attribution doit être auditée. L’interdiction d’auto-attribution ou la double validation seraient des politiques supplémentaires, non décidées ici.
 
-La question principale à valider est la frontière Opérateur / Régleur outils, notamment pour les corrections d’usure fréquentes. Aucun choix d’exploitation existant chez WM n’est présumé.
+Décision utilisateur du 14 septembre 2026 : l’Opérateur peut modifier uniquement l’usure. Les autres droits des modèles de rôles restent proposés. L’attribution de `tool.spindle.edit` à l’Opérateur reste à valider séparément ; l’accord sur les usures ne l’accorde pas implicitement.
+
+### Restriction d’édition Opérateur — validée
+
+Les champs candidats identifiés dans les structures sont :
+- fraisage : `UsureLongueur`, `UsureRayon` ;
+- tournage : `UsureLongueur`, `UsureY`, `UsureZ`.
+
+Seuls les champs applicables à l’outil et au correcteur sélectionnés sont proposés. Leur mapping, unité, échelle et leurs bornes restent à confirmer. Aucune modification du nom, de la longueur nominale, du rayon nominal, du quadrant, de la durée de vie ou de son compteur n’est autorisée par ce droit. Une usure de correcteur ne se confond pas avec la gestion de durée de vie.
+
+Le service valide la liste des champs réellement demandés, et pas uniquement l’état des contrôles graphiques. Une requête mélangeant usure et autre modification non autorisée est refusée intégralement avant tout effet. Pas de modification partielle silencieuse ; pas d’écriture libre d’une structure complète au titre de cette permission. Les règles de révision et de concurrence restent applicables.
+
+Scénarios à ajouter à la recette : usure seule autorisée pour un Opérateur ; longueur nominale refusée ; requête mixte refusée sans écriture ; mêmes décisions via HMI et OPC UA ; usure en broche refusée sans permission supplémentaire. Aucun test n’est exécuté dans cette étape documentaire.
 
 ## 5. Clients web, OPC UA et Fleet
 
@@ -113,7 +127,7 @@ Ces scénarios sont un plan de recette, pas des résultats de tests exécutés.
 
 ## 8. Décisions attendues
 
-Priorité : valider les rôles et l’autorisation de modifier les données/correcteurs pour l’opérateur. Ensuite préciser le périmètre public, les identités de service, l’attribution des rôles et les exceptions de récupération. Les identifiants candidats doivent être consolidés avec le catalogue commun avant implémentation.
+La limitation de l’Opérateur aux usures est validée. Restent à préciser son droit sur les usures en broche, les autres attributions des rôles, le périmètre public, les identités de service, l’attribution des rôles et les exceptions de récupération. Les identifiants candidats doivent être consolidés avec le catalogue commun avant implémentation.
 
 ## 9. Références de code
 
