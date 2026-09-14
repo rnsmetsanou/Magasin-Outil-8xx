@@ -21,7 +21,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 | Unités | Millimètres et pouces en V1 ; préférences utilisateur et extension par grandeur physique. |
 | Affichage | 1024 × 768 et 1920 × 1080, tactile, thèmes clair/sombre, charte et logo WM. |
 | CRA | Exigence de conformité produit ; aucune conformité démontrée par les analyses actuelles. |
-| Édition Opérateur | Modification des seuls champs d’usure des correcteurs ; autres données et correcteurs exclus. Le droit sur l’outil en broche reste à valider séparément. |
+| Édition Opérateur | Modification des seuls champs d’usure des correcteurs ; autres données et correcteurs exclus. Autorisation également validée pour l’outil actuellement en broche, sous conditions machine et contrôles communs. |
 | Documentation | Versionner les livrables structurants dans ce dépôt au fil du travail. |
 
 ## Propositions et questions ouvertes
@@ -44,4 +44,4 @@ La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie le
 
 ## Proposition en revue — permissions et rôles
 
-La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Décision reçue : l’Opérateur peut modifier uniquement les usures. Le droit additionnel en broche et les autres attributions des rôles restent à valider. Aucun code de sécurité ni compte n’a été modifié.
+La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Décision reçue : l’Opérateur peut modifier uniquement les usures. L’édition des usures en broche est également validée. Les autres attributions des rôles restent à valider. Aucun code de sécurité ni compte n’a été modifié.

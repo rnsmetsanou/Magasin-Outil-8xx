@@ -1,6 +1,6 @@
 # Permissions et rôles V0.1 — pilote Magasin 8xx
 
-Date : 14 septembre 2026. Statut : proposition avec modification des seules usures par l’Opérateur validée. Aucun rôle, compte, paramètre de sécurité ou code modifié. Les identifiants nouveaux ci-dessous sont candidats ; le périmètre maintenance en consultation et la limitation de l’édition Opérateur aux usures sont validés.
+Date : 14 septembre 2026. Statut : proposition avec modification des seules usures par l’Opérateur validée, y compris en broche. Aucun rôle, compte, paramètre de sécurité ou code modifié. Les identifiants nouveaux ci-dessous sont candidats ; le périmètre maintenance en consultation et la limitation de l’édition Opérateur aux usures sont validés.
 
 ## 1. Base existante vérifiée
 
@@ -61,7 +61,7 @@ Oui = attribution de départ proposée. Non = absence d’attribution par ce rô
 | Créer / modifier données outils | Non | Non | Oui | Non |
 | Modifier uniquement les usures | Non | Oui — validé | Oui | Non |
 | Modifier les autres correcteurs | Non | Non | Oui | Non |
-| Éditer l’outil en broche | Non | Non | Oui, avec permission d’édition correspondante | Non |
+| Éditer l’outil en broche | Non | Oui, usures uniquement — validé | Oui, avec permission d’édition correspondante | Non |
 | Préparer / charger | Non | Oui | Oui | Non |
 | Suivre ses opérations | Non | Oui | Oui | Oui pour ses opérations administratives |
 | Consulter opérations machine | Non | Non | Oui | Oui |
@@ -73,9 +73,11 @@ Oui = attribution de départ proposée. Non = absence d’attribution par ce rô
 
 La séparation administration/exploitation évite une attribution automatique de commandes machine. Elle n’est pas une séparation organisationnelle absolue : un administrateur autorisé à attribuer les rôles pourrait accorder un rôle d’exploitation. Toute attribution doit être auditée. L’interdiction d’auto-attribution ou la double validation seraient des politiques supplémentaires, non décidées ici.
 
-Décision utilisateur du 14 septembre 2026 : l’Opérateur peut modifier uniquement l’usure. Les autres droits des modèles de rôles restent proposés. L’attribution de `tool.spindle.edit` à l’Opérateur reste à valider séparément ; l’accord sur les usures ne l’accorde pas implicitement.
+Décision utilisateur du 14 septembre 2026 : l’Opérateur peut modifier uniquement l’usure. Les autres droits des modèles de rôles restent proposés. L’utilisateur a également validé la modification des usures de l’outil actuellement en broche. La composition proposée attribue donc à l’Opérateur `tool.wear.edit` et `tool.spindle.edit` ; cette dernière permission ne donne aucun droit autonome sur les autres champs.
 
 ### Restriction d’édition Opérateur — validée
+
+Cette autorisation couvre les outils au magasin et l’outil actuellement en broche, via la HMI et OPC UA. Elle ne permet pas d’écrire pendant n’importe quel état CNC : les conditions d’application et la synchronisation PLC/CNC restent à confirmer dans le contrat machine. Le contrôle de révision, de licence, des permissions et de disponibilité de l’audit reste obligatoire.
 
 Les champs candidats identifiés dans les structures sont :
 - fraisage : `UsureLongueur`, `UsureRayon` ;
@@ -85,7 +87,7 @@ Seuls les champs applicables à l’outil et au correcteur sélectionnés sont p
 
 Le service valide la liste des champs réellement demandés, et pas uniquement l’état des contrôles graphiques. Une requête mélangeant usure et autre modification non autorisée est refusée intégralement avant tout effet. Pas de modification partielle silencieuse ; pas d’écriture libre d’une structure complète au titre de cette permission. Les règles de révision et de concurrence restent applicables.
 
-Scénarios à ajouter à la recette : usure seule autorisée pour un Opérateur ; longueur nominale refusée ; requête mixte refusée sans écriture ; mêmes décisions via HMI et OPC UA ; usure en broche refusée sans permission supplémentaire. Aucun test n’est exécuté dans cette étape documentaire.
+Scénarios à ajouter à la recette : usure seule autorisée pour un Opérateur ; longueur nominale refusée ; requête mixte refusée sans écriture ; mêmes décisions via HMI et OPC UA ; usure en broche autorisée pour l’Opérateur doté des deux permissions et sous conditions machine ; usure en broche refusée si la permission supplémentaire est retirée. Aucun test n’est exécuté dans cette étape documentaire.
 
 ## 5. Clients web, OPC UA et Fleet
 
@@ -127,7 +129,7 @@ Ces scénarios sont un plan de recette, pas des résultats de tests exécutés.
 
 ## 8. Décisions attendues
 
-La limitation de l’Opérateur aux usures est validée. Restent à préciser son droit sur les usures en broche, les autres attributions des rôles, le périmètre public, les identités de service, l’attribution des rôles et les exceptions de récupération. Les identifiants candidats doivent être consolidés avec le catalogue commun avant implémentation.
+La limitation de l’Opérateur aux usures est validée. Le droit sur les usures en broche est également validé. Restent à préciser les autres attributions des rôles, le périmètre public, les identités de service, l’attribution des rôles et les exceptions de récupération. Les identifiants candidats doivent être consolidés avec le catalogue commun avant implémentation.
 
 ## 9. Références de code
 
