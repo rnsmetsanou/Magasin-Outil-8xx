@@ -37,7 +37,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 
 ## État de réalisation
 
-Le code actuel reste un prototype Avalonia simulé. Les décisions de cible ne signifient pas que les services plateforme, le serveur OPC UA, le raccordement Fleet ou le connecteur Beckhoff sécurisé sont déjà intégrés au pilote. Aucun nouveau test machine n’est associé à cette synchronisation documentaire.
+Le prototype Avalonia reste autonome. Un socle de lecture séparé utilisant les paquets plateforme est désormais implémenté et vérifié en simulation sur Windows (T0/T1). Les décisions de cible ne signifient pas que les services plateforme, le serveur OPC UA, le raccordement Fleet ou le connecteur Beckhoff sécurisé sont déjà intégrés au pilote. Aucun nouveau test machine n’est associé à cette synchronisation documentaire.
 
 ## Avancement — matrice maintenance
 
@@ -73,3 +73,7 @@ Validation : crédits GitHub Actions épuisés, confirmé par l’utilisateur. A
 ## T0/T1 — socle de lecture vérifié sur Windows
 
 Le journal reçu le 14 septembre 2026 confirme les 17 contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : PASS LOCAL. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites. Cette mise à jour remplace les états d'attente de validation précédents pour le socle de lecture. Les contrats de persistance préparatoires et les autorités durables restent à qualifier en T2. La prochaine étape est la proposition groupée T2 ; aucune décision produit ouverte n'est implicitement acceptée.
+
+## T2 — proposition groupée en revue
+
+Le [dossier T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) regroupe les choix A à F et les paramètres candidats : comptes/sessions, rôles et consultation, licences, admission/audit, récupération et profils. Aucun de ces nouveaux choix n'est considéré validé par la demande de poursuivre. Aucun code T2 ni changement de compte/licence n'est effectué. La période commerciale de licence, les responsabilités WM, la destination des sauvegardes et les prérequis matériels restent explicites et ouverts.
