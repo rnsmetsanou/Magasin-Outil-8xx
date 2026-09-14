@@ -36,3 +36,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 ## État de réalisation
 
 Le code actuel reste un prototype Avalonia simulé. Les décisions de cible ne signifient pas que les services plateforme, le serveur OPC UA, le raccordement Fleet ou le connecteur Beckhoff sécurisé sont déjà intégrés au pilote. Aucun nouveau test machine n’est associé à cette synchronisation documentaire.
+
+## Avancement — matrice maintenance
+
+La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie les sources PLC et les points à confirmer. Sa liste détaillée et sa présentation restent proposées ; le périmètre lecture seule est validé. L’analyse relève une affectation Y/Z suspecte, des compensations forcées à zéro et une différence d’usage du contrôle capteur entre manuel et automatique. Ces constats ne sont pas des défauts confirmés sur machine et n’ont entraîné aucune modification PLC.
