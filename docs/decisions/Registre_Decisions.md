@@ -1,6 +1,6 @@
 # Registre des décisions — Magasin 8xx
 
-Actualisé le 14 septembre 2026. Source : validations explicites dans les échanges du projet. Ce registre actualise les analyses historiques sans en modifier les constats datés.
+Actualisé le 15 septembre 2026. Source : validations explicites dans les échanges du projet. Ce registre actualise les analyses historiques sans en modifier les constats datés.
 
 ## Décisions retenues
 
@@ -10,13 +10,17 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 | Interface | Direction HMI web commune, hébergée localement sur le PC industriel, sans dépendance Internet ; remplacement effectif d’Avalonia après qualification. |
 | Isolation | Runtime Machine/Application séparé de l’hôte HMI dès la première version. |
 | Clients | Plusieurs clients souhaités ; actions selon autorisations. La tablette est un exemple de client. |
-| Profils | Local isolé, Intégration usine, Rattaché au parc et Intégration complète, suivant la matrice de l’analyse de déploiement. Aucun profil par défaut choisi. |
-| OPC UA | Exposition des données et actions en V1 ; connexion à des équipements OPC UA ensuite. |
+| Profils | Local isolé, Intégration usine, Rattaché au parc et Intégration complète, suivant la matrice de l’analyse de déploiement. Aucun profil par défaut choisi. Identité, licence, autorisation et audit restent obligatoires dans tous les profils. |
+| OPC UA | Exposition des données et actions en V1 ; connexion à des équipements OPC UA ensuite. Pas de consultation métier anonyme OPC UA. Une identité Service et une confiance de transport qualifiée sont requises pour l’exposition protégée. |
 | Maintenance V1 | Consultation des réglages et états utiles dans la HMI et OPC UA. Modification des réglages, apprentissage des positions (teach), changements de mode et mouvements de maintenance hors exposition V1 ; restent dans la HMI Beckhoff. La gestion des données d’outils et les opérations Préparer/Charger restent dans leur périmètre distinct. |
 | Fleet | Reprendre son rôle dans la plateforme et le raccordement commun, en supervision en lecture seule dans le périmètre examiné. |
-| Comptes | Comptes locaux utilisables sans Microsoft ni réseau externe ; Microsoft est l’environnement de comptes existant chez WM. Actions et administration sous identités nominatives. |
-| Licences | Mécanisme WM commun à construire ; licences temporaires dès V1, vérifiables localement. À expiration : nouvelles modifications et commandes bloquées, consultation selon droits et poursuite des opérations admises. |
-| Audit | Durable, politique configurable. Panne d’audit durable : bloquer les nouvelles modifications et commandes ; préserver consultation, récupération et suivi des opérations admises. Les exceptions de récupération restent à définir. |
+| Comptes et sessions | Comptes locaux nominatifs utilisables hors ligne, sans compte partagé ni administrateur universel. Sessions opaques, révocables et liées côté Core au sujet, au client et à la cible. Inactivité : 30 min pour une session interactive locale, 10 min pour une session interactive distante ; durée absolue initiale 8 h. Réauthentification après redémarrage du Core. |
+| Rôles | Quatre rôles initiaux : Consultation, Opérateur, Régleur outils, Administrateur. L’Opérateur peut modifier uniquement les usures, y compris en broche sous conditions, et dispose de Préparer/Charger. L’Administrateur ne reçoit pas implicitement des commandes machine. |
+| Consultation sans identité | Pas de consultation métier anonyme en V1. Un futur sujet `Guest` local strictement lecture seule peut être étudié comme capacité explicite, sans contourner les autorités communes. |
+| Licences | Licence hors ligne signée, liée à une identité cryptographique d’installation ; clés privées uniquement dans l’outil d’émission WM. Expiration ou incohérence temporelle : nouvelles modifications et commandes bloquées, consultation selon droits et poursuite des opérations déjà admises. |
+| Admission et audit | Le Core est seul propriétaire des écritures. Intention, corrélation, représentation canonique et audit d’admission sont persistés avant tout effet technologique. SQLite est un adaptateur remplaçable. Politique pilote : rétention 365 jours, budget 1 Gio, alerte à 80 %, sauvegarde quotidienne et avant migration, dix sauvegardes quotidiennes conservées. |
+| Récupération | Liste fermée d’actions de récupération ; aucune exemption générale Administrateur. Récupération du dernier administrateur via autorisation signée propre à l’installation et à usage unique. Un journal de secours ne peut pas servir à admettre des commandes métier. |
+| Audit en panne | Une panne durable de l’audit bloque les nouvelles modifications et commandes ; consultation autorisée, diagnostic, récupération et suivi des opérations déjà admises restent possibles selon la politique fermée de récupération. |
 | Langues | Français requis, anglais souhaité en V1, allemand si possible. |
 | Unités | Millimètres et pouces en V1 ; préférences utilisateur et extension par grandeur physique. |
 | Affichage | 1024 × 768 et 1920 × 1080, tactile, thèmes clair/sombre, charte et logo WM. |
@@ -27,53 +31,57 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 
 ## Propositions et questions ouvertes
 
-- Contrat d’exposition V0.1 : matrice de données et d’actions à valider ; lecture d’une structure PLC ne vaut pas autorisation de l’exposer en écriture.
+- Contrat d’exposition V0.1 : matrice détaillée des données et actions encore à consolider ; lecture d’une structure PLC ne vaut pas autorisation de l’exposer en écriture.
 - Maintenance : périmètre lecture seule validé pour V1. Liste précise des réglages et états utiles, mapping, unités, fraîcheur et droits de consultation à préciser ; aucune écriture de maintenance autorisée par ce choix.
 - Blazor Interactive Server et MudBlazor : candidats à qualifier, pas dépendances adoptées dans le code.
-- Implantation du collecteur Fleet, transports internes, isolations additionnelles, démarrage système, certificats et packaging : à définir.
-- Permissions détaillées, identités de service OPC UA, politique de lecture anonyme, binding et renouvellement des licences : à définir.
+- Implantation du collecteur Fleet, transports réseau, isolations additionnelles, démarrage système, certificats et packaging : à définir et qualifier.
+- Catalogue détaillé des champs outils/correcteurs, bornes, unités et préconditions machine : à consolider ; les rôles et principes d’autorisation T2 sont désormais acquis.
+- Durées commerciales de licence, responsabilités d’émission/transfert, disponibilité éventuelle d’un matériel de confiance et procédure opérationnelle de migration d’iPC : à définir par WM.
+- Destination externe des sauvegardes, responsabilité d’exploitation et restauration produit complète : à définir ; les paramètres pilotes de fréquence/rétention sont acquis pour la qualification.
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Un socle de lecture séparé utilisant les paquets plateforme est désormais implémenté et vérifié en simulation sur Windows (T0/T1). Les décisions de cible ne signifient pas que les services plateforme, le serveur OPC UA, le raccordement Fleet ou le connecteur Beckhoff sécurisé sont déjà intégrés au pilote. Aucun nouveau test machine n’est associé à cette synchronisation documentaire.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est implémenté et vérifié en simulation sur Windows (T0/T1). T2.1-A, consacré aux contrats d’autorité durable et aux invariants de session/admission, est également PASS LOCAL. T2.1-B, consacré à l’adaptateur SQLite de l’admission durable, est en qualification. Les comptes réels, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
 La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie les sources PLC et les points à confirmer. Sa liste détaillée et sa présentation restent proposées ; le périmètre lecture seule est validé. L’analyse relève une affectation Y/Z suspecte, des compensations forcées à zéro et une différence d’usage du contrôle capteur entre manuel et automatique. Ces constats ne sont pas des défauts confirmés sur machine et n’ont entraîné aucune modification PLC.
 
-## Proposition en revue — permissions et rôles
+## Permissions et rôles — base V1 validée
 
-La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Décision reçue : l’Opérateur peut modifier uniquement les usures. L’édition des usures en broche est également validée. Les autres attributions des rôles restent à valider. Aucun code de sécurité ni compte n’a été modifié.
+La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reste le document détaillé de travail. La validation T2 du 15 septembre 2026 fixe la base suivante : rôles Consultation, Opérateur, Régleur outils et Administrateur ; Opérateur limité à l’édition des usures pour les écritures de correcteurs, y compris en broche sous conditions ; `tool.prepare` et `tool.load` attribués à l’Opérateur ; Administrateur sans droit implicite de commande machine ; aucune consultation métier OPC UA anonyme. Les identités de service restent distinctes des identités humaines. Les détails de mapping, champs et préconditions machine ne sont pas déduits de cette validation.
 
 ## Architecture d’intégration — choix techniques validés
 
-Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Les quatre choix techniques sont validés ; le plan détaillé de première tranche est disponible. SQLite et gRPC sont explicitement remplaçables sans dépendance fournisseur dans les contrats métier. La migration des données et la qualification d’un nouvel adaptateur restent nécessaires. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web. Aucun code ni configuration n’a été modifié pour ce dossier.
+Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Les quatre choix techniques sont validés ; le plan détaillé de première tranche est disponible. SQLite et gRPC sont explicitement remplaçables sans dépendance fournisseur dans les contrats métier. La migration des données et la qualification d’un nouvel adaptateur restent nécessaires. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web.
 
 ## Plan de première tranche — T0/T1 autorisés
 
-Le [plan T0–T6](../plan/Premiere_Tranche_Integration_V0.1.md) détaille l’intégration simulée et les critères de sortie. Il ne modifie pas les choix acquis et ne résout pas implicitement les décisions ouvertes. Le passage au code T0/T1 est explicitement autorisé : contrats communs et frontière de processus, avec changements plateforme isolés et consommation depuis le pilote. Cette autorisation ne vaut pas réalisation ni validation de la tranche.
+Le [plan T0–T6](../plan/Premiere_Tranche_Integration_V0.1.md) détaille l’intégration simulée et les critères de sortie. Il ne modifie pas les choix acquis et ne résout pas implicitement les décisions ouvertes. Le passage au code T0/T1 a été explicitement autorisé : contrats communs et frontière de processus, avec changements plateforme isolés et consommation depuis le pilote.
 
 ## Préparation de T0/T1 — 14 septembre 2026
 
-La branche `pilot/t0-t1-contracts-process-boundary` est créée dans les deux dépôts :
+La branche `pilot/t0-t1-contracts-process-boundary` a été créée dans les deux dépôts :
 
 - Pilote : depuis `182096f1bae32290d537f3ba4e95aa4635fc083a` (`hmi/avalonia-magazine-v1`).
 - Plateforme : depuis `bc0819d0774c67e920481a7e0312d12f55a291a8` (`p6-7-live-commissioning-impl`).
 
-L'environnement d'exécution est indisponible (« Environment is not connected ») ; l'accès GitHub fonctionne. À ce point, aucune implémentation T0/T1, compilation ou exécution de tests n'a été réalisée. Aucun code PLC n'a été modifié. La reprise doit vérifier les instructions et l'état des checkouts, lire les contrats existants, puis implémenter et qualifier T0/T1 selon le plan. SQLite et gRPC doivent rester des adaptateurs remplaçables. Les décisions ouvertes restent ouvertes ; aucune fusion n'est effectuée.
-
-## T0/T1 — implémentation en qualification
-
-L’environnement local répond de nouveau. La liaison de lecture, la consommation des paquets et les tests Windows sont écrits sur les branches dédiées ; leur compilation et leurs résultats restent à vérifier. Voir le [dossier de réalisation](../implementation/T0_T1_Frontiere_Processus.md). Aucun nouveau choix produit ouvert n’est considéré validé par ce travail.
-
-Validation : crédits GitHub Actions épuisés, confirmé par l’utilisateur. Aucun test C# exécuté dans cette session ; validation locale Windows préparée. T0/T1 restent ouverts jusqu’aux résultats.
+Cet état est historique : les validations locales ont depuis été exécutées et sont décrites ci-dessous.
 
 ## T0/T1 — socle de lecture vérifié sur Windows
 
-Le journal reçu le 14 septembre 2026 confirme les 17 contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : PASS LOCAL. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites. Cette mise à jour remplace les états d'attente de validation précédents pour le socle de lecture. Les contrats de persistance préparatoires et les autorités durables restent à qualifier en T2. La prochaine étape est la proposition groupée T2 ; aucune décision produit ouverte n'est implicitement acceptée.
+Le journal reçu le 14 septembre 2026 confirme les contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : PASS LOCAL. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites.
 
-## T2 — proposition groupée en revue
+## T2 — décisions A à F validées
 
-Le [dossier T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) regroupe les choix A à F et les paramètres candidats : comptes/sessions, rôles et consultation, licences, admission/audit, récupération et profils. Aucun de ces nouveaux choix n'est considéré validé par la demande de poursuivre. Aucun code T2 ni changement de compte/licence n'est effectué. La période commerciale de licence, les responsabilités WM, la destination des sauvegardes et les prérequis matériels restent explicites et ouverts.
+La [proposition T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) constitue le document de discussion initial. Les choix A à F ont été validés le 15 septembre 2026 avec deux ajustements explicités dans le présent registre : délai d’inactivité de 30 minutes pour l’interactif local et 10 minutes pour l’interactif distant ; aucune consultation métier OPC UA anonyme. Un éventuel sujet `Guest` local strictement lecture seule reste une capacité future à étudier, pas un contournement d’authentification. Les politiques commerciales de licence, la destination externe des sauvegardes et certains prérequis matériels restent ouverts sans bloquer T2.1.
+
+## T2.1-A — contrats d’autorités durables vérifiés localement
+
+Le journal reçu le 15 septembre 2026 confirme la régression T0/T1 puis neuf contrôles T2.1-A : indépendance SQLite/gRPC des contrats, session valide uniquement après résolution autoritative, impossibilité de rebinding client/cible, conservation canonique versionnée, incertitude de commit explicite et distinction entre conflit de propriété et conflit de contenu. Résultat : **PASS LOCAL**. Voir [le dossier de preuve T2.1-A](../implementation/T2_1_A_Validation_Contrats_Autorites_2026-09-15.md).
+
+## T2.1-B — persistance SQLite en qualification
+
+La micro-tranche suivante implémente `IDurableAdmissionStore` dans un adaptateur SQLite séparé des contrats. La recette prévue couvre migration de schéma, atomicité admission + audit, déduplication d’une intention concurrente, absence de divulgation entre propriétaires, persistance après recréation et sauvegarde/restauration cohérente. Tant que la recette locale n’est pas reçue, T2.1-B reste **implémenté/en qualification**, pas PASS.
