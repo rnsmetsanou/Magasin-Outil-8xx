@@ -63,3 +63,9 @@ Recette à effectuer sur Windows :
 7. Fermer et relancer : données fictives réinitialisées, thème clair initial, aucun replay.
 
 La persistance des préférences, la création d’outil, la localisation multilingue, les droits utilisateurs et les alarmes réelles sont des étapes suivantes. Aucun statut de validation visuelle ou machine n’est revendiqué ici.
+
+## Résultat exécuté le 14 septembre 2026
+
+La [vérification GitHub Actions 34857510339](https://github.com/rnsmetsanou/Magasin-Outil-8xx/actions/runs/34857510339) a réussi sur le commit `e7636cacadbdeae3c919909a7ea3fce146b2846d` : compilation Release .NET 10, zéro avertissement de compilation, zéro erreur, onze contrôles métier réussis. L’environnement était Ubuntu ; ce résultat ne valide pas le rendu Windows, le tactile ni la communication Beckhoff. Deux premiers essais ont permis de corriger les conflits de noms et une propriété obsolète Avalonia 12, sans désactiver les avertissements traités en erreurs.
+
+Poppins Regular et sa licence OFL sont effectivement embarquées, ainsi que les deux logos fournis. L’application peut charger ces ressources sans réseau.
