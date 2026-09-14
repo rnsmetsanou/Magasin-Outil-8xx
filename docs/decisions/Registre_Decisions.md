@@ -69,3 +69,7 @@ L'environnement d'exécution est indisponible (« Environment is not connected �
 L’environnement local répond de nouveau. La liaison de lecture, la consommation des paquets et les tests Windows sont écrits sur les branches dédiées ; leur compilation et leurs résultats restent à vérifier. Voir le [dossier de réalisation](../implementation/T0_T1_Frontiere_Processus.md). Aucun nouveau choix produit ouvert n’est considéré validé par ce travail.
 
 Validation : crédits GitHub Actions épuisés, confirmé par l’utilisateur. Aucun test C# exécuté dans cette session ; validation locale Windows préparée. T0/T1 restent ouverts jusqu’aux résultats.
+
+## T0/T1 — socle de lecture vérifié sur Windows
+
+Le journal reçu le 14 septembre 2026 confirme les 17 contrôles de frontière de processus, la compilation de la plateforme, WS-AT04/WS-AT11/P6.2-D et la consommation des paquets par le pilote : PASS LOCAL. Le [dossier de preuve](../implementation/T0_T1_Validation_Windows_2026-09-14.md) précise la provenance et les limites. Cette mise à jour remplace les états d'attente de validation précédents pour le socle de lecture. Les contrats de persistance préparatoires et les autorités durables restent à qualifier en T2. La prochaine étape est la proposition groupée T2 ; aucune décision produit ouverte n'est implicitement acceptée.

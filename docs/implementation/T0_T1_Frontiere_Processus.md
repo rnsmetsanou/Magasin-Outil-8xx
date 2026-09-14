@@ -1,5 +1,7 @@
 # T0/T1 — Contrats et frontière de processus
 
+**État actuel : PASS LOCAL, socle de lecture T0/T1 vérifié sur Windows.** Voir le [dossier de résultats](T0_T1_Validation_Windows_2026-09-14.md). Les mentions d'attente et d'échec ci-dessous décrivent les étapes antérieures ; elles sont remplacées, pour ce périmètre, par le résultat reçu.
+
 14 septembre 2026. Implémentation de développement sur `pilot/t0-t1-contracts-process-boundary`. Compilation et qualification Windows en attente au moment de ce premier commit ; ce document sera actualisé avec les résultats.
 
 ## Ce qui change

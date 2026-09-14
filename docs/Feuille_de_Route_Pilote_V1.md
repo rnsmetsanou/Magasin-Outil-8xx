@@ -1,10 +1,10 @@
 # Feuille de route du pilote Magasin 8xx
 
-Date : 14 septembre 2026. Statut : plan proposé ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md). Aucun changement de code dans cette étape.
+Date : 14 septembre 2026. Statut : feuille de route actualisée après PASS LOCAL du socle de lecture T0/T1 ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
 
 ## 1. Où en sommes-nous ?
 
-Nous sommes dans le cadrage de l’intégration plateforme, après la réalisation d’un prototype graphique Avalonia simulé. Le parcours opérateur et plusieurs contraintes visuelles ont été exercés ; la cible web et les services produit ne sont pas encore implémentés dans le pilote.
+Le socle de lecture T0/T1 de l’intégration plateforme est implémenté et vérifié en simulation sur Windows : cœur séparé, clients gRPC et consommation de paquets communs. Voir le [dossier de preuve](implementation/T0_T1_Validation_Windows_2026-09-14.md). Le parcours opérateur et plusieurs contraintes visuelles ont été exercés ; la cible web et les services produit ne sont pas encore implémentés dans le pilote.
 
 Les analyses des profils, d’OPC UA, de Fleet, de la maintenance et des permissions sont versionnées. Le diagnostic architectural est établi sur les révisions examinées. Le périmètre principal est décidé, mais le contrat détaillé et les choix d’industrialisation restent ouverts. Aucun pourcentage global n’est donné : l’effort restant dépend notamment du protocole PLC et de la réutilisation réelle des composants communs.
 
@@ -15,9 +15,9 @@ Base pilote vérifiée : b550f944b1153a88ccece7226c18c47436c0a987. Plateforme ex
 | Étape | Résultat attendu | État | Critère de sortie |
 |---|---|---|---|
 | 0. Prototype et découverte | Parcours magasin simulé, contraintes WM, formats écran et premières sources PLC | Prototype réalisé ; diagnostic initial établi | Référence de parcours disponible, limites de simulation explicites |
-| 1. Contrat V1 | Périmètre métier, exposition OPC UA, rôles, maintenance et profils | En cours — étape actuelle | Décisions nécessaires à la première tranche prises ; questions restantes identifiées avec leur impact |
-| 2. Architecture d’intégration | Répartition plateforme/pilote, contrats et versions, transport entre processus, stockage et composition | Analysée partiellement ; à formaliser | Plan de dépendances et de livraison validé, sans duplication des autorités |
-| 3. Première tranche intégrée simulée | HMI web locale, runtime séparé, opération commune HMI/OPC UA, état publié dans Fleet | À réaliser | Une opération bout en bout, refus gouvernés, audit durable et coupures exercés |
+| 1. Contrat V1 | Périmètre métier, exposition OPC UA, rôles, maintenance et profils | Décisions V1 encore ouvertes ; socle de lecture vérifié | Décisions nécessaires à la première tranche prises ; questions restantes identifiées avec leur impact |
+| 2. Architecture d’intégration | Répartition plateforme/pilote, contrats et versions, transport entre processus, stockage et composition | Choix techniques validés ; socle T0/T1 vérifié | Plan de dépendances et de livraison validé, sans duplication des autorités |
+| 3. Première tranche intégrée simulée | HMI web locale, runtime séparé, opération commune HMI/OPC UA, état publié dans Fleet | En cours — socle de lecture vérifié ; T2 à préparer | Une opération bout en bout, refus gouvernés, audit durable et coupures exercés |
 | 4. Couverture fonctionnelle V1 | Gestion des outils, correcteurs, usures opérateur, maintenance consultative, langues/unités et administration | À réaliser | Matrice V1 couverte et exigences vérifiées en simulation |
 | 5. Raccordement Beckhoff 8xx | Lectures puis écritures/opérations réelles, Secure ADS, synchronisation PLC/CNC | Sources partiellement analysées ; intégration non réalisée | Preuves sur le banc cible pour chaque capacité annoncée |
 | 6. Qualification produit et livraison pilote | Installation, profils, reprise, matériel réel, dossiers de preuve et exploitation | À préparer dès maintenant ; validation finale ultérieure | Critères de recette produit satisfaits et limites acceptées |
@@ -38,7 +38,7 @@ Décisions déjà acquises :
 À regrouper dans une prochaine proposition cohérente :
 1. Compléter les rôles et les lectures publiques, les identités de service et les exceptions de récupération.
 2. Préciser les contrats d’édition : champs, révisions, résultat partiel et suivi après perte de réponse.
-3. Proposer stockage durable, transport local et distribution des composants plateforme.
+3. Détailler les autorités durables T2 ; SQLite remplaçable, gRPC remplaçable et paquets versionnés sont déjà validés.
 4. Identifier les choix qui bloquent seulement le raccordement réel : échelles, propriétaires PLC/CNC, protocole et conditions d’écriture en broche.
 
 L’objectif est de soumettre des décisions groupées et motivées plutôt que d’enchaîner des questions isolées. Un choix non validé reste explicitement proposé.
@@ -79,14 +79,7 @@ Les questions automatisme identifiées dans la matrice maintenance restent ouver
 
 ## 7. Prochaine livraison documentaire
 
-Un dossier d’architecture d’intégration V1 qui regroupe :
-- composants conservés et extensions communes ;
-- répartition plateforme/pilote et processus ;
-- proposition de transport, stockage et distribution ;
-- contrats de la première tranche et matrice de preuves ;
-- décisions ouvertes regroupées, avec recommandation et impact.
-
-La rédaction de ce dossier reste dans le périmètre actuel sans modification de code. Le passage à l’implémentation doit être explicite après revue de ce dossier.
+Une proposition groupée T2 pour les comptes locaux et sessions, permissions et identités de service, licences temporaires, admission/audit durables et reprise. Le choix de SQLite est acquis ; les politiques produit et les modalités d'exploitation encore ouvertes doivent être explicitées et validées avant implémentation. Le résultat T0/T1 n'autorise pas implicitement tous les choix de T2.
 
 ## 8. Pilotage des progrès
 
