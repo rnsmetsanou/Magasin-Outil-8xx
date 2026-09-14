@@ -8,11 +8,13 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [T2.2-A — noyau d’autorité des identités et sessions](implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md) : implémenté sur branche dédiée ; deux identités nominatives, sessions opaques, liaison client/cible, expiration, activité humaine, révocation et permissions dynamiques ; **qualification locale encore requise**.
+
 - [T2.1 — validation Windows des autorités durables](implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) : **T2.1-A, T2.1-B et T2.1-C PASS LOCAL** avec régression T0/T1 verte ; T2.1 est clôturé en simulation Windows.
 
 - [T2 — décision sur les autorités durables du 15 septembre 2026](decisions/T2_Autorites_Durables_Decision_2026-09-15.md) : choix A à F validés, délais de session local/distant, rôles, licences, admission durable, audit et récupération.
 
-- [Décisions et points ouverts](decisions/Registre_Decisions.md) : état actuel des décisions ; prochaine tranche T2.2 consacrée aux identités locales, à l’authentification, aux sessions révocables et aux permissions.
+- [Décisions et points ouverts](decisions/Registre_Decisions.md) : état actuel des décisions et limites de T2.2.
 
 - [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : jalons, preuves et distinction entre simulation et qualification sur cible.
 
