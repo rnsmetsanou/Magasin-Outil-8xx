@@ -50,3 +50,7 @@ La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/to
 ## Architecture d’intégration — choix techniques validés
 
 Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Les quatre choix techniques sont validés ; le plan détaillé de première tranche reste à préparer. SQLite et gRPC sont explicitement remplaçables sans dépendance fournisseur dans les contrats métier. La migration des données et la qualification d’un nouvel adaptateur restent nécessaires. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web. Aucun code ni configuration n’a été modifié pour ce dossier.
+
+## Plan de première tranche — préparé
+
+Le [plan T0–T6](../plan/Premiere_Tranche_Integration_V0.1.md) détaille l’intégration simulée et les critères de sortie. Il ne modifie pas les choix acquis et ne résout pas implicitement les décisions ouvertes. La phase reste documentaire ; prochaine action proposée : autoriser explicitement T0/T1, contrats et frontière de processus, avec changements plateforme isolés et consommation depuis le pilote.
