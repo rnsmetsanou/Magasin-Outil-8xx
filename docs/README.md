@@ -8,25 +8,26 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.1 — validation Windows des autorités durables](implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) : T2.1-A et T2.1-B PASS LOCAL ; T2.1-C prépare la composition réelle de SQLite par le CoreHost du pilote et reste à qualifier.
+- [T2.1 — validation Windows des autorités durables](implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) : **T2.1-A, T2.1-B et T2.1-C PASS LOCAL** avec régression T0/T1 verte ; T2.1 est clôturé en simulation Windows.
 
-- [T2 — décision sur les autorités durables du 15 septembre 2026](decisions/T2_Autorites_Durables_Decision_2026-09-15.md) : choix A à F validés, délais de session local/distant, rôles, licences, admission durable, audit et récupération ; démarrage de T2.1 sur branches dédiées.
+- [T2 — décision sur les autorités durables du 15 septembre 2026](decisions/T2_Autorites_Durables_Decision_2026-09-15.md) : choix A à F validés, délais de session local/distant, rôles, licences, admission durable, audit et récupération.
+
+- [Décisions et points ouverts](decisions/Registre_Decisions.md) : état actuel des décisions ; prochaine tranche T2.2 consacrée aux identités locales, à l’authentification, aux sessions révocables et aux permissions.
+
+- [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : jalons, preuves et distinction entre simulation et qualification sur cible.
 
 - [T2 — proposition groupée historique](plan/T2_Autorites_Durables_Proposition_V0.1.md) : proposition qui a servi de base à la décision T2 ; conserver ce document pour la traçabilité des options examinées.
 
-- [Plan d’implémentation de la première tranche](plan/Premiere_Tranche_Integration_V0.1.md) : lots T0–T6, répartition des dépôts, dépendances, décisions restantes et recette ; socle de lecture T0/T1 vérifié localement.
+- [Plan d’implémentation de la première tranche](plan/Premiere_Tranche_Integration_V0.1.md) : lots T0–T6, répartition des dépôts, dépendances et recette.
 
-- [Architecture d’intégration V1](architecture/Integration_Pilote_V1_Candidate.md) : composants communs, processus, contrats, stockage et quatre choix techniques validés ; stockage et transport remplaçables, plan T0–T6 disponible.
-
-- [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : étapes proposées, jalons et distinction entre prototype, intégration et qualification.
+- [Architecture d’intégration V1](architecture/Integration_Pilote_V1_Candidate.md) : composants communs, processus, contrats, stockage et choix techniques validés.
 
 - [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : matrice qui a préparé les rôles ; la décision T2 du 15 septembre fait désormais autorité pour les attributions validées.
 
 - [Matrice maintenance V1](contrats/Maintenance_Lecture_V1.md) : sources PLC examinées, unités établies ou à confirmer, valeurs configurées/appliquées et questions automatisme.
 
-- [Décisions et points ouverts](decisions/Registre_Decisions.md).
-- [Contrat d’exposition V0.1](analyse/Contrat_Exposition_Magasin_8xx_V0.1_2026-09-14.md) : proposition détaillée OPC UA ; maintenance V1 validée en consultation seule, autres détails fonctionnels à valider.
-- [Déploiement, OPC UA et Fleet](analyse/Analyse_Deploiement_OPCUA_Fleet_Magasin_8xx_2026-09-14.md) : analyse de la plateforme ; quatre profils acceptés dans l’échange suivant, autres choix ouverts détaillés dans le registre.
+- [Contrat d’exposition V0.1](analyse/Contrat_Exposition_Magasin_8xx_V0.1_2026-09-14.md) : proposition détaillée OPC UA ; maintenance V1 validée en consultation seule, autres détails fonctionnels à consolider.
+- [Déploiement, OPC UA et Fleet](analyse/Analyse_Deploiement_OPCUA_Fleet_Magasin_8xx_2026-09-14.md) : analyse de la plateforme et profils de déploiement.
 - [État du prototype Avalonia](hmi/README.md) : documentation du code actuellement présent, distincte de la cible web.
 
 ## Analyses historiques
