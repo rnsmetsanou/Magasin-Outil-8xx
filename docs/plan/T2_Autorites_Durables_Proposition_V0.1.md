@@ -3,6 +3,21 @@
 Date : 14 septembre 2026. **Proposition à valider ; aucune implémentation T2 engagée.**
 Le socle de lecture T0/T1 est PASS LOCAL. Cette proposition ne transforme pas les modèles de rôles ou paramètres candidats en décisions acquises.
 
+## 0. Synthèse des arbitrages T2
+
+Cette table est une aide à la validation. Elle résume les choix détaillés plus bas sans changer leur statut : tout élément marqué « À valider » reste une proposition jusqu'à validation explicite.
+
+| Choix | Sujet | Recommandation V0.1 | Statut |
+|---|---|---|---|
+| A | Comptes et sessions | Comptes locaux nominatifs hors ligne ; premier administrateur via mise en service protégée ; sessions opaques et révocables ; réauthentification après redémarrage du Core. Paramètres candidats : 10 min d'inactivité, 8 h absolues, secret temporaire 15 min, temporisation progressive après 5 échecs rapprochés. | À valider |
+| B | Permissions et rôles | Quatre rôles initiaux : Consultation, Opérateur, Régleur outils, Administrateur. L'Opérateur conserve l'édition des seules usures déjà validée ; `tool.prepare` et `tool.load` lui seraient aussi attribués. Pas de consultation métier anonyme en V1 ; identités Service distinctes pour web, OPC UA et Fleet. | À valider hors droits Opérateur déjà acquis |
+| C | Licences | Licence hors ligne signée, liée à une identité cryptographique d'installation ; clés privées seulement dans l'outil d'émission WM ; expiration et incohérence temporelle bloquent les nouvelles mutations sans interrompre les opérations déjà admises. | À valider |
+| D | Admission, stockage et audit | Le Core est seul propriétaire des écritures. Intention, corrélation et audit d'admission sont persistés avant effet technologique. SQLite reste un adaptateur remplaçable. Paramètres pilotes proposés : 365 jours de rétention, budget 1 Gio, alerte à 80 %, sauvegarde quotidienne et avant migration, dix sauvegardes quotidiennes conservées. | À valider |
+| E | Récupération | Liste fermée d'actions de récupération ; pas d'exception générale Administrateur. Récupération du dernier administrateur via autorisation signée à usage unique. Journal de secours local uniquement pour tracer la récupération, jamais pour admettre des commandes métier. | À valider |
+| F | Profils et services | Identité, licence, autorisation et audit restent obligatoires dans les quatre profils. Le tube nommé reste une option locale ; toute exposition réseau ajoute authentification de service, chiffrement et confiance qualifiés. | À valider |
+
+Les arbitrages qui conditionnent directement le démarrage de T2 sont donc : attribution de Préparer/Charger à l'Opérateur ; politique de lecture anonyme ; règles de session ; rattachement de la licence à l'installation ; modèle de récupération signé ; paramètres initiaux de conservation et sauvegarde.
+
 ## 1. Objectif et acquis
 
 Donner au Core des autorités communes pour l'identité, les permissions, les licences et l'admission durable. HMI locale, navigateur distant et OPC UA devront appeler ces mêmes services. Les particularités de racks restent dans le pilote.
