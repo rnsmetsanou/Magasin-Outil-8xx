@@ -3,7 +3,7 @@
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Platform.Poc.Hmi.Runtime" Version="[0.1.0-pilot.t01.1]" />
-    <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t01.1]" />
+    <PackageReference Include="Platform.Poc.Hmi.Runtime" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t21.1]" />
   </ItemGroup>
 </Project>
