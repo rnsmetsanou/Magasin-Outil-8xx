@@ -22,6 +22,7 @@ Actualisé le 14 septembre 2026. Source : validations explicites dans les échan
 | Affichage | 1024 × 768 et 1920 × 1080, tactile, thèmes clair/sombre, charte et logo WM. |
 | CRA | Exigence de conformité produit ; aucune conformité démontrée par les analyses actuelles. |
 | Édition Opérateur | Modification des seuls champs d’usure des correcteurs ; autres données et correcteurs exclus. Autorisation également validée pour l’outil actuellement en broche, sous conditions machine et contrôles communs. |
+| Intégration technique | Paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et hôte OPC UA séparé : validés. SQLite et gRPC doivent être remplaçables derrière des contrats indépendants des fournisseurs, avec garanties et tests de conformité. |
 | Documentation | Versionner les livrables structurants dans ce dépôt au fil du travail. |
 
 ## Propositions et questions ouvertes
@@ -46,6 +47,6 @@ La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie le
 
 La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Décision reçue : l’Opérateur peut modifier uniquement les usures. L’édition des usures en broche est également validée. Les autres attributions des rôles restent à valider. Aucun code de sécurité ni compte n’a été modifié.
 
-## Architecture d’intégration candidate — en revue
+## Architecture d’intégration — choix techniques validés
 
-Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Ces choix et le plan de première tranche restent à valider. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web. Aucun code ni configuration n’a été modifié pour ce dossier.
+Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Les quatre choix techniques sont validés ; le plan détaillé de première tranche reste à préparer. SQLite et gRPC sont explicitement remplaçables sans dépendance fournisseur dans les contrats métier. La migration des données et la qualification d’un nouvel adaptateur restent nécessaires. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web. Aucun code ni configuration n’a été modifié pour ce dossier.

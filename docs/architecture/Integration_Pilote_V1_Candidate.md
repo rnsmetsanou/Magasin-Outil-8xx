@@ -1,6 +1,6 @@
 # Architecture d’intégration du pilote Magasin 8xx — V1 candidate
 
-Date : 14 septembre 2026. Statut : **proposition à valider**, sans modification de code, de compte, de licence, de configuration ni du PLC. Ce document prépare les décisions ; il ne remplace pas les références normatives de la plateforme.
+Date : 14 septembre 2026. Statut : **quatre choix techniques validés, détails d’implémentation à préciser**, sans modification de code, de compte, de licence, de configuration ni du PLC. Ce document consigne la validation utilisateur des paquets versionnés, de gRPC sur tubes nommés, de SQLite local et de l’isolation OPC UA. Il ne remplace pas les références normatives de la plateforme. Le nom historique du fichier est conservé pour la continuité des liens.
 
 ## 1. Références et état
 
@@ -19,14 +19,14 @@ Vérifications nouvelles :
 
 Acquis : application autonome ; direction web locale ; runtime Machine/Application séparé de la HMI ; multi-client souhaité ; profils Local isolé, Intégration usine, Rattaché au parc et Intégration complète ; exposition OPC UA V1 ; Fleet consultatif ; comptes locaux ; licences temporaires ; audit durable ; maintenance consultative ; édition Opérateur limitée aux usures, y compris en broche.
 
-Propositions de ce dossier :
+Choix techniques validés et plan associé :
 1. Composants communs distribués en paquets NuGet versionnés, avec source locale possible pour développement hors ligne.
 2. Communication interne par gRPC sur tubes nommés Windows, derrière les contrats communs.
 3. SQLite local, accessible exclusivement par les services autoritatifs du cœur pour les données produit durables.
 4. Passerelle OPC UA dans un processus séparé du cœur et de l’hôte web.
 5. Contrats d’édition et reprise définis ci-dessous ; composition de la première tranche simulée.
 
-Aucune de ces cinq propositions n’est considérée acceptée par la simple poursuite de l’analyse. Blazor Interactive Server reste le candidat de rendu ; MudBlazor reste à qualifier.
+Les choix 1 à 4 sont explicitement validés par l’utilisateur. SQLite et gRPC doivent être remplaçables au même titre. Le point 5 décrit le plan et les contrats restant à détailler ; cette validation ne vaut pas autorisation de modifier le code dans la phase documentaire actuelle. Blazor Interactive Server reste le candidat de rendu ; MudBlazor reste à qualifier.
 
 ## 3. Répartition logique des responsabilités
 
@@ -150,7 +150,7 @@ Les jalons ne sont pas des promesses de délai. Les tests existants de la platef
 
 La conformité CRA reste un chantier produit transversal : exigences et responsabilités doivent être instruits dès maintenant ; ni ce document ni la sélection des composants ne démontrent la conformité.
 
-## 11. Décisions groupées soumises à validation
+## 11. Décisions groupées — validation reçue
 
 | Décision | Proposition | Conséquence |
 |---|---|---|
@@ -160,7 +160,7 @@ La conformité CRA reste un chantier produit transversal : exigences et responsa
 | Isolation OPC UA | Hôte séparé du Core et du Web Host | Domaine de panne supplémentaire isolé ; cycle de vie à gérer |
 | Première tranche | Comptes, licence temporaire, audit et contrats réels autour d’un simulateur | Validation précoce des services communs sans attendre le banc |
 
-Ces décisions peuvent être discutées ensemble. Les prérequis automatisme ne sont pas résolus arbitrairement pour démarrer la simulation.
+Les quatre choix techniques sont validés. Le plan de première tranche reste à détailler avec ses critères d’acceptation. Les prérequis automatisme ne sont pas résolus arbitrairement pour démarrer la simulation.
 
 ## 12. Références complémentaires de la plateforme
 
@@ -171,3 +171,38 @@ Ces décisions peuvent être discutées ensemble. Les prérequis automatisme ne 
 - [Pont expérimental WS-AT15](https://github.com/rnsmetsanou/PlateformeWM-Demo/blob/bc0819d0774c67e920481a7e0312d12f55a291a8/tests/Platform.Poc.WalkingSkeleton.Tests/Scenarios/WS_AT15_HmiProcessLossRecovery/ExperimentalHmiRuntimeBridge.cs)
 
 Les identités, les permissions, les profils et la maintenance sont détaillés dans les documents liés depuis l’index. Aucun résultat d’exécution nouveau n’est revendiqué.
+
+
+## 13. Remplacement du stockage et du transport — exigence validée
+
+Validation utilisateur : SQLite doit pouvoir être remplacé au même titre que gRPC. Les technologies retenues sont les premiers adaptateurs de la composition V1, pas des dépendances des règles métier.
+
+### Stockage
+
+- Définir des contrats par responsabilité : comptes/rôles, préférences, audit, registre d’intentions et opérations, configuration et métadonnées de licence. Les noms d’interfaces seront fixés à l’implémentation.
+- Les contrats expriment les garanties nécessaires : transaction d’admission/audit, unicité des intentions, révision attendue, ordre du journal, durabilité, pagination et erreurs sémantiques.
+- Les contrats publics et les services métier n’exposent ni connexion SQLite, ni SQL, ni type de fournisseur, ni contexte ORM, ni objet de requête dépendant du moteur. Les bibliothèques de persistance restent dans l’adaptateur et la composition.
+- Le fournisseur SQLite fournit ces garanties. Un autre fournisseur doit satisfaire le même contrat, ou être refusé par la vérification de compatibilité avant activation ; aucun abaissement silencieux de durabilité ou de cohérence.
+- Les transactions couvrant plusieurs responsabilités sont explicites, notamment admission et audit. Une collection d’interfaces de dépôt indépendantes ne suffit pas à préserver cette atomicité.
+- Le stockage des secrets reste une responsabilité distincte, lui aussi derrière un contrat adapté ; changer la base ne doit pas changer implicitement la protection des clés.
+
+### Transport
+
+- Les contrats métier ne contiennent ni types gRPC générés, ni contexte d’appel du framework, ni codes d’erreur spécifiques au transport.
+- Les adaptateurs serveur et client traduisent les messages vers les contrats applicatifs. Le modèle de transport peut être versionné séparément, sans devenir l’autorité métier.
+- Un transport de remplacement doit conserver identité vérifiée, permissions, corrélations, préconditions, limites de charge, délais, distinction perte de réponse/résultat machine et absence de rejeu automatique.
+- L’annulation de l’attente cliente après admission n’est pas assimilée à l’annulation de l’opération machine.
+- L’activation du transport se fait dans la composition validée, pas par des branches gRPC/HTTP dans le métier.
+
+### Preuves à inclure dans le plan d’implémentation
+
+1. Vérification des dépendances : pas de référence SQLite ou gRPC dans les contrats et projets métier qui doivent en être indépendants.
+2. Suite de conformité de persistance : unicité, conflits de révision, transaction admission/audit, ordre, reprise et défaillances.
+3. Suite de conformité du transport : admission, refus, identités, réponse perdue, reconnexion et consultation par intention stable.
+4. Vérification que le changement de composition ne nécessite pas de modifier les règles métier ni les interfaces opérateur.
+5. Pour qualifier réellement un second fournisseur : exécuter ces contrats contre son implémentation et mesurer ses limites ; une interface abstraite seule ne prouve pas la portabilité.
+6. Aucun deuxième moteur de production ni second transport complet n’est exigé pour la première tranche. Les doublures de test ne constituent pas une preuve de durabilité d’un autre moteur.
+
+### Limites de la promesse
+
+Remplaçable signifie migration circonscrite à l’adaptateur, à la composition et aux données concernées. Le changement de moteur peut nécessiter conversion des données, outils de migration, sauvegarde/restauration, contrôle de compatibilité et nouvelle qualification. Il ne s’agit pas d’une bascule à chaud ni d’un changement sans travail. Les identités, corrélations, historiques et révisions doivent être préservés selon une procédure vérifiée ; la politique de licence ne doit pas être réinitialisée implicitement par une migration.
