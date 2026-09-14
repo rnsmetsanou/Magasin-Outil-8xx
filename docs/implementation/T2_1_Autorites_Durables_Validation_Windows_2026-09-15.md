@@ -59,17 +59,41 @@ Le journal confirme :
 
 ## 6. T2.1-C — composition par le pilote
 
-Préparé après le PASS T2.1-B :
+Le journal final confirme :
 
-- les paquets pilote passent à `0.1.0-pilot.t21.1` ;
-- `Platform.Poc.Persistence.Sqlite` est distribué comme paquet plateforme distinct ;
-- `MagasinOutil.Platform` reste indépendant de SQLite ;
-- `MagasinOutil.CoreHost`, composition root du pilote, référence l'adaptateur SQLite et initialise `durable-authority.db` avant d'annoncer `READY` ;
-- la recette vérifie la création effective de la base, la présence du fournisseur uniquement côté CoreHost et l'absence du fournisseur dans le client de lecture et le module `MagasinOutil.Platform` ;
-- le comportement T0/T1 reste contrôlé avec deux clients sur la même autorité Machine.
+- paquets plateforme `0.1.0-pilot.t21.1` consommés depuis le feed local isolé ;
+- `Platform.Poc.Persistence.Sqlite` compilé et distribué comme adaptateur séparé ;
+- `MagasinOutil.Platform` reste indépendant du fournisseur SQLite ;
+- `MagasinOutil.CoreHost`, composition root du pilote, sélectionne et initialise `durable-authority.db` avant `READY` ;
+- le client de lecture n'embarque pas SQLite ni de runtime Machine concret ;
+- la base durable est effectivement créée ;
+- le comportement T0/T1 reste vert avec deux clients partageant la même autorité Machine.
 
-État : **PRÊT À QUALIFIER LOCALEMENT**. Aucun PASS n'est déclaré avant réception du prochain journal d'exécution.
+Résultats explicites du journal :
 
-## 7. Critère de clôture T2.1
+- `Pilot T0/T1 package behavior regression: PASS` ;
+- `Pilot T2.1 durable SQLite composition: PASS` ;
+- `T2.1-C : composition pilote qualifiee avec succes.`
 
-T2.1 pourra être déclaré terminé en simulation lorsque T2.1-C sera PASS LOCAL avec les régressions T0/T1, T2.1-A et T2.1-B toujours vertes. Le lot suivant sera T2.2 : identités locales, sessions révocables et résolution des permissions, sans intégrer prématurément les opérations métier T3.
+État : **PASS LOCAL**.
+
+## 7. Clôture T2.1
+
+Les trois micro-tranches T2.1-A, T2.1-B et T2.1-C sont **PASS LOCAL**, avec la régression T0/T1 toujours verte. T2.1 est donc clôturé en simulation Windows pour le périmètre qualifié.
+
+Ce résultat établit :
+
+- les frontières provider-indépendantes des autorités durables ;
+- la persistance atomique et réconciliable de l'admission ;
+- la composition réelle de l'adaptateur SQLite par le CoreHost du pilote ;
+- l'absence de couplage SQLite dans les contrats et le module métier du pilote.
+
+Il n'établit pas encore :
+
+- l'authentification d'utilisateurs réels ;
+- la persistance des comptes et rôles ;
+- la révocation de sessions et de droits en situation réelle ;
+- la licence produit ;
+- le raccordement Beckhoff réel.
+
+Le lot suivant est **T2.2 — identités locales, authentification, sessions révocables et résolution des permissions**. La première micro-tranche T2.2 doit d'abord éprouver le noyau d'autorité avec deux identités nominatives, liaison client/cible, expiration/révocation et réévaluation des permissions avant toute nouvelle admission, sans intégrer prématurément les opérations métier T3.
