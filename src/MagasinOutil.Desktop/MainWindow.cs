@@ -23,7 +23,7 @@ public sealed class MainWindow : Window
     private readonly StackPanel _detail = new() { Spacing = 10 };
     private readonly TextBlock _notice = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Image _logo = new() { Width = 120, Height = 48, Stretch = Stretch.Uniform };
-    private readonly TextBox _search = new() { Watermark = "Nom, T12 ou place 27", MinHeight = 44 };
+    private readonly TextBox _search = new() { PlaceholderText = "Nom, T12 ou place 27", MinHeight = 44 };
     private readonly StackPanel _rackArea = new() { Spacing = 8 };
     private readonly WrapPanel _slots = new() { Orientation = Orientation.Horizontal };
     private readonly TextBlock _rackTitle = new();
