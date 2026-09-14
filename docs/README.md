@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : étapes proposées, jalons et distinction entre prototype, intégration et qualification.
+
 - [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : rôles configurables et droits communs HMI/OPC UA ; édition Opérateur limitée aux usures validée, autres attributions à confirmer.
 
 - [Matrice maintenance V1](contrats/Maintenance_Lecture_V1.md) : sources PLC examinées, unités établies ou à confirmer, valeurs configurées/appliquées et questions automatisme.
