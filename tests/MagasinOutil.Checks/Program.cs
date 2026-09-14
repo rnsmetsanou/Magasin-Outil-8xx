@@ -64,3 +64,18 @@ Check(transfers.Transfer(Request(transfers, 28, ToolPosition.Prepared)).Outcome 
 Check(transfers.Transfer(Request(transfers, 29, ToolPosition.Magazine)).Outcome == EditOutcome.Rejected &&
     transfers.Transfer(new(46, 146, 1, ToolPosition.Spindle, null, null)).Outcome == EditOutcome.Rejected,
     "Destination non prise en charge et place bloquée refusées");
+
+var geometry = new SimulatedMagazine();
+var geometricTool = geometry.Read().Single(l => l.Number == 27).Tool!;
+var geometryEdit = new EditTool(27, geometricTool.Id, geometricTool.Revision, "Fraise test", -.125m, 155.250m);
+Check(geometry.Apply(geometryEdit).Outcome == EditOutcome.AppliedInSimulation &&
+    geometry.Read().Single(l => l.Number == 27).Tool is { Length: 155.250m, Wear: -.125m, Name: "Fraise test" },
+    "Nom, longueur et usure modifiés ensemble");
+var geometricSnapshot = geometry.Read();
+Check(geometry.Apply(geometryEdit with { ExpectedRevision = 2, Length = -1 }).Outcome == EditOutcome.Rejected &&
+    geometry.Apply(geometryEdit with { ExpectedRevision = 2, Length = 1.0001m }).Outcome == EditOutcome.Rejected &&
+    geometry.Read().SequenceEqual(geometricSnapshot), "Longueur invalide refusée sans mutation");
+Check(geometry.Apply(geometryEdit with { ExpectedRevision = 2, Length = null }).Outcome == EditOutcome.AppliedInSimulation &&
+    geometry.Read().Single(l => l.Number == 27).Tool!.Length == 155.250m, "Édition sans longueur conserve la valeur");
+
+LayoutChecks.Run();

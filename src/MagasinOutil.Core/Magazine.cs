@@ -8,7 +8,7 @@ public sealed record Location(int Number, int Rack, bool Forbidden, bool Blocked
 {
     public bool Present => Tool?.Position == ToolPosition.Magazine;
 }
-public sealed record EditTool(int Location, int ToolId, long ExpectedRevision, string Name, decimal Wear);
+public sealed record EditTool(int Location, int ToolId, long ExpectedRevision, string Name, decimal Wear, decimal? Length = null);
 public sealed record SimulatedTransfer(int Location, int ToolId, long ExpectedRevision,
     ToolPosition Destination, int? ExpectedOccupantId, long? ExpectedOccupantRevision);
 public enum EditOutcome { AppliedInSimulation, Rejected, Conflict }
@@ -88,9 +88,10 @@ public sealed class SimulatedMagazine : IMagazineService
             var name = edit.Name.Trim();
             if (name.Length is < 1 or > 30)
                 return new(EditOutcome.Rejected, "Le nom doit contenir de 1 à 30 caractères dans le simulateur.");
-            if (decimal.Round(edit.Wear, 3) != edit.Wear)
-                return new(EditOutcome.Rejected, "Trois décimales au maximum dans le simulateur.");
-            _locations[index] = location with { Tool = tool with { Name = name, Wear = edit.Wear, Revision = tool.Revision + 1 } };
+            if (decimal.Round(edit.Wear, 3) != edit.Wear ||
+                edit.Length is decimal length && (length < 0 || decimal.Round(length, 3) != length))
+                return new(EditOutcome.Rejected, "Longueur positive ou nulle, trois décimales au maximum dans le simulateur.");
+            _locations[index] = location with { Tool = tool with { Name = name, Wear = edit.Wear, Length = edit.Length ?? tool.Length, Revision = tool.Revision + 1 } };
             return new(EditOutcome.AppliedInSimulation, $"Modification simulée confirmée pour T{tool.Id}.");
         }
     }

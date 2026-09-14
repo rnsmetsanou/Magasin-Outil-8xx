@@ -16,7 +16,7 @@ dotnet run --project .\tests\MagasinOutil.Checks\MagasinOutil.Checks.csproj
 dotnet run --project .\src\MagasinOutil.Desktop\MagasinOutil.Desktop.csproj
 ```
 
-La fenêtre démarre avec Width=1024 et Height=768 ; elle est redimensionnable. Maximiser sur le FIP1000 Full HD 1920 × 1080. F11 active/quitte le plein écran. Les dimensions Avalonia sont logiques : vérifier aussi l’échelle Windows, la surface cliente et les décorations. Les panneaux peuvent défiler verticalement, les boutons de sélection restent tactiles. La fiche reste à droite ; aucune mise à l’échelle globale ne réduit les cibles au redimensionnement.
+La fenêtre démarre avec Width=1024 et Height=768 ; elle est redimensionnable. Maximiser sur le FIP1000 Full HD 1920 × 1080. F11 active/quitte le plein écran. Les dimensions Avalonia sont logiques : vérifier aussi l’échelle Windows, la surface cliente et les décorations. Les panneaux magasin et outil ne défilent plus : la grille du rack tient dans le panneau, les actions restent en bas et l’édition utilise une page dédiée. Les boutons restent tactiles. La fiche reste à droite ; aucune mise à l’échelle globale ne réduit les cibles au redimensionnement.
 
 ## Fonctions
 
@@ -34,7 +34,7 @@ La position « préparé » du simulateur ne prouve aucune position physique ré
 
 - `MagasinOutil.Core` : modèle métier immuable, contrat de service et simulateur protégé contre les modifications concurrentes.
 - `MagasinOutil.Desktop` : fenêtre Avalonia et état de présentation local. La vue est construite en C# pour cette première tranche.
-- `MagasinOutil.Checks` : contrôles exécutables du modèle, sans moteur graphique ni dépendance automate.
+- `MagasinOutil.Checks` : contrôles exécutables du modèle, sans dépendance automate, avec une vérification du placement Avalonia sans fenêtre visible.
 
 `MagasinOutil.Hmi.slnx` est indépendante de `Tool_Magazine_8xx.sln`. Aucune configuration TwinCAT n’est changée. Aucun fichier de propriétés MSBuild commun n’est ajouté à la racine pour éviter d’influencer les projets automate.
 
@@ -54,7 +54,7 @@ Le workflow `.github/workflows/hmi.yml` compile uniquement la solution HMI puis 
 
 Recette à effectuer sur Windows :
 
-1. Ouvrir à 1024 × 768, puis maximiser à 1920 × 1080 ; vérifier absence de chevauchement et accès aux actions par défilement si nécessaire.
+1. Ouvrir à 1024 × 768, puis maximiser à 1920 × 1080 ; vérifier absence de chevauchement et visibilité de toutes les places, de la légende et des actions sans défilement.
 2. Comparer Clair/Sombre : contraste, logo, champs, sélection et contrôles natifs.
 3. Rechercher « Fraise », parcourir les pages et ouvrir T12 : place fixe 12, présence absente.
 4. Modifier une usure avec le pavé ; changer le thème ; vérifier le brouillon, annuler puis recommencer et confirmer.
@@ -90,3 +90,13 @@ Après récupération de la branche, la commande ordinaire `dotnet run --project
 Cette règle de remplacement instantané est propre au simulateur. Elle ne définit ni le séquencement Beckhoff, ni les interverrouillages, ni l’acquittement d’un mouvement réel. Le contrat `SimulatedTransfer` reste provisoire : l’intégration plateforme nécessitera les opérations asynchrones et preuves métier décrites plus haut.
 
 Recette Windows complémentaire : préparer un outil du magasin, vérifier le retour du précédent et le bandeau ; charger cet outil, vérifier la broche et la préparation libérée ; annuler une autre confirmation ; vérifier les mêmes parcours et la légende dans les deux thèmes aux deux résolutions. La compilation et les contrôles métier ne valident pas le rendu graphique Windows.
+
+## Correction du placement et de l’édition — 14 septembre 2026
+
+Les huit boutons rack mesurent 88 × 52 unités logiques. Les plages sans préfixe redondant ne passent plus à la ligne ; « places » figure dans le titre de chaque groupe. La grille comporte six colonnes, avec une bordure réservée même hors sélection. Les panneaux magasin/outil n’utilisent plus de ScrollViewer ; les résultats de recherche remplacent temporairement la grille et restent paginés.
+
+L’édition occupe la largeur des deux panneaux : nom, longueur et usure à gauche, pavé numérique à droite, Annuler/Vérifier en bas. La confirmation présente les trois valeurs avant/après. Les brouillons restent conservés au changement de thème. Une longueur négative ou à plus de trois décimales est refusée dans le simulateur, sans modifier les données.
+
+La limitation initiale au nom/usure était un choix d’implémentation provisoire, pas une exigence du cahier des charges. Celui-ci demande la gestion des données d’outils et cite ST_Tool_Parameters ainsi que les correcteurs M et T. L’édition actuelle nom/longueur/usure **ne couvre pas encore** les durées de vie, outils jumeaux, vitesse maximale, géométrie, paramètres technologiques et jeux complets de correcteurs. Leurs unités, échelles et règles d’écriture PLC ne sont pas supposées validées. Cette correction ne revendique pas la couverture complète du cahier des charges.
+
+Les contrôles de placement exécutent le véritable arbre Avalonia avec Skia sur une plateforme sans affichage : deux tailles, deux thèmes, tous les racks, recherche, onglets, édition et confirmation. Ils vérifient le maintien des commandes dans les panneaux et l’absence de chevauchement avec la zone d’actions. Ils ne remplacent pas la recette tactile et le contrôle DPI Windows sur le FIP1000.

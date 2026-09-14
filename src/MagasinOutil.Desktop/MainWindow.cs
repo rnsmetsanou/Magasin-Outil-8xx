@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -19,13 +20,13 @@ public sealed class MainWindow : Window
     private readonly Bitmap _whiteLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-white.png")));
     private readonly Grid _shell = new() { RowDefinitions = new("Auto,Auto,*,Auto") };
     private readonly Grid _body = new() { ColumnDefinitions = new("1.2*,*") };
-    private readonly StackPanel _left = new() { Spacing = 10 };
-    private readonly StackPanel _detail = new() { Spacing = 10 };
-    private readonly TextBlock _notice = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly StackPanel _left = new() { Spacing = 6 };
+    private readonly StackPanel _detail = new() { Spacing = 6 };
+    private readonly TextBlock _notice = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly Image _logo = new() { Width = 156, Height = 62, Stretch = Stretch.Uniform };
     private readonly TextBox _search = new() { PlaceholderText = "Nom, T12 ou place 27", MinHeight = 44 };
-    private readonly StackPanel _rackArea = new() { Spacing = 8 };
-    private readonly WrapPanel _slots = new() { Orientation = Orientation.Horizontal };
+    private readonly StackPanel _rackArea = new() { Spacing = 4 };
+    private readonly UniformGrid _slots = new() { Columns = 6 };
     private readonly WrapPanel _legend = new();
     private readonly TextBlock _rackTitle = new();
     private readonly Button _spindle;
@@ -35,7 +36,10 @@ public sealed class MainWindow : Window
     private EditTool? _draft;
     private SimulatedTransfer? _transfer;
     private bool IsBusy => _draft is not null || _transfer is not null;
-    private string _draftName = "", _draftWear = "";
+    private string _draftName = "", _draftWear = "", _draftLength = "";
+    private bool _editingLength;
+    private readonly StackPanel _detailActions = new() { Spacing = 6 };
+    private Border _leftPanel = null!, _rightPanel = null!;
     private TextBox? _wearInput;
     private readonly List<Border> _panels = [];
     private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("fr-CH");
@@ -77,9 +81,11 @@ public sealed class MainWindow : Window
         Put(current, _spindle, 0, 0); Put(current, _prepared, 0, 1);
         Put(_shell, current, 1, 0);
         _body.Margin = new(16, 0, 16, 10);
-        var leftPanel = Surface(_left); leftPanel.Margin = new(0, 0, 6, 0);
-        var rightPanel = Surface(_detail); rightPanel.Margin = new(6, 0, 0, 0);
-        Put(_body, leftPanel, 0, 0); Put(_body, rightPanel, 0, 1);
+        _leftPanel = Surface(_left); _leftPanel.Name = "MagazinePanel"; _leftPanel.Margin = new(0, 0, 6, 0);
+        var detailLayout = new Grid { Name = "ToolLayout", RowDefinitions = new("*,Auto") };
+        Put(detailLayout, _detail, 0, 0); Put(detailLayout, _detailActions, 1, 0);
+        _rightPanel = Surface(detailLayout); _rightPanel.Name = "ToolPanel"; _rightPanel.Margin = new(6, 0, 0, 0);
+        Put(_body, _leftPanel, 0, 0); Put(_body, _rightPanel, 0, 1);
         Put(_shell, _body, 2, 0);
         var footer = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(16, 0, 16, 10) };
         Put(footer, _notice, 0, 0); Put(footer, Label("Simulation · aucune liaison machine", 12), 0, 1);
@@ -106,8 +112,7 @@ public sealed class MainWindow : Window
     }
     private Border Surface(Control child)
     {
-        var border = new Border { Padding = new(12), CornerRadius = new(8), Child = new ScrollViewer { Content = child,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } };
+        var border = new Border { Padding = new(12), CornerRadius = new(8), Child = child };
         _panels.Add(border); return border;
     }
     private void ApplyTheme(bool dark)
@@ -120,7 +125,7 @@ public sealed class MainWindow : Window
     }
     private static string Number(decimal value) => value.ToString("F3", Culture);
     private static string PositionLabel(ToolPosition position) => position switch
-    { ToolPosition.Spindle => "En broche", ToolPosition.Prepared => "Préparé (simulation)", _ => "Dans le magasin" };
+    { ToolPosition.Spindle => "En broche", ToolPosition.Prepared => "Préparé", _ => "Dans le magasin" };
     private static string State(MagasinOutil.Core.Location l) => l.Forbidden ? "Interdit" : l.Blocked ? "Bloqué" : l.Tool is null ? "Vide" :
         l.Tool.Condition == ToolCondition.Defective ? "Défectueux" : l.Tool.Condition == ToolCondition.EndOfLife ? "Fin de vie" :
         l.Present ? "Présent" : PositionLabel(l.Tool.Position);
@@ -142,6 +147,10 @@ public sealed class MainWindow : Window
             pair.Item1.HorizontalContentAlignment = HorizontalAlignment.Left;
         }
         _search.IsEnabled = !IsBusy;
+        _leftPanel.IsVisible = _draft is null;
+        Grid.SetColumn(_rightPanel, _draft is null ? 1 : 0);
+        Grid.SetColumnSpan(_rightPanel, _draft is null ? 1 : 2);
+        _rightPanel.Margin = _draft is null ? new Thickness(6, 0, 0, 0) : new Thickness(0);
         RenderLocations(); RenderDetail();
     }
     private void RenderLocations()
@@ -157,6 +166,7 @@ public sealed class MainWindow : Window
                 { Text = entry.Item2, FontSize = 12, Foreground = palette.Foreground } });
         }
         var query = (_search.Text ?? "").Trim();
+        _slots.IsVisible = _rackTitle.IsVisible = _legend.IsVisible = query.Length == 0;
         if (query.Length > 0)
         {
             var found = locations.Where(l => l.Number.ToString() == query || l.Tool is { } t &&
@@ -167,7 +177,7 @@ public sealed class MainWindow : Window
             foreach (var l in found.Skip(_page * 4).Take(4))
             {
                 var button = Action($"Place {l.Number} · " + (l.Tool is {} t ? $"T{t.Id} · {t.Name}" : State(l)), () => Select(l.Number));
-                button.IsEnabled = !IsBusy; _rackArea.Children.Add(button);
+                button.IsEnabled = !IsBusy; button.Height = 64; button.HorizontalAlignment = HorizontalAlignment.Stretch; _rackArea.Children.Add(button);
             }
             var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             var prev = Action("Précédent", () => { _page--; RenderLocations(); }); prev.IsEnabled = _page > 0 && !IsBusy;
@@ -178,7 +188,7 @@ public sealed class MainWindow : Window
         {
             foreach (var group in new[] { new[] {5,4,3,2,1}, new[] {6,7,8} })
             {
-                _rackArea.Children.Add(Label(group[0] == 5 ? "Partie supérieure" : "Partie inférieure", 13));
+                _rackArea.Children.Add(Label(group[0] == 5 ? "Partie supérieure · places" : "Partie inférieure · places", 13));
                 var row = new WrapPanel();
                 foreach (var rack in group)
                 {
@@ -186,9 +196,9 @@ public sealed class MainWindow : Window
                     var button = Action($"Rack {rack}", () => Select(locations.First(l => l.Rack == rack).Number));
                     var rackText = new StackPanel { Spacing = 2 };
                     rackText.Children.Add(Label($"Rack {rack}", 15));
-                    rackText.Children.Add(Label($"Places {range.First().Number}–{range.Last().Number}", 11));
+                    rackText.Children.Add(new TextBlock { Text = $"{range.First().Number}–{range.Last().Number}", FontSize = 12, TextWrapping = TextWrapping.NoWrap });
                     button.Content = rackText;
-                    button.Width = 88; button.Padding = new(6); button.Margin = new(0, 0, 5, 5); button.IsEnabled = !IsBusy;
+                    button.Width = 88; button.Height = 52; button.Padding = new(6); button.Margin = new(0, 0, 5, 0); button.IsEnabled = !IsBusy;
                     if (rack == _rack) { button.Background = Selected; button.Foreground = Ink; }
                     row.Children.Add(button);
                 }
@@ -201,18 +211,20 @@ public sealed class MainWindow : Window
         {
             var mark = l.Forbidden || l.Blocked ? "×" : l.Tool is null ? "—" : l.Tool.Condition != ToolCondition.Available ? "!" : l.Present ? "●" : "↗";
             var button = Action($"{l.Number}  {mark}", () => Select(l.Number));
-            button.Width = 70; button.MinHeight = 48; button.Margin = new(0, 0, 5, 5); button.IsEnabled = !IsBusy;
+            button.Content = new TextBlock { Text = $"{l.Number} {mark}", FontSize = 15, TextWrapping = TextWrapping.NoWrap };
+            button.Height = 44; button.Padding = new(3); button.Margin = new(0, 0, 4, 4);
+            button.HorizontalAlignment = HorizontalAlignment.Stretch; button.IsEnabled = !IsBusy;
             Avalonia.Automation.AutomationProperties.SetName(button, $"Place {l.Number}, {State(l)}");
             var colors = StatusColors(l);
             button.Background = colors.Background; button.Foreground = colors.Foreground;
-            button.BorderThickness = new(_selected == l.Number ? 3 : 0);
-            button.BorderBrush = Ink;
+            button.BorderThickness = new(3);
+            button.BorderBrush = _selected == l.Number ? Ink : Brushes.Transparent;
             _slots.Children.Add(button);
         }
     }
     private void RenderDetail()
     {
-        _detail.Children.Clear(); _wearInput = null;
+        _detail.Children.Clear(); _detailActions.Children.Clear(); _wearInput = null;
         var location = _service.Read().Single(l => l.Number == _selected);
         var heading = new Grid { ColumnDefinitions = new("*,Auto") };
         Put(heading, Label($"PLACE {location.Number} · RACK {location.Rack}", 13), 0, 0);
@@ -244,29 +256,46 @@ public sealed class MainWindow : Window
             {
                 _detail.Children.Add(Label("Vérifier la modification", 18));
                 _detail.Children.Add(Label($"Nom : {tool.Name} → {_draft.Name}"));
+                _detail.Children.Add(Label($"Longueur : {Number(tool.Length)} → {Number(_draft.Length ?? tool.Length)} mm"));
                 _detail.Children.Add(Label($"Usure : {Number(tool.Wear)} → {Number(_draft.Wear)} mm"));
                 _detail.Children.Add(Label("Application simulée à cet outil uniquement.", 13));
                 _detail.Children.Add(Action("Retour", () => { _review = false; RenderDetail(); }));
                 _detail.Children.Add(Action("Confirmer la simulation", Apply));
                 return;
             }
-            _detail.Children.Add(Label("Nom de l’outil", 13));
+            _detail.Children.Add(Label("Modifier le nom, la longueur et l’usure · simulation", 18));
+            var editor = new Grid { ColumnDefinitions = new("*,*") };
+            var fields = new StackPanel { Spacing = 8, Margin = new(0, 0, 20, 0) };
+            fields.Children.Add(Label("Nom de l’outil", 13));
             var name = new TextBox { Text = _draftName, MaxLength = 30, MinHeight = 44 };
-            name.TextChanged += (_, _) => _draftName = name.Text ?? ""; _detail.Children.Add(name);
-            _detail.Children.Add(Label("Usure longueur · mm (valeur fictive)", 13));
-            _wearInput = new TextBox { Text = _draftWear, MinHeight = 44 };
-            _wearInput.TextChanged += (_, _) => _draftWear = _wearInput?.Text ?? _draftWear;
-            _detail.Children.Add(_wearInput);
+            name.TextChanged += (_, _) => _draftName = name.Text ?? ""; fields.Children.Add(name);
+            fields.Children.Add(Label("Longueur · mm (simulation)", 13));
+            var length = new TextBox { Text = _draftLength, MinHeight = 44 };
+            length.TextChanged += (_, _) => _draftLength = length.Text ?? "";
+            length.GotFocus += (_, _) => { _wearInput = length; _editingLength = true; };
+            fields.Children.Add(length);
+            fields.Children.Add(Label("Usure longueur · mm (simulation)", 13));
+            var wear = new TextBox { Text = _draftWear, MinHeight = 44 };
+            wear.TextChanged += (_, _) => _draftWear = wear.Text ?? "";
+            wear.GotFocus += (_, _) => { _wearInput = wear; _editingLength = false; };
+            fields.Children.Add(wear);
+            _wearInput = _editingLength ? length : wear;
+            Put(editor, fields, 0, 0);
+            var numeric = new StackPanel { Spacing = 10, Margin = new(20, 0, 0, 0) };
+            numeric.Children.Add(Label("Pavé numérique", 17));
+            numeric.Children.Add(Label("Sélectionner Longueur ou Usure pour saisir la valeur.", 13));
             var pad = new Grid { ColumnDefinitions = new("*,*,*,*"), RowDefinitions = new("Auto,Auto,Auto,Auto") };
             string[] keys = ["7","8","9","⌫","4","5","6","±","1","2","3","Effacer","0",","];
             for (var i = 0; i < keys.Length; i++)
             { var key = keys[i]; var button = Action(key, () => Keypad(key)); button.Margin = new(2); button.HorizontalAlignment = HorizontalAlignment.Stretch; Put(pad, button, i / 4, i % 4); }
-            _detail.Children.Add(pad);
+            numeric.Children.Add(pad); Put(editor, numeric, 0, 1); _detail.Children.Add(editor);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             actions.Children.Add(Action("Annuler", () => { _draft = null; _notice.Text = "Modification annulée."; Render(); }));
-            actions.Children.Add(Action("Vérifier", Review)); _detail.Children.Add(actions); return;
+            actions.Children.Add(Action("Vérifier", Review)); _detailActions.Children.Add(actions); return;
         }
-        _detail.Children.Add(Label(tool.Name, 18));
+        var toolName = new TextBlock { Text = tool.Name, FontSize = 18, TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis };
+        ToolTip.SetTip(toolName, tool.Name); _detail.Children.Add(toolName);
         var summary = new Grid { ColumnDefinitions = new("*,*"), Margin = new(0, 4, 0, 6) };
         Put(summary, ValueTile("Place affectée", location.Number.ToString()), 0, 0);
         Put(summary, ValueTile("Position actuelle", PositionLabel(tool.Position)), 0, 1);
@@ -286,12 +315,11 @@ public sealed class MainWindow : Window
         else _detail.Children.Add(ValueRow("Présence à la place", location.Present ? "Oui" : "Non"));
         _detail.Children.Add(Action("Modifier les données", () =>
         {
-            _draft = new(location.Number, tool.Id, tool.Revision, tool.Name, tool.Wear);
-            _draftName = tool.Name; _draftWear = Number(tool.Wear); _review = false; _notice.Text = "Brouillon · aucune écriture machine"; Render();
+            _draft = new(location.Number, tool.Id, tool.Revision, tool.Name, tool.Wear, tool.Length);
+            _draftName = tool.Name; _draftWear = Number(tool.Wear); _draftLength = Number(tool.Length); _review = false; _notice.Text = "Brouillon · aucune écriture machine"; Render();
         }));
-        _detail.Children.Add(new Separator { Margin = new(0, 8) });
-        _detail.Children.Add(Label("Actions sur cet outil", 17));
-        _detail.Children.Add(Label("Simulation · avec confirmation", 12));
+        _detailActions.Children.Add(new Separator { Margin = new(0, 2) });
+        _detailActions.Children.Add(Label("Actions sur cet outil · simulation", 14));
         var transferActions = new Grid { ColumnDefinitions = new("*,*") };
         var prepare = Action("Préparer", () => BeginTransfer(ToolPosition.Prepared));
         var load = Action("Charger en broche", () => BeginTransfer(ToolPosition.Spindle));
@@ -299,11 +327,11 @@ public sealed class MainWindow : Window
         load.IsEnabled = tool.Condition == ToolCondition.Available && tool.Position != ToolPosition.Spindle;
         prepare.HorizontalAlignment = load.HorizontalAlignment = HorizontalAlignment.Stretch;
         prepare.Margin = new(0, 0, 4, 0); load.Margin = new(4, 0, 0, 0);
-        Put(transferActions, prepare, 0, 0); Put(transferActions, load, 0, 1); _detail.Children.Add(transferActions);
+        Put(transferActions, prepare, 0, 0); Put(transferActions, load, 0, 1); _detailActions.Children.Add(transferActions);
         if (tool.Condition != ToolCondition.Available)
-            _detail.Children.Add(Label("Actions indisponibles : outil défectueux ou en fin de vie.", 13));
+            _detailActions.Children.Add(Label("Actions indisponibles : outil défectueux ou en fin de vie.", 13));
         else if (tool.Position != ToolPosition.Magazine)
-            _detail.Children.Add(Label(tool.Position == ToolPosition.Spindle ? "Cet outil est déjà en broche." : "Cet outil est déjà préparé.", 13));
+            _detailActions.Children.Add(Label(tool.Position == ToolPosition.Spindle ? "Cet outil est déjà en broche." : "Cet outil est déjà préparé.", 13));
     }
     private Control ValueTile(string title, string value)
     {
@@ -312,7 +340,7 @@ public sealed class MainWindow : Window
     }
     private static Control ValueRow(string title, string value)
     {
-        var grid = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(0, 7) };
+        var grid = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(0, 3) };
         Put(grid, Label(title, 14), 0, 0); Put(grid, Label(value), 0, 1); return grid;
     }
     private (IBrush Background, IBrush Foreground) StatusColors(MagasinOutil.Core.Location l)
@@ -361,9 +389,11 @@ public sealed class MainWindow : Window
         if (_draft is null) return;
         if (string.IsNullOrWhiteSpace(_draftName) || _draftName.Trim().Length > 30 ||
             !decimal.TryParse(_draftWear.Replace(',', '.'), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
-                CultureInfo.InvariantCulture, out var wear) || decimal.Round(wear, 3) != wear)
-        { _notice.Text = "Vérifier le nom et l’usure (trois décimales maximum)."; return; }
-        _draft = _draft with { Name = _draftName.Trim(), Wear = wear }; _review = true; _notice.Text = ""; RenderDetail();
+                CultureInfo.InvariantCulture, out var wear) || decimal.Round(wear, 3) != wear ||
+            !decimal.TryParse(_draftLength.Replace(',', '.'), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture, out var length) || length < 0 || decimal.Round(length, 3) != length)
+        { _notice.Text = "Vérifier le nom, la longueur positive ou nulle et l’usure (trois décimales maximum)."; return; }
+        _draft = _draft with { Name = _draftName.Trim(), Wear = wear, Length = length }; _review = true; _notice.Text = ""; RenderDetail();
     }
     private void Apply()
     {
