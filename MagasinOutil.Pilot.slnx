@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/MagasinOutil.Platform/MagasinOutil.Platform.csproj" />
+  <Project Path="src/MagasinOutil.CoreHost/MagasinOutil.CoreHost.csproj" />
+  <Project Path="src/MagasinOutil.ReadClient/MagasinOutil.ReadClient.csproj" />
+</Solution>

@@ -63,3 +63,7 @@ La branche `pilot/t0-t1-contracts-process-boundary` est créée dans les deux d�
 - Plateforme : depuis `bc0819d0774c67e920481a7e0312d12f55a291a8` (`p6-7-live-commissioning-impl`).
 
 L'environnement d'exécution est indisponible (« Environment is not connected ») ; l'accès GitHub fonctionne. À ce point, aucune implémentation T0/T1, compilation ou exécution de tests n'a été réalisée. Aucun code PLC n'a été modifié. La reprise doit vérifier les instructions et l'état des checkouts, lire les contrats existants, puis implémenter et qualifier T0/T1 selon le plan. SQLite et gRPC doivent rester des adaptateurs remplaçables. Les décisions ouvertes restent ouvertes ; aucune fusion n'est effectuée.
+
+## T0/T1 — implémentation en qualification
+
+L’environnement local répond de nouveau. La liaison de lecture, la consommation des paquets et les tests Windows sont écrits sur les branches dédiées ; leur compilation et leurs résultats restent à vérifier. Voir le [dossier de réalisation](../implementation/T0_T1_Frontiere_Processus.md). Aucun nouveau choix produit ouvert n’est considéré validé par ce travail.

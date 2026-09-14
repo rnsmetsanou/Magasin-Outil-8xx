@@ -58,3 +58,8 @@ LineIDs.dbg.bak
 
 # TwinCAT Measurement
 *.vsm
+
+# .NET pilot build outputs
+**/bin/
+**/obj/
+.artifacts/

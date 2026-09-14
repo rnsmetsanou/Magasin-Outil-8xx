@@ -33,3 +33,5 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 | [Adaptation 1024 et P6.9](analyse/HMI_Magasin_Adaptation_1024_P69_2026-09-14.md) | Proposition historique ; dimensions et cible graphique actualisées par les échanges et le registre. |
 
 La synchronisation de ces documents ne modifie aucun code applicatif ou PLC.
+
+- [T0/T1 — implémentation et lancement](implementation/T0_T1_Frontiere_Processus.md)
