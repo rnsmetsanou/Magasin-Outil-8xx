@@ -8,7 +8,9 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2 — autorités durables, proposition groupée](plan/T2_Autorites_Durables_Proposition_V0.1.md) : comptes, sessions, permissions, licences, audit et récupération ; choix A à F à valider, sans code T2.
+- [T2 — décision sur les autorités durables du 15 septembre 2026](decisions/T2_Autorites_Durables_Decision_2026-09-15.md) : choix A à F validés, délais de session local/distant, rôles, licences, admission durable, audit et récupération ; démarrage de T2.1 sur branches dédiées.
+
+- [T2 — proposition groupée historique](plan/T2_Autorites_Durables_Proposition_V0.1.md) : proposition qui a servi de base à la décision T2 ; conserver ce document pour la traçabilité des options examinées.
 
 - [Plan d’implémentation de la première tranche](plan/Premiere_Tranche_Integration_V0.1.md) : lots T0–T6, répartition des dépôts, dépendances, décisions restantes et recette ; socle de lecture T0/T1 vérifié localement.
 
@@ -16,7 +18,7 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 - [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : étapes proposées, jalons et distinction entre prototype, intégration et qualification.
 
-- [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : rôles configurables et droits communs HMI/OPC UA ; édition Opérateur limitée aux usures validée, autres attributions à confirmer.
+- [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : matrice qui a préparé les rôles ; la décision T2 du 15 septembre fait désormais autorité pour les attributions validées.
 
 - [Matrice maintenance V1](contrats/Maintenance_Lecture_V1.md) : sources PLC examinées, unités établies ou à confirmer, valeurs configurées/appliquées et questions automatisme.
 
