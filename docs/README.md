@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [Architecture d’intégration V1 candidate](architecture/Integration_Pilote_V1_Candidate.md) : composants communs, processus, contrats, stockage et cinq décisions techniques proposées, non encore validées.
+
 - [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : étapes proposées, jalons et distinction entre prototype, intégration et qualification.
 
 - [Permissions et rôles V0.1](securite/Permissions_Roles_V0.1.md) : rôles configurables et droits communs HMI/OPC UA ; édition Opérateur limitée aux usures validée, autres attributions à confirmer.

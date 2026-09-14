@@ -45,3 +45,7 @@ La [matrice de consultation](../contrats/Maintenance_Lecture_V1.md) identifie le
 ## Proposition en revue — permissions et rôles
 
 La [matrice V0.1](../securite/Permissions_Roles_V0.1.md) reprend tool.prepare/tool.load et propose des permissions complémentaires. Les rôles Consultation, Opérateur, Régleur outils et Administrateur sont des modèles proposés, pas des décisions acceptées. Décision reçue : l’Opérateur peut modifier uniquement les usures. L’édition des usures en broche est également validée. Les autres attributions des rôles restent à valider. Aucun code de sécurité ni compte n’a été modifié.
+
+## Architecture d’intégration candidate — en revue
+
+Le [dossier V1](../architecture/Integration_Pilote_V1_Candidate.md) propose des paquets NuGet versionnés, gRPC sur tubes nommés Windows, SQLite local derrière les services du Core et un hôte OPC UA séparé. Ces choix et le plan de première tranche restent à valider. La référence directe Hmi.Runtime vers Application.Runtime doit être adaptée via des contrats et un client distant ; aucun second runtime machine n’est prévu dans l’hôte web. Aucun code ni configuration n’a été modifié pour ce dossier.
