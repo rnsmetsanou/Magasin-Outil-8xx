@@ -4,6 +4,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../MagasinOutil.Platform/MagasinOutil.Platform.csproj" />
-    <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t01.1]" />
+    <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Persistence.Sqlite" Version="[0.1.0-pilot.t21.1]" />
   </ItemGroup>
 </Project>
