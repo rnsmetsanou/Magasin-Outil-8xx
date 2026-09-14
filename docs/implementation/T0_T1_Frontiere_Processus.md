@@ -61,3 +61,13 @@ Les deux réponses doivent porter la même identité de runtime/session et les m
 Le workflow privé `Pilot T0 T1` compile les composants plateforme et les consommateurs existants, exécute les scénarios HMI/Application ciblés, teste deux clients simultanés, tue un processus client, le recrée, vérifie les refus de version/cible, puis redémarre le cœur. Il construit les paquets et lance la vérification de ce dépôt sans référence de projet vers le code plateforme.
 
 La qualification produit des rôles, de la licence, de l'audit et des opérations n'appartient pas à cette preuve en lecture seule. Le contrat préparatoire d'admission durable doit être complété et testé avant toute utilisation pour un effet machine.
+
+## Résultats disponibles
+
+Le contrôle XML des projets et le contrôle des espaces du diff passent. La tentative Windows [34897452542](https://github.com/rnsmetsanou/PlateformeWM-Demo/actions/runs/34897452542) s'arrête avant toute étape et sans runner attribué. Aucun résultat de compilation ou de test C# n'est donc acquis, aucun paquet construit n'est disponible. L'environnement local n'a pas de SDK .NET et son téléchargement échoue. Le code est versionné pour revue, mais T0/T1 ne sont pas clos.
+
+Pour débloquer la validation, vérifier les annotations de cette exécution GitHub ou lancer les contrôles documentés dans `docs/pilot/T0_T1.md` de la plateforme depuis un poste Windows équipé de .NET 10, puis lancer le script de ce dépôt.
+
+### Validation locale retenue
+
+L'utilisateur confirme que les crédits GitHub Actions sont épuisés. Le nouveau workflow plateforme est rendu manuel uniquement. Il n'est pas nécessaire d'acheter des crédits pour la validation : sur Windows, avec SDK .NET 10 et PowerShell 7.4 ou ultérieur, utiliser `eng/Test-Pilot.ps1` du dépôt plateforme en lui passant le chemin de ce dépôt. Le journal est écrit dans `artifacts/pilot-validation.log` du dépôt plateforme.

@@ -67,3 +67,5 @@ L'environnement d'exécution est indisponible (« Environment is not connected �
 ## T0/T1 — implémentation en qualification
 
 L’environnement local répond de nouveau. La liaison de lecture, la consommation des paquets et les tests Windows sont écrits sur les branches dédiées ; leur compilation et leurs résultats restent à vérifier. Voir le [dossier de réalisation](../implementation/T0_T1_Frontiere_Processus.md). Aucun nouveau choix produit ouvert n’est considéré validé par ce travail.
+
+Validation : crédits GitHub Actions épuisés, confirmé par l’utilisateur. Aucun test C# exécuté dans cette session ; validation locale Windows préparée. T0/T1 restent ouverts jusqu’aux résultats.
