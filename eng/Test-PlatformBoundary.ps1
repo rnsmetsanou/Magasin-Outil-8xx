@@ -23,15 +23,18 @@ dotnet restore "$root/MagasinOutil.Pilot.slnx" --configfile $config --packages $
 if ($LASTEXITCODE -ne 0) { throw 'Restore failed.' }
 dotnet build "$root/MagasinOutil.Pilot.slnx" -c Release --no-restore
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+
 $pipe = 'wm-pilot-' + [guid]::NewGuid().ToString('N')
+$state = Join-Path $artifacts ('state-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force $state | Out-Null
 $hostDll = Join-Path $root 'src/MagasinOutil.CoreHost/bin/Release/net10.0/MagasinOutil.CoreHost.dll'
 $readerDll = Join-Path $root 'src/MagasinOutil.ReadClient/bin/Release/net10.0/MagasinOutil.ReadClient.dll'
 $start = [System.Diagnostics.ProcessStartInfo]::new('dotnet')
 $start.UseShellExecute = $false
 $start.RedirectStandardOutput = $true
 $start.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
-# Windows file names cannot contain a quote; the generated pipe name contains only ASCII letters/digits/hyphens.
-$start.Arguments = '"{0}" --simulation {1}' -f $hostDll, $pipe
+# Windows file names cannot contain a quote; generated pipe/state names are controlled by this script.
+$start.Arguments = '"{0}" --simulation {1} "{2}"' -f $hostDll, $pipe, $state
 $hostProcess = [System.Diagnostics.Process]::Start($start)
 try {
     $readiness = [System.Diagnostics.Stopwatch]::StartNew()
@@ -43,6 +46,11 @@ try {
         $line = $pendingLine.GetAwaiter().GetResult()
         if ($null -eq $line) { throw 'Core exited before readiness.' }
     } while (-not $line.StartsWith('READY '))
+
+    $database = Join-Path $state 'durable-authority.db'
+    if (-not (Test-Path $database)) { throw 'CoreHost did not initialize the durable SQLite database.' }
+    if ((Get-Item $database).Length -le 0) { throw 'Durable SQLite database is empty.' }
+
     $first = (& dotnet $readerDll $pipe client-a | Out-String | ConvertFrom-Json)
     if ($LASTEXITCODE -ne 0) { throw 'First client failed.' }
     $second = (& dotnet $readerDll $pipe client-b | Out-String | ConvertFrom-Json)
@@ -51,9 +59,18 @@ try {
     if ($first.Places.Count -ne 140 -or @($first.Places | Where-Object { -not $_.Excluded }).Count -ne 137) { throw 'Wrong 8xx inventory.' }
     if ($first.Evidence.Origin -ne 'Magasin8xx.Simulation') { throw 'Simulation provenance missing.' }
     if ($first.Capabilities.Count -ne 1 -or $first.Capabilities[0] -ne 'application.tool-inventory.read') { throw 'Unexpected exposed capability.' }
+
     $clientDeps = Get-Content (Join-Path $root 'src/MagasinOutil.ReadClient/bin/Release/net10.0/MagasinOutil.ReadClient.deps.json') -Raw
-    if ($clientDeps -match 'Platform.Poc.Machine.Runtime|Platform.Poc.Application.Runtime|Platform.Poc.Technology.Simulator|MagasinOutil.Core/') { throw 'Client embeds a concrete machine runtime.' }
-    Write-Host 'Pilot T0/T1 package composition: PASS'
+    if ($clientDeps -match 'Platform.Poc.Machine.Runtime|Platform.Poc.Application.Runtime|Platform.Poc.Technology.Simulator|Platform.Poc.Persistence.Sqlite|MagasinOutil.Core/') { throw 'Client embeds a concrete machine or persistence runtime.' }
+
+    $hostDeps = Get-Content (Join-Path $root 'src/MagasinOutil.CoreHost/bin/Release/net10.0/MagasinOutil.CoreHost.deps.json') -Raw
+    if ($hostDeps -notmatch 'Platform.Poc.Persistence.Sqlite' -or $hostDeps -notmatch 'Microsoft.Data.Sqlite') { throw 'CoreHost does not compose the SQLite persistence package.' }
+
+    $platformProject = Get-Content (Join-Path $root 'src/MagasinOutil.Platform/MagasinOutil.Platform.csproj') -Raw
+    if ($platformProject -match 'Platform.Poc.Persistence.Sqlite|Microsoft.Data.Sqlite') { throw 'MagasinOutil.Platform depends on the concrete persistence provider.' }
+
+    Write-Host 'Pilot T0/T1 package behavior regression: PASS'
+    Write-Host 'Pilot T2.1 durable SQLite composition: PASS'
 } finally {
     if (-not $hostProcess.HasExited) { $hostProcess.Kill(); $hostProcess.WaitForExit() }
     $hostProcess.Dispose()
