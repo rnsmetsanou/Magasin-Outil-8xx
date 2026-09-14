@@ -69,3 +69,11 @@ La persistance des préférences, la création d’outil, la localisation multil
 La [vérification GitHub Actions 34857510339](https://github.com/rnsmetsanou/Magasin-Outil-8xx/actions/runs/34857510339) a réussi sur le commit `e7636cacadbdeae3c919909a7ea3fce146b2846d` : compilation Release .NET 10, zéro avertissement de compilation, zéro erreur, onze contrôles métier réussis. L’environnement était Ubuntu ; ce résultat ne valide pas le rendu Windows, le tactile ni la communication Beckhoff. Deux premiers essais ont permis de corriger les conflits de noms et une propriété obsolète Avalonia 12, sans désactiver les avertissements traités en erreurs.
 
 Poppins Regular et sa licence OFL sont effectivement embarquées, ainsi que les deux logos fournis. L’application peut charger ces ressources sans réseau.
+
+## Correction du lancement : sources NuGet héritées
+
+Le journal Windows du 14 septembre montre NU1301 / HTTP 401 sur les sources privées héritées, avant compilation et démarrage. La HMI ne dépend actuellement que de packages publics. Chaque projet de la solution HMI sélectionne donc explicitement `config/hmi/NuGet.Config` par `RestoreConfigFile`. Cette configuration déclare NuGet.org pour les packages et leur audit ; l'audit de vulnérabilités reste actif.
+
+Cette correction ne modifie aucune configuration utilisateur ou machine et n'affecte pas les projets TwinCAT. Ne pas désactiver les sources privées globalement : elles restent utiles aux autres projets. Lors de l'ajout futur de packages privés de plateforme, réviser cette configuration explicitement avec leur authentification.
+
+Après récupération de la branche, la commande ordinaire `dotnet run --project .\src\MagasinOutil.Desktop\MagasinOutil.Desktop.csproj` utilise cette configuration. Le workflow ajoute une source héritée volontairement inaccessible, puis restaure sans option `--source` ni `--configfile`, afin de vérifier le comportement du projet. Le résultat de ce contrôle doit être consulté dans GitHub Actions ; cette configuration ne constitue pas une preuve de démarrage graphique Windows.

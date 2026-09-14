@@ -2,7 +2,7 @@ name: HMI Avalonia
 on:
   push:
     branches: ['hmi/**']
-    paths: ['src/MagasinOutil.*/**', 'tests/MagasinOutil.*/**', 'MagasinOutil.Hmi.slnx', '.github/workflows/hmi.yml']
+    paths: ['src/MagasinOutil.*/**', 'tests/MagasinOutil.*/**', 'MagasinOutil.Hmi.slnx', 'config/hmi/**', '.github/workflows/hmi.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,5 +14,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet build MagasinOutil.Hmi.slnx --configuration Release
+      - name: Add unavailable inherited feed to verify HMI isolation
+        run: dotnet nuget add source https://127.0.0.1:9/nuget/v3/index.json --name HmiIsolationCheck
+      - name: Restore using project-scoped configuration
+        run: dotnet restore MagasinOutil.Hmi.slnx --no-http-cache --verbosity normal
+      - run: dotnet build MagasinOutil.Hmi.slnx --configuration Release --no-restore
       - run: dotnet run --project tests/MagasinOutil.Checks --configuration Release --no-build
