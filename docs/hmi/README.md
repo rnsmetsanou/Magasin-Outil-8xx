@@ -1,5 +1,7 @@
 # HMI Avalonia — première tranche simulée
 
+> Ce document décrit le prototype actuellement implémenté. Pour la cible web et l’intégration plateforme, consulter [l’index documentaire](../README.md) et le [registre des décisions](../decisions/Registre_Decisions.md).
+
 ## État
 
 Première implémentation .NET 10 / Avalonia 12.1.1. Aucune liaison machine, aucune écriture ADS, aucune commande de mouvement. Les données et confirmations sont fictives et perdues à la fermeture. Cette tranche ne revendique pas une qualification industrielle.
