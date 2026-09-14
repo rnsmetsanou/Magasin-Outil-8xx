@@ -1,0 +1,216 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_CNC" Id="{13fce4ef-b553-4224-ab15-d10d2077a0cd}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_CNC
+VAR
+	(** WORD **)
+		wSpindleToolLocation : WORD ;	
+		wToolToLoadLocation : WORD ;	
+
+	(** BYTE **)
+		bSpindleToolLocation1 : BYTE ;	
+		bSpindleToolLocation2 : BYTE ;	
+		bToolToLoadLocation1 : BYTE ;	
+		bToolToLoadLocation2 : BYTE ;
+		
+	(** FB **)
+		fbCncFanuc : FB_CNC_Fanuc ;
+		fbCncHeidenhain : FB_CNC_Heidenhain ;
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_CNC
+//
+//							Programme partie CNC    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** INPUT **)
+	(* Byte 0 *)
+		GV_CNC.stFanucData.stCncMagazine.biLife:=GV_CNC.stFanucData.stCncMagazine.byi0.0 ; // Life bit -> X0.0
+		GV_CNC.stFanucData.stCncMagazine.biToolAnticipation:=GV_CNC.stFanucData.stCncMagazine.byi0.1 ; // Anticipation to prepare the next Tool -> X0.1
+		GV_CNC.stFanucData.stCncMagazine.biAllowedOpenIntermediateDoor:=GV_CNC.stFanucData.stCncMagazine.byi0.2 ; // Allowed to open the Intermediate Door 02 -> X0.2
+		GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest:=GV_CNC.stFanucData.stCncMagazine.byi0.3 ; // Request to Load and Unload a Tool -> X0.3
+		GV_CNC.stFanucData.stCncMagazine.biLoadRequest:=GV_CNC.stFanucData.stCncMagazine.byi0.4 ; // Request to only Load a Tool -> X0.4
+		GV_CNC.stFanucData.stCncMagazine.biUnloadRequest:=GV_CNC.stFanucData.stCncMagazine.byi0.5 ; // Request to only Unload a Tool -> X0.5
+		GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd:=GV_CNC.stFanucData.stCncMagazine.byi0.6 ; // End of the Request -> X0.6
+		GV_CNC.stFanucData.stCncMagazine.biAllowedCloseIntermediateDoor:=GV_CNC.stFanucData.stCncMagazine.byi0.7 ; // Allowed to close the Intermediate Door 07 -> X0.7
+	(* Byte 1 *)
+		GV_CNC.stFanucData.stCncMagazine.biInCycle:=GV_CNC.stFanucData.stCncMagazine.byi1.0 ; // CNC in Cycle -> X1.0
+		GV_CNC.stFanucData.stCncMagazine.biEvacuateArm:=GV_CNC.stFanucData.stCncMagazine.byi1.1 ; // Request to evacuate the Changing Arm and close the Intermediate Door -> X1.1
+		GV_CNC.stFanucData.stCncMagazine.biReserve12:=GV_CNC.stFanucData.stCncMagazine.byi1.2 ; // Reserve 12 -> X1.2
+		GV_CNC.stFanucData.stCncMagazine.biReserve13:=GV_CNC.stFanucData.stCncMagazine.byi1.3 ; // Reserve 13 -> X1.3
+		GV_CNC.stFanucData.stCncMagazine.biReserve14:=GV_CNC.stFanucData.stCncMagazine.byi1.4 ; // Reserve 14 -> X1.4
+		GV_CNC.stFanucData.stCncMagazine.biReserve15:=GV_CNC.stFanucData.stCncMagazine.byi1.5 ; // Reserve 15 -> X1.5
+		GV_CNC.stFanucData.stCncMagazine.biReserve16:=GV_CNC.stFanucData.stCncMagazine.byi1.6 ; // Reserve 16 -> X1.6
+		GV_CNC.stFanucData.stCncMagazine.biDoorClosed:=GV_CNC.stFanucData.stCncMagazine.byi1.7 ; // CNC Door closed (operator) -> X1.7
+	(* Byte 2 *)
+		GV_CNC.stFanucData.stCncMagazine.biEmergencyStop:=(NOT GV_CNC.stFanucData.stCncMagazine.byi2.0) ; // Emergency Stop -> X2.0
+		GV_CNC.stFanucData.stCncMagazine.biPower:=GV_CNC.stFanucData.stCncMagazine.byi2.1 ; // Power -> X2.1
+		GV_CNC.stFanucData.stCncMagazine.biAir:=GV_CNC.stFanucData.stCncMagazine.byi2.2 ; // Air -> X2.2
+		GV_CNC.stFanucData.stCncMagazine.biShutdown:=GV_CNC.stFanucData.stCncMagazine.byi2.3 ; // Shutdown -> X2.3
+		GV_CNC.stFanucData.stCncMagazine.biReserve24:=GV_CNC.stFanucData.stCncMagazine.byi2.4 ; // Reserve 24 -> X2.4
+		GV_CNC.stFanucData.stCncMagazine.biReserve25:=GV_CNC.stFanucData.stCncMagazine.byi2.5 ; // Reserve 25 -> X2.5
+		GV_CNC.stFanucData.stCncMagazine.biReserve26:=GV_CNC.stFanucData.stCncMagazine.byi2.6 ; // Reserve 26 -> X2.6
+		GV_CNC.stFanucData.stCncMagazine.biReserve27:=GV_CNC.stFanucData.stCncMagazine.byi2.7 ; // Reserve 27 -> X2.7
+	(* Byte 3 *)
+		GV_CNC.stFanucData.stCncMagazine.biReserve30:=GV_CNC.stFanucData.stCncMagazine.byi3.0 ; // Reserve 30 -> X3.0
+		GV_CNC.stFanucData.stCncMagazine.biReserve31:=GV_CNC.stFanucData.stCncMagazine.byi3.1 ; // Reserve 31 -> X3.1
+		GV_CNC.stFanucData.stCncMagazine.biReserve32:=GV_CNC.stFanucData.stCncMagazine.byi3.2 ; // Reserve 32 -> X3.2
+		GV_CNC.stFanucData.stCncMagazine.biReserve33:=GV_CNC.stFanucData.stCncMagazine.byi3.3 ; // Reserve 33 -> X3.3
+		GV_CNC.stFanucData.stCncMagazine.biReserve34:=GV_CNC.stFanucData.stCncMagazine.byi3.4 ; // Reserve 34 -> X3.4
+		GV_CNC.stFanucData.stCncMagazine.biReserve35:=GV_CNC.stFanucData.stCncMagazine.byi3.5 ; // Reserve 35 -> X3.5
+		GV_CNC.stFanucData.stCncMagazine.biReserve36:=GV_CNC.stFanucData.stCncMagazine.byi3.6 ; // Reserve 36 -> X3.6
+		GV_CNC.stFanucData.stCncMagazine.biReserve37:=GV_CNC.stFanucData.stCncMagazine.byi3.7 ; // Reserve 37 -> X3.7
+	(* Byte 4 *)
+		GV_CNC.stFanucData.stCncMagazine.biReserve40:=GV_CNC.stFanucData.stCncMagazine.byi4.0 ; // Reserve 40 -> X4.0
+		GV_CNC.stFanucData.stCncMagazine.biReserve41:=GV_CNC.stFanucData.stCncMagazine.byi4.1 ; // Reserve 41 -> X4.1
+		GV_CNC.stFanucData.stCncMagazine.biReserve42:=GV_CNC.stFanucData.stCncMagazine.byi4.2 ; // Reserve 42 -> X4.2
+		GV_CNC.stFanucData.stCncMagazine.biReserve43:=GV_CNC.stFanucData.stCncMagazine.byi4.3 ; // Reserve 43 -> X3.3
+		GV_CNC.stFanucData.stCncMagazine.biReserve44:=GV_CNC.stFanucData.stCncMagazine.byi4.4 ; // Reserve 44 -> X4.4
+		GV_CNC.stFanucData.stCncMagazine.biReserve45:=GV_CNC.stFanucData.stCncMagazine.byi4.5 ; // Reserve 45 -> X4.5
+		GV_CNC.stFanucData.stCncMagazine.biReserve46:=GV_CNC.stFanucData.stCncMagazine.byi4.6 ; // Reserve 46 -> X4.6
+		GV_CNC.stFanucData.stCncMagazine.biReserve47:=GV_CNC.stFanucData.stCncMagazine.byi4.7 ; // Reserve 47 -> X4.7
+	(* Byte 5 *)
+		GV_CNC.stFanucData.stCncMagazine.biReserve50:=GV_CNC.stFanucData.stCncMagazine.byi5.0 ; // Reserve 50 -> X5.0
+		GV_CNC.stFanucData.stCncMagazine.biReserve51:=GV_CNC.stFanucData.stCncMagazine.byi5.1 ; // Reserve 51 -> X5.1
+		GV_CNC.stFanucData.stCncMagazine.biReserve52:=GV_CNC.stFanucData.stCncMagazine.byi5.2 ; // Reserve 52 -> X5.2
+		GV_CNC.stFanucData.stCncMagazine.biReserve53:=GV_CNC.stFanucData.stCncMagazine.byi5.3 ; // Reserve 53 -> X5.3
+		GV_CNC.stFanucData.stCncMagazine.biReserve54:=GV_CNC.stFanucData.stCncMagazine.byi5.4 ; // Reserve 54 -> X5.4
+		GV_CNC.stFanucData.stCncMagazine.biReserve55:=GV_CNC.stFanucData.stCncMagazine.byi5.5 ; // Reserve 55 -> X5.5
+		GV_CNC.stFanucData.stCncMagazine.biReserve56:=GV_CNC.stFanucData.stCncMagazine.byi5.6 ; // Reserve 56 -> X5.6
+		GV_CNC.stFanucData.stCncMagazine.biReserve57:=GV_CNC.stFanucData.stCncMagazine.byi5.7 ; // Reserve 57 -> X5.7
+	(* Byte 6 *)
+		GV_CNC.stFanucData.iSpindleToolType:=BYTE_TO_INT(GV_CNC.stFanucData.stCncMagazine.byiSpindleToolType) ;
+	(* Byte 7 *)
+		GV_CNC.stFanucData.iToolToLoadType:=BYTE_TO_INT(GV_CNC.stFanucData.stCncMagazine.byiToolToLoadType) ;
+	(* Byte 8-9 *)
+		wSpindleToolLocation:=GV_CNC.stFanucData.stCncMagazine.wiSpindleToolLocation;
+		//MSB  
+		bSpindleToolLocation1:=WORD_TO_BYTE(SHR(wSpindleToolLocation,8));
+		//LSB
+		bSpindleToolLocation2:=WORD_TO_BYTE(wSpindleToolLocation AND 16#FF);
+		wSpindleToolLocation:=(SHL(BYTE_TO_WORD(bSpindleToolLocation2),8) OR BYTE_TO_WORD(bSpindleToolLocation1));
+
+		GV_CNC.stFanucData.iSpindleToolLocation:=WORD_TO_INT(wSpindleToolLocation) ;
+	(* Byte 10-11 *)
+		wToolToLoadLocation:=GV_CNC.stFanucData.stCncMagazine.wiToolToLoadLocation;
+		//MSB  
+		bToolToLoadLocation1:=WORD_TO_BYTE(SHR(wToolToLoadLocation,8));
+		//LSB
+		bToolToLoadLocation2:=WORD_TO_BYTE(wToolToLoadLocation AND 16#FF);
+		wToolToLoadLocation:=(SHL(BYTE_TO_WORD(bToolToLoadLocation2),8) OR BYTE_TO_WORD(bToolToLoadLocation1));
+	
+		GV_CNC.stFanucData.iToolToLoadLocation:=WORD_TO_INT(wToolToLoadLocation) ;
+
+(** SETUP **)
+	GV_CNC.bPresence:=TRUE; // CNC prensence or not
+	(* Enable *)
+		IF GV_HMI.rtCNCEnable.Q THEN
+			IF (NOT GV_CNC.bEnable) THEN
+				GV_CNC.bEnable:=TRUE;
+			ELSE
+				GV_CNC.bEnable:=FALSE;
+			END_IF
+		END_IF
+		//GV_CNC.bEnable:=TRUE;
+	GV_CNC.bFocas:=TRUE; // With Focas or not
+	fbEventGroupAssignement(iEventGroup:=GV_CNC.iEventGroup);
+	GV_CNC.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement
+	GV_CNC.eType:=ENUM_CNC_type.Fanuc; // CNC type
+	// ...
+
+(** PROCESS **)
+	(* Air blow *)
+	IF (NOT GV_General.bSafety) OR (NOT GV_General.bAir) OR ((GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND (NOT GV_Cycle.bStartStop)) OR GV_OpMode.eOpMode<>ENUM_OpMode.AUTO) THEN
+		GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+	END_IF
+
+(** SPINDLE **)
+	(*Memory*)
+		IF (GV_CNC.stSpindle.iAbsLocationNumberMemory>0 AND GV_CNC.stSpindle.iRelLocationNumberMemory>0) THEN
+			GV_CNC.stSpindle.bToolPresenceMemory:=TRUE;
+		ELSE
+			GV_CNC.stSpindle.bToolPresenceMemory:=FALSE;
+		END_IF
+		
+(** FB_CNC_xxx **)
+	CASE GV_CNC.eType OF
+		ENUM_CNC_Type.Fanuc:
+			fbCncFanuc(StCncData:=GV_CNC.stFanucData);
+		ENUM_CNC_Type.Heidenhain:
+			fbCncHeidenhain(StCncData:=GV_CNC.stHeidenhainData);
+	END_CASE
+
+(** OUTPUT **)
+	(* Byte 0 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo0.0:=GV_CNC.stFanucData.stMagazineCNC.boLife; // Magazine Life bit -> X0.0
+		GV_CNC.stFanucData.stMagazineCNC.byo0.1:=GV_CNC.stFanucData.stMagazineCNC.boToolAnticipated; // Next tool is prepared/anticipated -> X0.1
+		GV_CNC.stFanucData.stMagazineCNC.byo0.2:=GV_CNC.stFanucData.stMagazineCNC.boReserve02; // Reserve 02 -> X0.2
+		GV_CNC.stFanucData.stMagazineCNC.byo0.3:=GV_CNC.stFanucData.stMagazineCNC.boReserve03; // Reserve 03 -> X0.3
+		GV_CNC.stFanucData.stMagazineCNC.byo0.4:=GV_CNC.stFanucData.stMagazineCNC.boReserve04; // Reserve 04 -> X0.4
+		GV_CNC.stFanucData.stMagazineCNC.byo0.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve05; // Reserve 05 -> X0.5
+		GV_CNC.stFanucData.stMagazineCNC.byo0.6:=GV_CNC.stFanucData.stMagazineCNC.boArmInCncPosition; // Loading Arm in position in the CNC -> X0.6
+		GV_CNC.stFanucData.stMagazineCNC.byo0.7:=GV_CNC.stFanucData.stMagazineCNC.boNoFault; // No Fault on the Magazine -> X0.7
+	(* Byte 1 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo1.0:=GV_CNC.stFanucData.stMagazineCNC.boArmOutOfCncArea; // Changing Arm out of Cnc area -> X1.0
+		GV_CNC.stFanucData.stMagazineCNC.byo1.1:=GV_CNC.stFanucData.stMagazineCNC.boOpenManipulatorGripper; // Open the manipulator gripper -> X1.1
+		GV_CNC.stFanucData.stMagazineCNC.byo1.2:=GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor; // Air blow of the Intermediate Door -> X1.2
+		GV_CNC.stFanucData.stMagazineCNC.byo1.3:=GV_CNC.stFanucData.stMagazineCNC.boIntermediateDoorOpen; // Intermediate Door is open -> X1.3
+		GV_CNC.stFanucData.stMagazineCNC.byo1.4:=GV_CNC.stFanucData.stMagazineCNC.boIntermediateDoorClose; // Intermediate Door is close -> X1.4
+		GV_CNC.stFanucData.stMagazineCNC.byo1.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve15; // Reserve 15 -> X1.5
+		GV_CNC.stFanucData.stMagazineCNC.byo1.6:=GV_CNC.stFanucData.stMagazineCNC.boReserve16; // Reserve 16 -> X1.6
+		GV_CNC.stFanucData.stMagazineCNC.byo1.7:=GV_CNC.stFanucData.stMagazineCNC.boReserve17; // Reserve 17 -> X1.7
+	(* Byte 2 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo2.0:=GV_CNC.stFanucData.stMagazineCNC.boReserve20; // Reserve 20 -> X2.0
+		GV_CNC.stFanucData.stMagazineCNC.byo2.1:=GV_CNC.stFanucData.stMagazineCNC.boReserve21; // Reserve 21 -> X2.1
+		GV_CNC.stFanucData.stMagazineCNC.byo2.2:=GV_CNC.stFanucData.stMagazineCNC.boReserve22; // Reserve 22 -> X2.2
+		GV_CNC.stFanucData.stMagazineCNC.byo2.3:=GV_CNC.stFanucData.stMagazineCNC.boReserve23; // Reserve 23 -> X2.3
+		GV_CNC.stFanucData.stMagazineCNC.byo2.4:=GV_CNC.stFanucData.stMagazineCNC.boReserve24; // Reserve 24 -> X2.4
+		GV_CNC.stFanucData.stMagazineCNC.byo2.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve25; // Reserve 25 -> X2.5
+		GV_CNC.stFanucData.stMagazineCNC.byo2.6:=GV_CNC.stFanucData.stMagazineCNC.boReserve26; // Reserve 26 -> X2.6
+		GV_CNC.stFanucData.stMagazineCNC.byo2.7:=GV_CNC.stFanucData.stMagazineCNC.boReserve27; // Reserve 27 -> X2.7
+	(* Byte 3 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo3.0:=GV_CNC.stFanucData.stMagazineCNC.boReserve30; // Reserve 30 -> X3.0
+		GV_CNC.stFanucData.stMagazineCNC.byo3.1:=GV_CNC.stFanucData.stMagazineCNC.boReserve31; // Reserve 31 -> X3.1
+		GV_CNC.stFanucData.stMagazineCNC.byo3.2:=GV_CNC.stFanucData.stMagazineCNC.boReserve32; // Reserve 32 -> X3.2
+		GV_CNC.stFanucData.stMagazineCNC.byo3.3:=GV_CNC.stFanucData.stMagazineCNC.boReserve33; // Reserve 33 -> X3.3
+		GV_CNC.stFanucData.stMagazineCNC.byo3.4:=GV_CNC.stFanucData.stMagazineCNC.boReserve34; // Reserve 34 -> X3.4
+		GV_CNC.stFanucData.stMagazineCNC.byo3.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve35; // Reserve 35 -> X3.5
+		GV_CNC.stFanucData.stMagazineCNC.byo3.6:=GV_CNC.stFanucData.stMagazineCNC.boReserve36; // Reserve 36 -> X3.6
+		GV_CNC.stFanucData.stMagazineCNC.byo3.7:=GV_CNC.stFanucData.stMagazineCNC.boReserve37; // Reserve 37 -> X3.7
+	(* Byte 4 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo4.0:=GV_CNC.stFanucData.stMagazineCNC.boReserve40; // Reserve 40 -> X4.0
+		GV_CNC.stFanucData.stMagazineCNC.byo4.1:=GV_CNC.stFanucData.stMagazineCNC.boReserve41; // Reserve 41 -> X4.1
+		GV_CNC.stFanucData.stMagazineCNC.byo4.2:=GV_CNC.stFanucData.stMagazineCNC.boReserve42; // Reserve 42 -> X4.2
+		GV_CNC.stFanucData.stMagazineCNC.byo4.3:=GV_CNC.stFanucData.stMagazineCNC.boReserve43; // Reserve 43 -> X4.3
+		GV_CNC.stFanucData.stMagazineCNC.byo4.4:=GV_CNC.stFanucData.stMagazineCNC.boReserve44; // Reserve 44 -> X4.4
+		GV_CNC.stFanucData.stMagazineCNC.byo4.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve45; // Reserve 45 -> X4.5
+		GV_CNC.stFanucData.stMagazineCNC.byo4.6:=GV_CNC.stFanucData.stMagazineCNC.boReserve46; // Reserve 46 -> X4.6
+		GV_CNC.stFanucData.stMagazineCNC.byo4.7:=GV_CNC.stFanucData.stMagazineCNC.boReserve47; // Reserve 47 -> X4.7
+	(* Byte 5 *)
+		GV_CNC.stFanucData.stMagazineCNC.byo5.0:=GV_CNC.stFanucData.stMagazineCNC.boReserve50; // Reserve 50 -> X5.0
+		GV_CNC.stFanucData.stMagazineCNC.byo5.1:=GV_CNC.stFanucData.stMagazineCNC.boReserve51; // Reserve 51 -> X5.1
+		GV_CNC.stFanucData.stMagazineCNC.byo5.2:=GV_CNC.stFanucData.stMagazineCNC.boReserve52; // Reserve 52 -> X5.2
+		GV_CNC.stFanucData.stMagazineCNC.byo5.3:=GV_CNC.stFanucData.stMagazineCNC.boReserve53; // Reserve 53 -> X5.3
+		GV_CNC.stFanucData.stMagazineCNC.byo5.4:=GV_CNC.stFanucData.stMagazineCNC.boReserve54; // Reserve 54 -> X5.4
+		GV_CNC.stFanucData.stMagazineCNC.byo5.5:=GV_CNC.stFanucData.stMagazineCNC.boReserve55; // Reserve 55 -> X5.5
+		GV_CNC.stFanucData.stMagazineCNC.byo5.6:=GV_CNC.stFanucData.stMagazineCNC.boReserve56; // Reserve 56 -> X5.6
+		GV_CNC.stFanucData.stMagazineCNC.byo5.7:=GV_CNC.stFanucData.stMagazineCNC.boReserve57; // Reserve 57 -> X5.7
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

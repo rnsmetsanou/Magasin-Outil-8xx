@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Pick_Tool_Magazine" Id="{93c17341-a0b5-40d9-8b3c-f2160177e604}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Pick_Tool_Magazine
+//
+//							Structure HMI prise outil dans magasin		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.02.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Pick_Tool_Magazine :
+STRUCT
+
+	(** SETUP FLAG **)
+		(*Manipulator*)
+			bCheckSensorManipulatorGripper : BOOL ; // Check the sensor of the manipulator gripper
+		(*Arm*)
+			//bCheckSensorArmGripper1 : BOOL ; // Check the sensor of the arm gripper 1
+			//bCheckSensorArmGripper2 : BOOL ; // Check the sensor of the arm gripper 2
+	
+		bCheckLocation : BOOL ; // With or Without chek Tool presence in Location before pick
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

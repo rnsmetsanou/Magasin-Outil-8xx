@@ -1,0 +1,554 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_HMI" Id="{9a509fc0-144a-43c0-ae73-4d5a98dc5e1f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_HMI
+VAR
+	(** R_TRIG **)	
+		rtBlinkUp : R_TRIG ; 
+		rtBlinkDown : R_TRIG ; 
+
+	(** INT **)
+		iAlarmLoop1 : INT ;
+		iAlarmLoop2 : INT ;
+		iMessageLoop1 : INT ; 
+		iMessageLoop2 : INT ; 
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_HMI
+//
+//							Programme partie HMI    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 28.01.2026
+//Dernière modification : 28.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 28.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** PROCESS FLAG + R_Trig **)
+
+	(* Button *)
+		GV_HMI.rtEventAck(CLK:=GV_HMI.bButtonEventAck);
+			GV_HMI.bEventAck:=GV_HMI.rtEventAck.Q;
+
+		GV_HMI.rtINIT(CLK:=GV_HMI.bButtonInit);
+		GV_HMI.rtAUTO(CLK:=GV_HMI.bButtonAUTO);
+		GV_HMI.rtMANU(CLK:=GV_HMI.bButtonMANU);
+		
+		GV_HMI.stCycle.rtButtonStartStop(CLK:=GV_HMI.stCycle.bButtonStartStop);
+		GV_HMI.stCycle.rtButtonStart(CLK:=GV_HMI.stCycle.bButtonStart);
+		GV_HMI.stCycle.rtButtonStop(CLK:=GV_HMI.stCycle.bButtonStop);
+		
+		GV_HMI.rtReboot(CLK:=GV_HMI.bButtonReboot);
+		GV_HMI.rtShutdown(CLK:=GV_HMI.bButtonShutdown);
+		
+		GV_HMI.rtHandwheelEnable(CLK:=GV_HMI.bButtonHandwheelEnable);
+		GV_HMI.rtHandwheelIncr(CLK:=GV_HMI.bButtonHandwheelIncr);
+		GV_HMI.rtHandwheelJog(CLK:=GV_HMI.bButtonHandwheelJog);
+		
+		//GV_HMI.rtRefreshToolMagazine(CLK:=GV_HMI.bButtonRefreshToolMagazine);
+		GV_HMI.rtResetDataManipulator(CLK:=GV_HMI.bButtonResetDataManipulator);
+		GV_HMI.rtResetDataChangingGripper1(CLK:=GV_HMI.bButtonResetDataChangingGripper1);
+		GV_HMI.rtResetDataChangingGripper2(CLK:=GV_HMI.bButtonResetDataChangingGripper2);
+		GV_HMI.rtResetDataSpindle(CLK:=GV_HMI.bButtonResetDataSpindle);
+
+		GV_HMI.rtCncEnable(CLK:=GV_HMI.bButtonCncEnable);
+
+		GV_HMI.stMagazineSettings.rtSettingsSave(CLK:=GV_HMI.stMagazineSettings.bButtonSettingsSave);
+		
+		GV_HMI.stManipulatorGripper.rtCloseManupulatorGripper(CLK:=GV_HMI.stManipulatorGripper.bButtonCloseManupulatorGripper);
+		GV_HMI.stManipulatorGripper.rtOpenManupulatorGripper(CLK:=GV_HMI.stManipulatorGripper.bButtonOpenManupulatorGripper);
+
+		GV_HMI.stCyltronic.rtButtonMoveRest(CLK:=GV_HMI.stCyltronic.bButtonMoveRest);
+		GV_HMI.stCyltronic.rtButtonMoveWork(CLK:=GV_HMI.stCyltronic.bButtonMoveWork);
+		
+		GV_HMI.stAxes.rtButtonChoiceAxisX(CLK:=GV_HMI.stAxes.bButtonChoiceAxisX);
+		GV_HMI.stAxes.rtButtonChoiceAxisY(CLK:=GV_HMI.stAxes.bButtonChoiceAxisY);
+		GV_HMI.stAxes.rtButtonChoiceAxisZ(CLK:=GV_HMI.stAxes.bButtonChoiceAxisZ);
+		GV_HMI.stAxes.rtButtonChoiceAxisArm(CLK:=GV_HMI.stAxes.bButtonChoiceAxisArm);
+		GV_HMI.stAxes.rtButtonPlus(CLK:=GV_HMI.stAxes.bButtonPlus);
+		GV_HMI.stAxes.rtButtonMinus(CLK:=GV_HMI.stAxes.bButtonMinus);
+
+		GV_HMI.stAxes.rtButtonChoiceReferencingX(CLK:=GV_HMI.stAxes.bButtonChoiceReferencingX);
+		GV_HMI.stAxes.rtButtonChoiceReferencingY(CLK:=GV_HMI.stAxes.bButtonChoiceReferencingY);
+		GV_HMI.stAxes.rtButtonChoiceReferencingZ(CLK:=GV_HMI.stAxes.bButtonChoiceReferencingZ);
+		GV_HMI.stAxes.rtButtonChoiceReferencingArm(CLK:=GV_HMI.stAxes.bButtonChoiceReferencingArm);
+		GV_HMI.stAxes.rtButtonReferencingAxis(CLK:=GV_HMI.stAxes.bButtonReferencingAxis);
+		
+		GV_HMI.stAxes.rtButtonMinSofltLimit(CLK:=GV_HMI.stAxes.bButtonMinSofltLimit);
+		GV_HMI.stAxes.rtButtonMaxSofltLimit(CLK:=GV_HMI.stAxes.bButtonMaxSofltLimit);
+		
+		GV_HMI.stMagazineTeach.rtTeachLocation(CLK:=GV_HMI.stMagazineTeach.bButtonTeachLocation);
+		GV_HMI.stMagazineTeach.rtTeachRack(CLK:=GV_HMI.stMagazineTeach.bButtonTeachRack);
+		GV_HMI.stMagazineTeach.rtTeachAllTop(CLK:=GV_HMI.stMagazineTeach.bButtonTeachAllTop);
+		GV_HMI.stMagazineTeach.rtTeachAllBottom(CLK:=GV_HMI.stMagazineTeach.bButtonTeachAllBottom);
+
+		GV_HMI.stBackup.rtButtonProject(CLK:=GV_HMI.stBackup.bButtonProject);
+		GV_HMI.stBackup.rtButtonInitData(CLK:=GV_HMI.stBackup.bButtonInitData);
+		GV_HMI.stBackup.rtButtonExportData(CLK:=GV_HMI.stBackup.bButtonExportData);
+		GV_HMI.stBackup.rtButtonImportData(CLK:=GV_HMI.stBackup.bButtonImportData);
+		
+		GV_HMI.stBackup.rtButtonExportAlarms(CLK:=GV_HMI.stBackup.bButtonExportAlarms);
+		GV_HMI.stBackup.rtButtonExportMessages(CLK:=GV_HMI.stBackup.bButtonExportMessages);
+		
+	(* State *)
+		GV_HMI.bStateHandwheelEnable:=GV_Handwheel.aId[1].bEnable;
+		GV_HMI.bStateHandwheelMode:=GV_Handwheel.aId[1].eJogMode=ENUM_Jog_Mode.Inching;
+		
+		GV_HMI.bStateCncEnable:=GV_CNC.bEnable;
+
+	(* Enable *)
+		GV_HMI.bEnableResetManipulatorMemory:=(NOT GV_Cycle.bCycleInProgress);
+		GV_HMI.bEnableResetArmGripper1Memory:=(NOT GV_Cycle.bCycleInProgress);
+		GV_HMI.bEnableResetArmGripper2Memory:=(NOT GV_Cycle.bCycleInProgress);
+		GV_HMI.bEnableResetSpindleMemory:=(NOT GV_Cycle.bCycleInProgress);
+
+	(* Time *)
+		GV_HMI.stManipulatorGripper.tMouvementOpen:=INT_TO_TIME(GV_HMI.stManipulatorGripper.iMouvementOpen)*1000;
+		GV_HMI.stManipulatorGripper.tMouvementClose:=INT_TO_TIME(GV_HMI.stManipulatorGripper.iMouvementClose)*1000;
+	
+	(* TimeOut *)
+		GV_HMI.stMagazineCheck.tTimeoutOne:=INT_TO_TIME(GV_HMI.stMagazineCheck.iTimeoutOne)*1000;
+		GV_HMI.stMagazineCheck.tTimeoutFull:=INT_TO_TIME(GV_HMI.stMagazineCheck.iTimeoutFull)*1000;
+		GV_HMI.stManipulatorTunnel.tTimeout:=INT_TO_TIME(GV_HMI.stManipulatorTunnel.iTimeout)*1000;
+		GV_HMI.stManipulatorBreakage.tTimeout:=INT_TO_TIME(GV_HMI.stManipulatorBreakage.iTimeout)*1000;
+	
+	(* Reset *)
+		(*Manipulator*)
+			IF GV_HMI.rtResetDataManipulator.Q AND (NOT GV_Cycle.bCycleInProgress) THEN
+				GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory:=0;
+				GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory:=0;
+			END_IF
+		(*Changing Arm gripper 1*)
+			IF GV_HMI.rtResetDataChangingGripper1.Q AND (NOT GV_Cycle.bCycleInProgress) THEN
+				GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory:=0;
+				GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory:=0;
+			END_IF
+		(*Changing Arm gripper 2*)
+			IF GV_HMI.rtResetDataChangingGripper2.Q AND (NOT GV_Cycle.bCycleInProgress) THEN
+				GV_Tool_Magazine.stArm.aGripper[2].iRelLocationNumberMemory:=0;
+				GV_Tool_Magazine.stArm.aGripper[2].iAbsLocationNumberMemory:=0;
+			END_IF
+		(*Spindle*)
+			IF GV_HMI.rtResetDataSpindle.Q AND (NOT GV_Cycle.bCycleInProgress) THEN
+				GV_CNC.stSpindle.iRelLocationNumberMemory:=0;
+				GV_CNC.stSpindle.iAbsLocationNumberMemory:=0;
+			END_IF
+			
+	(* Alarm *)
+		rtBlinkUp(CLK:=GV_General.bIsBlinking05s);
+		IF rtBlinkUp.Q THEN
+			GV_HMI.bAlarm:=FALSE;
+			FOR iAlarmLoop1:=1 TO GV_Events.iMaxEventGroup BY 1 DO
+				FOR iAlarmLoop2:=1 TO GV_Events.iMaxAlarms BY 1 DO
+					IF GV_Events.aEventGroup[iAlarmLoop1].aAlarm[iAlarmLoop2].fbAlarm.bActive THEN
+						GV_HMI.bAlarm:=TRUE;
+						EXIT;
+					END_IF
+				END_FOR
+			END_FOR
+		END_IF
+		
+	(* Message *)
+		rtBlinkDown(CLK:=(NOT GV_General.bIsBlinking05s));
+		IF rtBlinkDown.Q THEN
+			GV_HMI.bMessage:=FALSE;
+			FOR iMessageLoop1:=1 TO GV_Events.iMaxEventGroup BY 1 DO
+				FOR iMessageLoop2:=1 TO GV_Events.iMaxOpMessages BY 1 DO
+					IF GV_Events.aEventGroup[iMessageLoop1].aOpMessage[iMessageLoop2].fbAlarm.bActive THEN
+						GV_HMI.bMessage:=TRUE;
+						EXIT;
+					//ELSE
+					//	GV_HMI.bMessage:=FALSE;
+					END_IF
+				END_FOR
+			END_FOR
+		END_IF
+	
+	(* Current Position *)
+		(*Axis X*) // Round 10e-3
+			GV_HMI.stAxes.sAxisXActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+			GV_HMI.stAxes.lrAxisXActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		(*Axis Y*) // Round 10e-3
+			GV_HMI.stAxes.sAxisYActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+			GV_HMI.stAxes.lrAxisYActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		(*Axis Z*) // Round 10e-3
+			GV_HMI.stAxes.sAxisZActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+			GV_HMI.stAxes.lrAxisZActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		(*Axis Arm*) // Round 10e-3
+			GV_HMI.stAxes.sAxisArmActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+			GV_HMI.stAxes.lrAxisArmActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		(* Axis Referencing *) // Round 10e-3
+			IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.X THEN
+				GV_HMI.stAxes.sRefrencingActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+				GV_HMI.stAxes.lrRefrencingActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+			ELSIF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Y THEN
+				GV_HMI.stAxes.sRefrencingActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+				GV_HMI.stAxes.lrRefrencingActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+			ELSIF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Z THEN
+				GV_HMI.stAxes.sRefrencingActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+				GV_HMI.stAxes.lrRefrencingActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+			ELSIF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Arm THEN
+				GV_HMI.stAxes.sRefrencingActPos:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0);
+				GV_HMI.stAxes.lrRefrencingActPos:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+			ELSE
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stAxes.sRefrencingActPos:='Aucun Axe de sélectionné';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stAxes.sRefrencingActPos:='No axis selected';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stAxes.sRefrencingActPos:='Keine Achse ausgewählt';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stAxes.sRefrencingActPos:='Nessun asse selezionato';
+				ELSE // Unknow
+					GV_HMI.stAxes.sRefrencingActPos:='Unknow Language';
+				END_IF
+			END_IF
+			
+	(* Current Velocity *)
+		(*Axis X*) // Round 10e-3
+			IF GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActVelo>=0.1 THEN
+				GV_HMI.stAxes.sAxisXActVelo:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0);
+				GV_HMI.stAxes.lrAxisXActVelo:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0;
+			ELSE
+				GV_HMI.stAxes.sAxisXActVelo:=LREAL_TO_STRING(0);
+				GV_HMI.stAxes.lrAxisXActVelo:=0;
+			END_IF
+		(*Axis Y*)
+			IF GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActVelo>=0.1 THEN
+				GV_HMI.stAxes.sAxisYActVelo:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0);
+				GV_HMI.stAxes.lrAxisYActVelo:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0;
+			ELSE
+				GV_HMI.stAxes.sAxisYActVelo:=LREAL_TO_STRING(0);
+				GV_HMI.stAxes.lrAxisYActVelo:=0;
+			END_IF
+		(*Axis Z*)
+			IF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActVelo>=0.1 THEN
+				GV_HMI.stAxes.sAxisZActVelo:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0);
+				GV_HMI.stAxes.lrAxisZActVelo:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0;
+			ELSE
+				GV_HMI.stAxes.sAxisZActVelo:=LREAL_TO_STRING(0);
+				GV_HMI.stAxes.lrAxisZActVelo:=0;
+			END_IF
+		(*Axis Arm*)
+			IF GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActVelo>=0.1 THEN
+				GV_HMI.stAxes.sAxisArmActVelo:=LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0);
+				GV_HMI.stAxes.lrAxisArmActVelo:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActVelo*1000.0))/1000.0;
+			ELSE
+				GV_HMI.stAxes.sAxisArmActVelo:=LREAL_TO_STRING(0);
+				GV_HMI.stAxes.lrAxisArmActVelo:=0;
+			END_IF
+	
+	(* Velocity *)
+		GV_HMI.stAxes.lrVelocityPourcent:=INT_TO_LREAL(GV_HMI.stAxes.iVelocityPourcent);
+
+	(* Other *)
+	//...
+
+	(* Cycle Type *)
+		CASE GV_Cycle.eCycleType OF
+			
+			ENUM_Cycle_Type.None :
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stCycle.sCurrentCycle:='Aucun : Pas de cycle en cours';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stCycle.sCurrentCycle:='None : No cycle in progress';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stCycle.sCurrentCycle:='Keiner : Kein Zyklus läuft';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stCycle.sCurrentCycle:='Nessuno : Nessun ciclo in corso';
+				ELSE // Unknow
+					GV_HMI.stCycle.sCurrentCycle:='None : Unknow Language';
+				END_IF
+				
+			ENUM_Cycle_Type.LoadSmallBig :
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stCycle.sCurrentCycle:='A100/A200 : Chargement petit/grand outil';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stCycle.sCurrentCycle:='A100/A200 : Loading small/large tool';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stCycle.sCurrentCycle:='A100/A200 : Laden kleines/großes Werkzeug';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stCycle.sCurrentCycle:='A100/A200 : Caricamento piccolo/grande utensile';
+				ELSE // Unknow
+					GV_HMI.stCycle.sCurrentCycle:='A100/A200 : Unknow Language';
+				END_IF
+				
+			ENUM_Cycle_Type.UnloadSmall :
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stCycle.sCurrentCycle:='B100 : Déchargement petit outil';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stCycle.sCurrentCycle:='B100 : Unloading small tool';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stCycle.sCurrentCycle:='B100 : Entladen kleines Werkzeug';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stCycle.sCurrentCycle:='B100 : Scaricamento piccolo utensile';
+				ELSE // Unknow
+					GV_HMI.stCycle.sCurrentCycle:='B100 : Unknow Language';
+				END_IF
+				
+			ENUM_Cycle_Type.UnloadBig :
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stCycle.sCurrentCycle:='B200 : Déchargement gros outil';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stCycle.sCurrentCycle:='B200 : Unloading large tool';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stCycle.sCurrentCycle:='B200 : Entladen großes Werkzeug';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stCycle.sCurrentCycle:='B200 : Scaricamento grande utensil';
+				ELSE // Unknow
+					GV_HMI.stCycle.sCurrentCycle:='B200 : Unknow Language';
+				END_IF
+				
+			ENUM_Cycle_Type.LoadSmallUnloadSmall :
+				IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+					GV_HMI.stCycle.sCurrentCycle:='C100 : Chargement petit outil + Déchargement petit outil';
+				ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+					GV_HMI.stCycle.sCurrentCycle:='C100 : Loading small tool + Unloading small tool';
+				ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+					GV_HMI.stCycle.sCurrentCycle:='C100 : Laden kleines Werkzeug + Entladen kleines Werkzeug';
+				ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+					GV_HMI.stCycle.sCurrentCycle:='C100 : Caricamento piccolo utensile + Scaricamento piccolo utensile';
+				ELSE // Unknow
+					GV_HMI.stCycle.sCurrentCycle:='C100 : Unknow Language';
+				END_IF
+				
+		END_CASE
+	
+	(* Cycle Step *)
+		IF GV_Cycle.iSeqIndex>0 THEN
+			CASE GV_Cycle.aSequence[GV_Cycle.iSeqIndex] OF
+			
+				ENUM_Cycle_Action.None : 
+					IF GV_Cycle.bInitRequest THEN
+						IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+							GV_HMI.stCycle.sCurrentCycle:='Attente initialisation';
+						ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+							GV_HMI.stCycle.sCurrentCycle:='Waiting for initialization';
+						ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+							GV_HMI.stCycle.sCurrentCycle:='Warten auf Initialisierung';
+						ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+							GV_HMI.stCycle.sCurrentCycle:='Attesa di inizializzazione';
+						ELSE // Unknow
+							GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+						END_IF
+					ELSIF GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.eCycleStep=ENUM_Cycle_Step.InitData AND (NOT GV_Cycle.bStartStop) AND GV_Cycle.bInitCycleDone THEN
+						IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+							GV_HMI.stCycle.sCurrentCycle:='Attente START Cycle';
+						ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+							GV_HMI.stCycle.sCurrentCycle:='Waiting for START Cycle';
+						ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+							GV_HMI.stCycle.sCurrentCycle:='Warten auf START-Zyklus';
+						ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+							GV_HMI.stCycle.sCurrentCycle:='Attesa del ciclo START';
+						ELSE // Unknow
+							GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+						END_IF
+					ELSIF GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.eCycleStep=ENUM_Cycle_Step.End THEN
+						IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+							GV_HMI.stCycle.sCurrentCycle:='Fin du cycle';
+						ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+							GV_HMI.stCycle.sCurrentCycle:='End of the cycle';
+						ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+							GV_HMI.stCycle.sCurrentCycle:='Ende des Zyklus';
+						ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+							GV_HMI.stCycle.sCurrentCycle:='Fine del ciclo';
+						ELSE // Unknow
+							GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+						END_IF
+					ELSIF GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.eCycleStep=ENUM_Cycle_Step.Error THEN
+						IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+							GV_HMI.stCycle.sCurrentCycle:='Erreur durant le cycle';
+						ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+							GV_HMI.stCycle.sCurrentCycle:='Error during the cycle';
+						ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+							GV_HMI.stCycle.sCurrentCycle:='Fehler während des Zyklus';
+						ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+							GV_HMI.stCycle.sCurrentCycle:='Errore durante il ciclo';
+						ELSE // Unknow
+							GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+						END_IF
+					ELSE
+						IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+							GV_HMI.stCycle.sCurrentCycle:='Aucune étape en cours';
+						ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+							GV_HMI.stCycle.sCurrentCycle:='No step in progress';
+						ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+							GV_HMI.stCycle.sCurrentCycle:='Kein Schritt läuft';
+						ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+							GV_HMI.stCycle.sCurrentCycle:='Nessun fase in corso';
+						ELSE // Unknow
+							GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+						END_IF
+					END_IF
+				
+				ENUM_Cycle_Action.PickToolMagazine :
+					IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+						GV_HMI.stCycle.sCurrentCycle:='Prise outil dans le magasin';
+					ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+						GV_HMI.stCycle.sCurrentCycle:='Pick tool in the magazine';
+					ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+						GV_HMI.stCycle.sCurrentCycle:='Werkzeug im Magazin aufnehmen';
+					ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+						GV_HMI.stCycle.sCurrentCycle:='Prelievo utensile nel magazzino';
+					ELSE // Unknow
+						GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+					END_IF
+					
+				ENUM_Cycle_Action.ManipulatorToArm :
+					IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+						GV_HMI.stCycle.sCurrentCycle:='Transfert outil du manipulateur vers le bras changeur';
+					ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+						GV_HMI.stCycle.sCurrentCycle:='Transfer tool from manipulator to changing arm';
+					ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+						GV_HMI.stCycle.sCurrentCycle:='Werkzeugtransfer vom Manipulator zum Wechslerarm';
+					ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+						GV_HMI.stCycle.sCurrentCycle:='Trasferimento utensile dal manipolatore al braccio cambiautensili';
+					ELSE // Unknow
+						GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+					END_IF
+					
+				ENUM_Cycle_Action.ArmCNC :
+					IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+						GV_HMI.stCycle.sCurrentCycle:='Transfert entre le bras changeur et la CNC';
+					ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+						GV_HMI.stCycle.sCurrentCycle:='Transfer between changing arm and CNC';
+					ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+						GV_HMI.stCycle.sCurrentCycle:='Transfer zwischen Wechslerarm und CNC';
+					ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+						GV_HMI.stCycle.sCurrentCycle:='Trasferimento tra braccio cambiautensili e CNC';
+					ELSE // Unknow
+						GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+					END_IF
+					
+				ENUM_Cycle_Action.ArmToManipulator :
+					IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+						GV_HMI.stCycle.sCurrentCycle:='Transfert outil du bras changeur vers le manipulateur';
+					ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+						GV_HMI.stCycle.sCurrentCycle:='Transfer tool from changing arm to manipulator';
+					ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+						GV_HMI.stCycle.sCurrentCycle:='Werkzeugtransfer vom Wechslerarm zum Manipulator';
+					ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+						GV_HMI.stCycle.sCurrentCycle:='Trasferimento utensile dal braccio cambiautensili al manipolatore';
+					ELSE // Unknow
+						GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+					END_IF
+					
+				ENUM_Cycle_Action.PlaceToolMagazine :
+					IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+						GV_HMI.stCycle.sCurrentCycle:='Dépose outil dans le magasin';
+					ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+						GV_HMI.stCycle.sCurrentCycle:='Place tool in the magazine';
+					ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+						GV_HMI.stCycle.sCurrentCycle:='Werkzeug im Magazin ablegen';
+					ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+						GV_HMI.stCycle.sCurrentCycle:='Deposito utensile nel magazzino';
+					ELSE // Unknow
+						GV_HMI.stCycle.sCurrentCycle:='Unknow Language';
+					END_IF
+					
+			END_CASE
+		END_IF
+
+	(* User level *)
+		IF GV_HMI.sCurrentUserName='WM' OR GV_HMI.sCurrentUserName='__SystemAdministrator' THEN // Admin
+			GV_HMI.iCurrentUserLevel:=ENUM_User_Level.Admin;
+		ELSIF GV_HMI.sCurrentUserName='Maintenance' THEN // Maintenance
+			GV_HMI.iCurrentUserLevel:=ENUM_User_Level.Maintenance;
+		ELSIF GV_HMI.sCurrentUserName='Operator' THEN // Operator
+			GV_HMI.iCurrentUserLevel:=ENUM_User_Level.Operator;
+		ELSE
+			GV_HMI.iCurrentUserLevel:=ENUM_User_Level.None;
+		END_IF
+
+	(* User message *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.None THEN // No mode in Progress
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				GV_HMI.sUserMessage:='Aucun mode de marche en cours';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				GV_HMI.sUserMessage:='No operating mode active';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				GV_HMI.sUserMessage:='Kein Betriebsmodus aktiv';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				GV_HMI.sUserMessage:='Nessuna modalità operativa attiva';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSIF GV_OpMode.eOpMode=ENUM_OpMode.INIT AND (NOT GV_Cycle.bStartStop) AND (NOT GV_Cycle.bInitCycleDone) THEN // Wait start for INIT
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				GV_HMI.sUserMessage:='Attente Start Cycle pour Initialisation';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				GV_HMI.sUserMessage:='Waiting for Start Cycle for Initialization';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				GV_HMI.sUserMessage:='Warten auf Startzyklus für Initialisierung';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				GV_HMI.sUserMessage:='In attesa dell’avvio del ciclo per l’inizializzazione';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSIF GV_OpMode.eOpMode=ENUM_OpMode.INIT AND GV_Cycle.bStartStop AND (NOT GV_Cycle.bInitCycleDone) THEN // INIT in progress
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				GV_HMI.sUserMessage:='Initialisation en cours';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				GV_HMI.sUserMessage:='Initialization in progress';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				GV_HMI.sUserMessage:='Initialisierung läuft';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				GV_HMI.sUserMessage:='Inizializzazione in corso';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSIF GV_OpMode.eOpMode=ENUM_OpMode.INIT AND GV_Cycle.bInitCycleDone THEN // INIT done
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				//GV_HMI.sUserMessage:='Mode INIT Actif';
+				GV_HMI.sUserMessage:='Initialisation terminée, START pour recommencer';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				//GV_HMI.sUserMessage:='INIT Mode Active';
+				GV_HMI.sUserMessage:='Initialization complete, START to restart';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				//GV_HMI.sUserMessage:='INIT-Modus Aktiv';
+				GV_HMI.sUserMessage:='Initialisierung abgeschlossen, START zum Neustarten';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				//GV_HMI.sUserMessage:='Modalità INIT Attiva';
+				GV_HMI.sUserMessage:='Inizializzazione completata, START per riavviare';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSIF GV_OpMode.eOpMode=ENUM_OpMode.AUTO THEN // AUTO mode
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				GV_HMI.sUserMessage:='Mode AUTO Actif';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				GV_HMI.sUserMessage:='AUTO Mode Active';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				GV_HMI.sUserMessage:='AUTO-Modus Aktiv';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				GV_HMI.sUserMessage:='Modalità AUTO Attiva';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSIF GV_OpMode.eOpMode=ENUM_OpMode.MANU THEN // MANU mode
+			IF GV_HMI.iCurrentLanguage=1 THEN //Fr
+				GV_HMI.sUserMessage:='Mode MANU Actif';
+			ELSIF GV_HMI.iCurrentLanguage=2 THEN // En
+				GV_HMI.sUserMessage:='MANU Mode Active';
+			ELSIF GV_HMI.iCurrentLanguage=3 THEN // Ge
+				GV_HMI.sUserMessage:='MANU-Modus Aktiv';
+			ELSIF GV_HMI.iCurrentLanguage=4 THEN // It
+				GV_HMI.sUserMessage:='Modalità MANU Attiva';
+			ELSE // Unknow
+				GV_HMI.sUserMessage:='Unknow Language';
+			END_IF
+		ELSE
+			GV_HMI.sUserMessage:='';
+		END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

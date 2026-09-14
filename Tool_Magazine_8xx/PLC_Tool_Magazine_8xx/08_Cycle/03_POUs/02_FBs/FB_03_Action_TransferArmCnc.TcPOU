@@ -1,0 +1,631 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_03_Action_TransferArmCnc" Id="{7524d7e1-0ee2-44b4-acde-66eeaf5edcfd}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_03_Action_TransferArmCnc
+VAR_INPUT
+	(** SETUP ST **)
+		//stToolLocation : ST_Tool_Location ; // Tool_Location structure of the Tool to Transfer
+		
+	(** SETUP TIME **)
+		(*Step 1*)
+			tMove1Timeout : TIME ; // Value of the timeout for Step 1
+		(*Step 2*)
+			tMove2Timeout : TIME ; // Value of the timeout for Step 2
+		(*Step 3*)
+			tMove3Timeout : TIME ; // Value of the timeout for Step 3
+		(*Step 4*)
+			tMove4Timeout : TIME ; // Value of the timeout for Step 4
+		(*Step 5*)
+			tMove5Timeout : TIME ; // Value of the timeout for Step 5
+			
+	(** SETUP REAL **)
+
+	(** SETUP INT **)
+		iGripperArmToCncNumber : INT ; // Gripper number from Arm to Cnc
+		iGripperCncToArmNumber : INT ; // Gripper number from Cnc to Arm
+
+	(** SETUP FLAG **)
+		bTransferArmToCnc : BOOL ; // Transfer from Arm to Cnc
+		bTransferCncToArm : BOOL ; // Transfer from Cnc to Arm
+		bCheckSensorArmGripper1 : BOOL ; // Check the sensor of the arm gripper 1
+		bCheckSensorArmGripper2 : BOOL ; // Check the sensor of the arm gripper 2
+			
+	(** PROCESS FLAG **)
+		bInit : BOOL ;  // Init the Fb
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG *)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** SETUP ENUM **)
+		
+	(** SETUP TIME **)
+	
+	(** SETUP FLAG **)
+		
+	(** PROCESS STRING **)
+		strTextLog : STRING ; // Text to Log
+		
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+		
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+		bXError : BOOL ; // Axis X Error
+		bYError : BOOL ; // Axis Y Error
+		bZError : BOOL ; // Axis Z Error
+		bArmError : BOOL ; // Axis Arm Error
+		
+	(** FB **)
+		(*Step 1*)
+			tonTimeoutMove1 : TON ; // TON timeout for the Step 1
+		(*Step 2*)
+			tonTimeoutMove2 : TON ; // TON timeout for the Step 2
+		(*Step 3*)
+			tonTimeoutMove3 : TON ; // TON timeout for the Step 3
+		(*Step 4*)
+			tonTimeoutMove4 : TON ; // TON timeout for the Step 4
+		(*Step 5*)
+			tonTimeoutMove5 : TON ; // TON timeout for the Step 5
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_03_Action_TransferArmToCnc
+//
+//		Management of the tool transfer operation between the tool changer arm <nd the CNC
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.02.2026
+//Dernière modification : 09.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonTimeoutMove1();
+	tonTimeoutMove2();
+	tonTimeoutMove3();
+	tonTimeoutMove4();
+	tonTimeoutMove5();
+
+(** AXIS ERRORS **)
+	bXError:=(GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bYError:=(GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bZError:=(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bArmError:=(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		iStep:=0;
+		bInit:=FALSE;
+	END_IF
+	
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle + Check*)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			
+			tonTimeoutMove1.IN:=FALSE;
+			tonTimeoutMove2.IN:=FALSE;
+			tonTimeoutMove3.IN:=FALSE;
+			tonTimeoutMove4.IN:=FALSE;
+			tonTimeoutMove5.IN:=FALSE;
+
+			GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+
+			(* Idle->Start *)
+				IF rtStart.Q AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						(*TransferArmCnc*)
+							IF bTransferArmToCnc THEN
+								strTextLog:='With';
+							ELSE
+								strTextLog:='Without';
+							END_IF
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Transfer from Arm to Cnc = ',strTextLog));
+							strTextLog:=INT_TO_STRING(iGripperArmToCncNumber);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Arm Gripper Number Arm to Cnc = ',strTextLog));
+						(*TransferCncArm*)
+							IF bTransferCncToArm THEN
+								strTextLog:='With';
+							ELSE
+								strTextLog:='Without';
+							END_IF
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Transfer from Cnc to Arm = ',strTextLog));
+							strTextLog:=INT_TO_STRING(iGripperCncToArmNumber);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Arm Gripper Number Cnc to Arm = ',strTextLog));
+						(*Arm*)
+							IF bCheckSensorArmGripper1 THEN
+								strTextLog:='With';
+							ELSE
+								strTextLog:='Without';
+							END_IF
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Arm Gripper 1 Sensor Check = ',strTextLog));
+							IF bCheckSensorArmGripper2 THEN
+								strTextLog:='With';
+							ELSE
+								strTextLog:='Without';
+							END_IF
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Arm Gripper 2 Sensor Check = ',strTextLog));
+						(*Timeout Step 1_OpenDoor*)
+							strTextLog:=TIME_TO_STRING(tMove1Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Timeout Step : 1_OpenDoor = ',strTextLog));
+						(*Timeout Step 2_ArmInCNC*)
+							strTextLog:=TIME_TO_STRING(tMove2Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Timeout Step : 2_ArmInCNC = ',strTextLog));
+						(*Timeout Step 3_WaitTransfer*)
+							strTextLog:=TIME_TO_STRING(tMove3Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Timeout Step : 3_WaitTransfer = ',strTextLog));
+						(*Timeout Step 4_ArmHome*)
+							strTextLog:=TIME_TO_STRING(tMove4Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Timeout Step : 4_ArmHome = ',strTextLog));
+						(*Timeout Step 5_CloseDoor*)
+							strTextLog:=TIME_TO_STRING(tMove5Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : 0_Idle : Timeout Step : 5_CloseDoor = ',strTextLog));
+							
+					(*Check Transfer Choice*)
+						IF (NOT bTransferArmToCnc) AND (NOT bTransferCncToArm) THEN
+							bError:=TRUE;
+							udiErrorID:=001; // 001 = Step 0 Error Transfer choice 01
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Transfer choice = None');
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iStep:=0; // Idle Step
+						END_IF
+							
+					(*Check TransferArmCnc Only*)	
+						IF bTransferArmToCnc AND (NOT bTransferCncToArm) THEN
+							IF iGripperArmToCncNumber=1 OR iGripperArmToCncNumber=2 THEN
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Arm to Cnc = OK');
+								IF iGripperArmToCncNumber=1 AND bCheckSensorArmGripper1 THEN // Arm Gripper 1
+									IF GV_IO.diToolPresenceArmGripper1 THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check = TRUE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=003; // 003 = Step 0 Error Gripper 1 Sensor Check 03
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check = FALSE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+								IF iGripperArmToCncNumber=2 AND bCheckSensorArmGripper2 THEN // Arm Gripper 2
+									IF GV_IO.diToolPresenceArmGripper2 THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check = TRUE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=004; // 004 = Step 0 Error Gripper 2 Sensor Check 04
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check = FALSE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+							ELSE
+								bError:=TRUE;
+								udiErrorID:=002; // 002 = Step 0 Error Gripper Number Arm to Cnc 02
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Arm to Cnc = NOK');
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+								iStep:=0; // Idle Step
+							END_IF
+						END_IF
+							
+					(*Check TransferCncArm Only*)
+						IF (NOT bTransferArmToCnc) AND bTransferCncToArm THEN
+							IF iGripperCncToArmNumber=1 OR iGripperCncToArmNumber=2 THEN
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Cnc to Arm = OK');
+								IF iGripperCncToArmNumber=1 AND bCheckSensorArmGripper1 THEN // Arm Gripper 1
+									IF (NOT GV_IO.diToolPresenceArmGripper1) THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check = FALSE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=006; // 006 = Step 0 Error Gripper 1 Sensor Check 06
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check = TRUE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+								IF iGripperCncToArmNumber=2 AND bCheckSensorArmGripper2 THEN // Arm Gripper 2
+									IF (NOT GV_IO.diToolPresenceArmGripper2) THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check = FALSE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=007; // 007 = Step 0 Error Gripper 2 Sensor Check 07
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check = TRUE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+							ELSE
+								bError:=TRUE;
+								udiErrorID:=005; // 005 = Step 0 Error Gripper Number Cnc to Arm 05
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Cnc to Arm = NOK');
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+								iStep:=0; // Idle Step
+							END_IF
+						END_IF
+						
+					(*Check TransferArmCnc AND TransferCncArm*)
+						IF bTransferArmToCnc AND bTransferCncToArm THEN
+							IF (iGripperArmToCncNumber=1 AND iGripperCncToArmNumber=2) OR (iGripperArmToCncNumber=2 AND iGripperCncToArmNumber=1) THEN
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Arm/Cnc = OK');
+									
+								IF iGripperArmToCncNumber=1 AND bCheckSensorArmGripper1 THEN // Arm Gripper 1
+									IF GV_IO.diToolPresenceArmGripper1 THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check : Arm To Cnc = TRUE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=009; // 009 = Step 0 Error Gripper 1 Sensor Check 09
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check : Arm To Cnc = FALSE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+								IF iGripperArmToCncNumber=2 AND bCheckSensorArmGripper2 THEN // Arm Gripper 2
+									IF GV_IO.diToolPresenceArmGripper2 THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check : Arm To Cnc = TRUE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=010; // 010 = Step 0 Error Gripper 2 Sensor Check 10
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check : Arm To Cnc = FALSE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+								IF iGripperCncToArmNumber=1 AND bCheckSensorArmGripper1 THEN // Arm Gripper 1
+									IF (NOT GV_IO.diToolPresenceArmGripper1) THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check : Cnc To Arm = FALSE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=011; // 011 = Step 0 Error Gripper 1 Sensor Check 11
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 1 sensor Check : Cnc To Arm = TRUE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+								IF iGripperCncToArmNumber=2 AND bCheckSensorArmGripper2 THEN // Arm Gripper 2
+									IF (NOT GV_IO.diToolPresenceArmGripper2) THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check : Cnc To Arm = FALSE = OK');
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=012; // 012 = Step 0 Error Gripper 2 Sensor Check 12
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper 2 sensor Check : Cnc To Arm = TRUE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								END_IF
+							ELSE
+								bError:=TRUE;
+								udiErrorID:=013; // 013 = Step 0 Error Gripper Number 13
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle : Gripper Number Arm/Cnc = NOK');
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+								iStep:=0; // Idle Step
+							END_IF
+						END_IF
+
+					IF (NOT bError) THEN
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 0_Idle->1_OpenDoor');
+						iSubStep:=0;
+						iStep:=1; // Next Step
+					END_IF
+
+				END_IF
+		
+		1: (* Step 1 = Open Intermediate door *)
+			tonTimeoutMove1.PT:=tMove1Timeout;
+			tonTimeoutMove1.IN:=TRUE;
+
+			CASE iSubStep OF
+
+				0: (* Start Open Intermediate Door *)
+					GV_Cycle.bOpenIntermediateDoorRequest:=TRUE;
+					GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 1_OpenDoor : 0 : Start Open Intermediate Door');
+					iSubStep:=1; // Next Step
+
+				1: (* Open Intermediate Door done *)
+				   IF GV_Cyltronic.aId[1].bWorkPositionDone AND GV_IO.diIntermediateDoorNotClosed THEN
+						tonTimeoutMove1.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 1_OpenDoor : 1 : Open Intermediate Door done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 1_OpenDoor->2_ArmInCNC');
+						iSubStep:=0; // End SubStep
+						iStep:=2; // Next Step
+					ELSIF GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_ERROR OR (GV_Cyltronic.aId[1].bWorkPositionDone AND (NOT GV_IO.diIntermediateDoorNotClosed)) THEN
+						bError:=TRUE;
+						udiErrorID:=111; // 111 = Step 1 SubStep 1 Error Cyltronic 1
+ 						GV_Cycle.bOpenIntermediateDoorRequest:=FALSE;
+						tonTimeoutMove1.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 1_OpenDoor=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+
+			IF tonTimeoutMove1.Q AND tonTimeoutMove1.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=199; // 199 = Step 1 Error Timeout 99
+				GV_Cycle.bOpenIntermediateDoorRequest:=FALSE;
+				tonTimeoutMove1.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 1_OpenDoor=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0;
+			END_IF
+
+		2: (* Step 2 = Move the changing arm at CNC position + Air blow *)
+			tonTimeoutMove2.PT:=tMove2Timeout;
+			tonTimeoutMove2.IN:=TRUE;
+			
+			CASE iSubStep OF
+
+				0: (* Start Arm move + Start Air Blow *)
+					GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=TRUE;
+					GV_Axes.stAxisArm.lrAutoPosAbs:=GV_Tool_Magazine.stArm.lrArmCnc;
+					GV_Axes.stAxisArm.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 2_ArmInCNC : 0 : Start Arm move');
+					iSubStep:=1; // Next Step
+
+				1: (* Wait Arm move done + Stop Air Blow*)
+				   IF GV_Axes.stAxisArm.bAutoDone AND (NOT bArmError) THEN
+						GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+						GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 2_ArmInCNC : 1 : Arm move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 2_ArmInCNC->3_WaitTransfer');
+						iSubStep:=0; // End SubStep
+						iStep:=3; // Next Step
+					ELSIF bArmError THEN
+						bError:=TRUE;
+						udiErrorID:=211; // 211 = Step 2 SubStep 1 Error Axis Arm 1
+						GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+						GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 2_ArmInCNC=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+		
+			IF tonTimeoutMove2.Q AND tonTimeoutMove2.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=299; // 299 = Step 2 Error Timeout 99
+				GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+				GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+				tonTimeoutMove2.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 2_ArmInCNC=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0;
+				iStep:=0;
+			END_IF
+			
+		3: (* Step 3 = Wait for end of transfer *)
+			tonTimeoutMove3.PT:=tMove3Timeout;
+			tonTimeoutMove3.IN:=TRUE;
+
+			IF GV_CNC.stFanucData.stCNCMagazine.biLoadUnloadEnd AND (NOT GV_CNC.stFanucData.stCncMagazine.biEvacuateArm) THEN
+				IF bTransferCncToArm THEN // Cnc To Arm
+					IF iGripperCncToArmNumber>0 THEN
+						(*Memory*) // Transfer Memory from Cnc to Arm grippper
+							GV_Tool_Magazine.stArm.aGripper[iGripperCncToArmNumber].iAbsLocationNumberMemory:=GV_CNC.stSpindle.iAbsLocationNumberMemory;
+							GV_Tool_Magazine.stArm.aGripper[iGripperCncToArmNumber].iRelLocationNumberMemory:=GV_CNC.stSpindle.iRelLocationNumberMemory;
+							GV_CNC.stSpindle.iAbsLocationNumberMemory:=0;
+							GV_CNC.stSpindle.iRelLocationNumberMemory:=0;
+					END_IF	
+				END_IF
+				IF bTransferArmToCnc THEN // Arm To Cnc
+					IF iGripperArmToCncNumber>0 THEN
+						(*Memory*) // Transfer Memory from Arm grippper to Cnc
+							GV_CNC.stSpindle.iAbsLocationNumberMemory:=GV_Tool_Magazine.stArm.aGripper[iGripperArmToCncNumber].iAbsLocationNumberMemory;
+							GV_CNC.stSpindle.iRelLocationNumberMemory:=GV_Tool_Magazine.stArm.aGripper[iGripperArmToCncNumber].iRelLocationNumberMemory;
+							GV_Tool_Magazine.stArm.aGripper[iGripperArmToCncNumber].iAbsLocationNumberMemory:=0;
+							GV_Tool_Magazine.stArm.aGripper[iGripperArmToCncNumber].iRelLocationNumberMemory:=0;
+					END_IF
+				END_IF
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 3_WaitTransfer->4_ArmManipulator');
+				tonTimeoutMove3.IN:=FALSE;
+				iSubStep:=0; // End SubStep
+				iStep:=4; // Next Step
+			ELSIF GV_CNC.stFanucData.stCncMagazine.biEvacuateArm THEN
+				bError:=TRUE;
+				udiErrorID:=388; // 388 = Step 3 Error EvacuateArm 88
+				GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+				tonTimeoutMove3.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 3_WaitTransfer=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0;
+			END_IF
+			
+			IF tonTimeoutMove3.Q AND tonTimeoutMove3.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=399; // 399 = Step 3 Error Timeout 99
+				GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+				tonTimeoutMove3.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 3_WaitTransfer=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0;
+			END_IF
+			
+		4: (* Step 4 = Move the changing arm at manipulator position + Air Blow *)
+			tonTimeoutMove4.PT:=tMove4Timeout;
+			tonTimeoutMove4.IN:=TRUE;
+			
+			CASE iSubStep OF
+
+				0: (* Start Arm move + Start Air Blow *)
+					GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=TRUE;
+					GV_Axes.stAxisArm.lrAutoPosAbs:=GV_Tool_Magazine.stArm.lrArmManipulator;//GV_Tool_Magazine.stArm.lrArmHome;
+					GV_Axes.stAxisArm.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 4_ArmManipulator : 0 : Start Arm move');
+					iSubStep:=1; // Next Step
+
+				1: (* Wait Arm move done + Stop Air Blow *)
+				   IF GV_Axes.stAxisArm.bAutoDone AND (NOT bArmError) THEN
+						GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+						GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+						tonTimeoutMove4.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 4_ArmManipulator : 1 : Arm move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 4_ArmManipulator->5_CloseDoor');
+						iSubStep:=0; // End SubStep
+						iStep:=5; // Next Step
+					ELSIF bArmError THEN
+						bError:=TRUE;
+						udiErrorID:=411; // 411 = Step 4 SubStep 1 Error Axis Arm 1
+						GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+						GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+						tonTimeoutMove4.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 4_ArmHome=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+		
+			IF tonTimeoutMove4.Q AND tonTimeoutMove4.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=499; // 499 = Step 4 Error Timeout 99
+				GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+				GV_CNC.stFanucData.stMagazineCNC.boAirBlowIntermediateDoor:=FALSE;
+				tonTimeoutMove4.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 4_ArmHome=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0;
+				iStep:=0;
+			END_IF
+
+		5: (* Step 5 = Close intermediate door *) 
+			tonTimeoutMove5.PT:=tMove5Timeout;
+			tonTimeoutMove5.IN:=TRUE;
+
+			CASE iSubStep OF
+
+				0: (* Start Close Intermediate Door *)
+					GV_Cycle.bOpenIntermediateDoorRequest:=FALSE;
+					GV_Cycle.bCloseIntermediateDoorRequest:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 5_CloseDoor : 0 : Start Close Intermediate Door');
+					iSubStep:=1; // Next Step
+
+				1: (* Close Intermediate Door done *)
+				   IF (NOT GV_CNC.stFanucData.stCNCMagazine.biLoadUnloadEnd) AND GV_Cyltronic.aId[1].bRestPositionDone AND (NOT GV_IO.diIntermediateDoorNotClosed) THEN
+					   	GV_Cycle.bOpenIntermediateDoorRequest:=FALSE;
+						GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+						tonTimeoutMove5.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 5_CloseDoor : 1 : Close Intermediate Door done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 5_CloseDoor->0_Idle');
+						iSubStep:=0; // End SubStep
+						iStep:=0; // Idle Step
+						bDone:=TRUE;
+						bBusy:=FALSE;
+					ELSIF GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_ERROR OR (GV_Cyltronic.aId[1].bRestPositionDone AND GV_IO.diIntermediateDoorNotClosed) THEN
+						bError:=TRUE;
+						udiErrorID:=511; // 511 = Step 5 SubStep 1 Error Cyltronic 1
+ 						GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+						tonTimeoutMove5.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 5_CloseDoor=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE
+		
+			IF tonTimeoutMove5.Q AND tonTimeoutMove5.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=599; // 599 = Step 5 Error Timeout 99
+				GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+				tonTimeoutMove5.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_03_Action_TransferArmToCnc : 5_CloseDoor=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_03_Action_TransferArmToCnc : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0;
+			END_IF
+			
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

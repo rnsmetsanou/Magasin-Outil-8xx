@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Init_Call_Events" Id="{9f564dcd-4ed1-4d06-bddc-33469b99292b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Init_Call_Events
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	(** FB **)
+	fbInitEvents : FB_Init_Events ;
+	fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Init_Call_Events
+//
+//					Gestion initialisation appel des évènements  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+// Alarms and Messages init
+// Call first Event because we need to call one Event in the GUID to have it into .xml file
+// Event group number assignment
+fbEventGroupAssignement(iEventGroup:=GV_Events.iEventGroupCallEvent);
+GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aAlarm[1].fbAlarm.CreateEx(TC_Events.EventsAlarms.Alarm1,TRUE,0);
+GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[1].fbMessage.CreateEx(TC_Events.EventsMessages.Message1,0);
+
+fbInitEvents(iEventGroup:=GV_Events.iEventGroupCallEvent, strEventType:='ALARM', strEventGuid:='784AC907-376D-4A8E-8897-3F447F113731', tcEventSeverity:=2);
+fbInitEvents(iEventGroup:=GV_Events.iEventGroupCallEvent, strEventType:='MESSAGE', strEventGuid:='8930F18E-C6C1-418F-90B9-F30993F2C9E2', tcEventSeverity:=0);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

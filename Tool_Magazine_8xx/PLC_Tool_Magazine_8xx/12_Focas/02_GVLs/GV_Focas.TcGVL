@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Focas" Id="{83555ecb-5fc6-446c-9ae4-e3987c177849}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  					GV_Focas
+//
+//						Variables Focas (FOCAS<->C#<->PLC(ads)) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+END_VAR
+
+VAR_GLOBAL
+	
+	(** ST **)
+	stFocasMagazine : ST_Focas_To_Magazine ; // Exchange Focas to Magazine
+	stMagazineFocas : ST_Magazine_To_Focas ; // Exchange Magazine to Focas
+
+	stMisc : ST_Miscellaneous ; // Miscellaneous if need	
+
+	(** STRING **)
+		sErrorAds : STRING ; // ADS Error Text
+
+	(** INT **)
+		iErrorAdsID : INT ; // ADS Error ID
+
+	(** FLAG **)
+		bLifeFlag : BOOL := FALSE ; // Bit de vie envoyé par la passerelle
+
+	(** CONNECION FOCAS **)
+		(* CommFocas STRING *)
+			sFocasError : STRING ; // Description du code d'erreur
+			sFocasAdr : STRING ; // Adresse IPv4 de la focas
+		(* CommFocas INT *)
+			iFocasErrorID : INT ; // Retourne la valeur si une erreur est survenue
+			iFocasPort : INT ; // Numéro de port pour la communication avec la Focas
+		(* CommFocas FLAG *)
+			bFocasOK : BOOL ; // Connexion à la Focas ok
+			bFocasAdsOK : BOOL ; // Connexion à l'ads ok
+			bFocasStartComm : BOOL ; // Start la communication Focas
+			bFocasStopComm : BOOL ; // Stop la communication 
+			bFocasBusy : BOOL ; // Bloc en cours d'exécution
+			bFocasDone : BOOL ; // Bloc a correctement exécuter sans erreur
+
+	(** READ FOCAS **)
+		(* ReadFocas ST *)
+			stRead : St_Read_Focas ; // Tableau pour permettre plusieurs Bloc Read
+		(* ReadFocas STRING *)
+			sReadError : STRING ; // Description du code d'erreur
+		(* ReadFocas INT *)
+			iReadErrorID : INT ; // Retourne la valeur si une erreur est survenue
+			iReadStep : INT ; // Etape pour le cycle de lecture
+		(* ReadFocas BYTE *)
+			byReadFlag : BYTE := 0 ; // Numéro du bit à lire dans un byte
+		(* ReadFocas FLAG *)
+			bReadStart : BOOL := FALSE ; 
+			bReadBusy : BOOL ; // Vrai si le bloc réalise la requête
+			bReadDone : BOOL ; // Vrai si le bloc à réaliser la requête sans problème
+			
+	(** WRITE FOCAS **)
+		(* WriteFocas ST *)
+			stWrite : St_Write_Focas ; // Tableau pour permettre plusieurs Bloc Write
+		(* WriteFocas STRING *)
+			sWriteError : STRING ; // Description du code d'erreur
+		(* WriteFocas INT *)
+			iWriteErrorID : INT ; // Retourne la valeur si une erreur est survenue
+			iWriteStep : INT ; // Etape pour le cycle d'écriture
+		(* WriteFocas FLAG *)
+			bWriteStart : BOOL := FALSE ; 
+			bWriteBusy : BOOL ; // Vrai si le bloc réalise la requête
+			bWriteDone : BOOL ; // Vrai si le bloc à réaliser la requête sans problème
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

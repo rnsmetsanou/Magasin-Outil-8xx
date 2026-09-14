@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Array_Data" Id="{a6b40a3b-22fb-4fe8-95f4-18a7262ecdeb}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  					ST_Array_Backup
+//
+//									Structure pour le tableau Backup 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.03.2026
+//Dernière modification : 20.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Array_Data :
+STRUCT
+	
+	(** STRING **)
+		sIndex : STRING(5) ;
+		sName : STRING(GV_General.udiMaxBackupFiledLength) ;
+		sType : STRING(10) ;
+		sValue : STRING(GV_General.udiMaxBackupFiledLength) ;
+	
+	(** POINTER **)
+		pString : POINTER TO STRING ;
+		pLreal : POINTER TO LREAL ;
+		pInt : POINTER TO INT ;
+		pBool : POINTER TO BOOL ;
+
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

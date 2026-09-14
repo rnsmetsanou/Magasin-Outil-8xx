@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Axes" Id="{08dc7b89-ad4f-4986-b485-600009142676}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_HMI_Axes
+//
+//								Structure Axes HMI			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.02.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Axes :
+STRUCT
+	
+	(** SETUP LREAL **)
+		lrVelocityPourcent : LREAL ; // Velocity in Pourcent
+
+	(** SETUP INT **)
+		iVelocityPourcent : INT ; // Velocity in Pourcent
+
+	(** SETUP FLAG **)
+		bButtonChoiceAxisX : BOOL ; // Button Axis Choice X
+			rtButtonChoiceAxisX : R_Trig ; // Trigger for Button Axis Choice X
+		bButtonChoiceAxisY : BOOL ; // Button Axis Choice Y
+			rtButtonChoiceAxisY : R_Trig ; // Trigger for Button Axis Choice Y
+		bButtonChoiceAxisZ : BOOL ; // Button Axis Choice Z
+			rtButtonChoiceAxisZ : R_Trig ; // Trigger for Button Axis Choice Z
+		bButtonChoiceAxisArm : BOOL ; // Button Axis Choice Arm
+			rtButtonChoiceAxisArm : R_Trig ; // Trigger for Button Axis Choice Arm	
+		
+		bButtonPlus : BOOL ; // Button Plus
+			rtButtonPlus : R_Trig ; // Trigger for Button Plus
+		bButtonMinus : BOOL ; // Button Minus
+			rtButtonMinus : R_Trig ; // Trigger for Button Minus
+
+		bButtonChoiceReferencingX : BOOL ; // Button Axis Referencing X
+			rtButtonChoiceReferencingX : R_Trig ; // Trigger for Button Axis Referencing X
+		bButtonChoiceReferencingY : BOOL ; // Button Axis Referencing Y
+			rtButtonChoiceReferencingY : R_Trig ; // Trigger for Button Axis Referencing Y
+		bButtonChoiceReferencingZ : BOOL ; // Button Axis Referencing Z
+			rtButtonChoiceReferencingZ : R_Trig ; // Trigger for Button Axis Referencing Z
+		bButtonChoiceReferencingArm : BOOL ; // Button Axis Referencing Arm
+			rtButtonChoiceReferencingArm : R_Trig ; // Trigger for Button Axis Referencing Arm	
+	
+		bButtonReferencingAxis : BOOL ; // Button Referencing
+			rtButtonReferencingAxis : R_Trig ; // Trigger for Button Referncing	
+	
+		bButtonMinSofltLimit : BOOL ; // Button Enable/Disable Min Soft Limit (for referencing)
+			rtButtonMinSofltLimit : R_Trig ; // Trigger for Buttonnable/Disable Min Soft Limit (for referencing)
+		bButtonMaxSofltLimit : BOOL ; // Button Enable/Disable Max Soft Limit (for referencing)
+			rtButtonMaxSofltLimit : R_Trig ; // Trigger for Buttonnable/Disable Max Soft Limit (for referencing)
+			
+	(** PROCESS STRING **)
+		sAxisXActPos : STRING ; // Actual Position of the Axis X
+			lrAxisXActPos : LREAL ; // Actual Position of the Axis X
+		sAxisXActVelo : STRING ; // Actual Velocity of the Axis X
+			lrAxisXActVelo : LREAL ; // Actual Velocity of the Axis X
+		sAxisYActPos : STRING ; // Actual Position of the Axis Y
+			lrAxisYActPos : LREAL ; // Actual Position of the Axis Y
+		sAxisYActVelo : STRING ; // Actual Velocity of the Axis Y
+			lrAxisYActVelo : LREAL ; // Actual Velocity of the Axis Y
+		sAxisZActPos : STRING ; // Actual Position of the Axis Z
+			lrAxisZActPos : LREAL ; // Actual Position of the Axis Z
+		sAxisZActVelo : STRING ; // Actual Velocity of the Axis Z
+			lrAxisZActVelo : LREAL ; // Actual Velocity of the Axis Z
+		sAxisArmActPos : STRING ; // Actual Position of the Axis Arm
+			lrAxisArmActPos : LREAL ; // Actual Position of the Axis Arm
+		sAxisArmActVelo : STRING ; // Actual Velocity of the Axis Arm
+			lrAxisArmActVelo : LREAL ; // Actual Velocity of the Axis Arm
+			
+		sRefrencingActPos : STRING ; // Actual Position of the Axis choice for the referncing
+			lrRefrencingActPos : LREAL ; // Actual Position of the Axis choice for the referncing
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

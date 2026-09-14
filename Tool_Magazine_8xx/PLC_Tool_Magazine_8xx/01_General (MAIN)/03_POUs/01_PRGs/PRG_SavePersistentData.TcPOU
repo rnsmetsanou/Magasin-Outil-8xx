@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_SavePersistentData" Id="{bd3aad15-b8ec-4bf5-8f59-8f7f72a7f594}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_SavePersistentData
+VAR
+	(** FB **)
+	FB_WritePersistentData : WritePersistentData ;
+	TimerSave : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_SavePersistentData
+//
+//							Sauvegarde des données persistante			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+IF GV_General.tSavePersistentData<>T#0S THEN
+	TimerSave(IN:=TRUE,PT:=GV_General.tSavePersistentData);
+	IF TimerSave.Q OR GV_General.bRebootRequest OR GV_General.bShutdownRequest THEN
+		TimerSave(IN:=FALSE);
+		FB_WritePersistentData(NETID:='',PORT:=851,START:=TRUE,TMOUT:=GV_General.tSavePersistentData);
+		IF (NOT FB_WritePersistentData.BUSY) AND GV_General.bRebootRequest THEN
+			GV_General.bSaveDataRebootDone:=TRUE;
+		END_IF
+		IF (NOT FB_WritePersistentData.BUSY) AND GV_General.bShutdownRequest THEN
+			GV_General.bSaveDataShutdownDone:=TRUE;
+		END_IF
+	ELSE
+		FB_WritePersistentData(START:=FALSE);			
+	END_IF
+ELSE
+	TimerSave.IN:=FALSE;	
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

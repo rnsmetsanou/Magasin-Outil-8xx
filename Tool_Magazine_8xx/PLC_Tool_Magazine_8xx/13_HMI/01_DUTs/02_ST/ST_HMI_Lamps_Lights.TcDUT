@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Lamps_Lights" Id="{89a8474f-9dd2-4e09-850e-c8a6ce7a848d}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Lamps_Lights
+//
+//							Structure voyants et lumières HMI 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Lamps_Lights :
+STRUCT
+	
+	(** SETUP INT **)
+		iLightsTimer : INT ; // Value of the lights timer
+	
+	(** SETUP FLAG **)
+		bLightsWithTimer : BOOL ; // Lights work with timer
+	
+	(** PROCESS FLAG **)
+		bLightsButton : BOOL ; // Button for lights
+		
+		bLampInit : BOOL ; // Lamp for Init
+		bLampAuto : BOOL ; // Lamp for Auto
+		bLampManu : BOOL ; // Lamp for Manu
+		bLampAck : BOOL ; // Lamp for acknowledgement
+		
+		bLampStartCycle : BOOL ; // Lamp for Start Cyle
+		bLampStopCycle : BOOL ; // Lamp for Stop
+
+		bLampManuManipGripperCloseEnable : BOOL ; // Lamp for Close Manipulator Gripper Enable
+		bLampManuManipGripperOpenEnable : BOOL ; // Lamp for Open Manipulator Gripper Enable
+		
+		bLampManuCyltronicRestEnable : BOOL ; // Lamp for move to Rest cyltronic Enable
+		bLampManuCyltronicWorkEnable : BOOL ; // Lamp for move to Work cyltronic Enable
+		
+		bLampAxisXOperationnal : BOOL ; // Lamp for Axis X Operationnal
+		bLampAxisYOperationnal : BOOL ; // Lamp for Axis X Operationnal
+		bLampAxisZOperationnal : BOOL ; // Lamp for Axis X Operationnal
+		bLampAxisArmOperationnal : BOOL ; // Lamp for Axis X Operationnal
+		
+		bLampJogAxisX : BOOL ; // Lamp for Axis X choice in Jog
+		bLampJogAxisY : BOOL ; // Lamp for Axis Y choice in Jog
+		bLampJogAxisZ : BOOL ; // Lamp for Axis Z choice in Jog
+		bLampJogAxisArm : BOOL ; // Lamp for Axis Arm choice in Jog
+		
+		bLampRefAxisX : BOOL ; // Lamp for Axis X referencing
+		bLampRefAxisY : BOOL ; // Lamp for Axis Y referencing
+		bLampRefAxisZ : BOOL ; // Lamp for Axis Z referencing
+		bLampRefAxisArm : BOOL ; // Lamp for Axis Arm referencing
+		
+		bLampEnMinSoftPosLimit : BOOL ; // Lamp for Min Soft Limit Enable/Disable of the Axis referencing
+		bLampEnMaxSoftPosLimit : BOOL ; // Lamp for Max Soft Limit Enable/Disable of the Axis referencing
+
+		bLampBackupProjectEnable : BOOL ; // Lamp for Backup Project Enable
+		bLampDataInitEnable : BOOL ; // Lamp for Init data Enable		
+		bLampDataExportEnable : BOOL ; // Lamp for Export data Enable
+		bLampDataImportEnable : BOOL ; // Lamp for Import data Enable
+		bLampAlarmsExportEnable : BOOL ; // Lamp for Export alarms Enable
+		bLampMessagesExportEnable : BOOL ; // Lamp for Export messages Enable
+		
+		bLampProject : BOOL ; // Lamp for project backup in progress
+		bLampDataInit : BOOL ; // Lamp for Init data in progress
+		bLampDataExport : BOOL ; // Lamp for Export data in progress
+		bLampDataImport : BOOL ; // Lamp for Import data in progress
+		
+		bLampTeachLocationEnable : BOOL ; // Lamp for Teach Location Enable
+		bLampTeachRackEnable : BOOL ; // Lamp for Teach Rack Enable
+		bLampTeachAllTopEnable : BOOL ; // Lamp for Teach AllTop Enable
+		bLampTeachAllBottomEnable : BOOL ; // Lamp for Teach AllBottom Enable
+		bLampTeachPositionsEnable : BOOL ; // Lamp for Teach Positions Enable
+		
+		bLampRebootEnable : BOOL ; // Lamp for Reboot Enable
+		bLampShutdownEnable : BOOL ; // Lamp for Shutdown Enable
+		
+		bLampSettingsSaveEnable : BOOL ; // Lamp for Save Settings Enable
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

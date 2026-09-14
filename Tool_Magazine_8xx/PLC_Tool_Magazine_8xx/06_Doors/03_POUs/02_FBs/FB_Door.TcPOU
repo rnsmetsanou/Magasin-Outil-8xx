@@ -1,0 +1,178 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Door" Id="{b9f1e859-52c5-4ab5-bd8b-1adbeca73c32}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Door
+VAR_INPUT
+	(** INT **)
+		iDoorNumber : INT ; // Number of the door
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+		stDoor : ST_Door ;
+END_VAR
+VAR
+	(** FB **)
+		fbInitEvents : FB_Init_Events ;
+		fbEventHMI : FB_Event_HMI ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_Door
+//
+//								Gestion porte(s)   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 13.01.2026
+//Dernière modification : 28.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création	
+// 28.01.2026 (G.GOETZ) -> Ajout gestion voyant bouton
+//-----------------------------------------------------------------------------------------
+
+IF stDoor.bPresence THEN
+		
+	(** EVENTS **)
+		IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+			(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+			GV_Events.aEventGroup[GV_Doors.aId[iDoorNumber].iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.DoorAlarms.Alarm1,TRUE,0);
+			GV_Events.aEventGroup[GV_Doors.aId[iDoorNumber].iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.DoorOpMessages.Message1,TRUE,0);	
+			fbInitEvents(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,strEventType:='ALARM',strEventGuid:='34B37164-85A5-4BB2-918B-4ED16EAF1356',tcEventSeverity:=2);
+			fbInitEvents(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='DBCE0E6A-9DBC-4431-B292-1C122D38EFE6',tcEventSeverity:=1);
+		END_IF
+
+	(** DOOR TYPES MANAGEMENT **)
+	
+	(* 1 With Auto lock AND unlock button (Output OFF unlock) *)
+		IF stDoor.eType=ENUM_Door_Type.AutoLockButtonUnlockOff THEN
+			
+			(*Unlock request*)
+			stDoor.rtButtonUnlockTrig(CLK:=stDoor.bButtonUnlock); //Trigger of the button
+			IF stDoor.rtButtonUnlockTrig.Q AND (NOT stDoor.bUnlockRequest) AND (NOT stDoor.bUnlockOut) THEN
+				stDoor.bUnlockRequest:=TRUE;
+			END_IF
+			(*Unlock request acknowledgenent*)
+			IF (NOT stDoor.bUnlockAuthorization) THEN // No Authorization = reset request
+				stDoor.bUnlockRequestAck:=TRUE;
+			END_IF
+			IF stDoor.bUnlockRequestAck THEN
+				stDoor.bUnlockRequest:=FALSE;
+				stDoor.bUnlockRequestAck:=FALSE;
+			END_IF
+			
+			(*Unlock door*)
+			IF stDoor.bUnlockRequest AND stDoor.bUnlockAuthorization THEN
+				stDoor.bUnlockOut:=FALSE;
+			END_IF
+			IF (NOT stDoor.bUnlockRequest) THEN
+				stDoor.bUnlockOut:=TRUE;
+			END_IF
+			
+			(*Door open*)
+			IF stDoor.bDoorOpen THEN
+				stDoor.bUnlockRequest:=FALSE;
+			END_IF
+			
+			(*Door button lamp*)
+			
+			(*Door close and lock*)
+			IF (NOT stDoor.bDoorOpen) AND stDoor.bDoorSafetyRelay AND (NOT stDoor.bUnlockOut) THEN
+				stDoor.bDoorCloseLock:=TRUE;
+			ELSE
+				stDoor.bDoorCloseLock:=FALSE;			
+			END_IF
+			
+			(*Message 1 = Door open*)
+			IF (NOT stDoor.bDoorCloseLock) THEN // Door open
+				GV_Events.aEventGroup[GV_Doors.aId[iDoorNumber].iEventGroup].aOpMessage[1].fbAlarm.ipArguments.Clear().AddDInt(stDoor.iIdHMI);
+				fbEventHMI(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+			ELSE
+				fbEventHMI(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=FALSE);			
+			END_IF
+			
+		END_IF
+	
+	(* 2 With Auto lock AND unlock button (Output ON unlock) *)	
+		IF stDoor.eType=ENUM_Door_Type.AutoLockButtonUnlockOn THEN
+			
+			(*Unlock request*)
+			stDoor.rtButtonUnlockTrig(CLK:=stDoor.bButtonUnlock); //Trigger of the button
+			IF stDoor.rtButtonUnlockTrig.Q AND (NOT stDoor.bUnlockRequest) AND (NOT stDoor.bUnlockOut) THEN
+				stDoor.bUnlockRequest:=TRUE;
+			END_IF
+			(*Unlock request acknowledgenent*)
+			IF (NOT stDoor.bUnlockAuthorization) THEN // No Authorization = reset request
+				stDoor.bUnlockRequestAck:=TRUE;
+			END_IF
+			IF stDoor.bUnlockRequestAck THEN
+				stDoor.bUnlockRequest:=FALSE;
+				stDoor.bUnlockRequestAck:=FALSE;
+			END_IF
+			
+			(*Unlock door*)
+			IF stDoor.bUnlockRequest AND stDoor.bUnlockAuthorization THEN
+				stDoor.bUnlockOut:=TRUE;
+			END_IF
+			IF (NOT stDoor.bUnlockRequest) THEN
+				stDoor.bUnlockOut:=FALSE;
+			END_IF
+			
+			(*Door open*)
+			IF stDoor.bDoorOpen THEN
+				stDoor.bUnlockRequest:=FALSE;
+			END_IF
+			
+			(*Door button lamp*)
+			IF stDoor.bUnlockAuthorization AND stDoor.bDoorCloseLock THEN
+				stDoor.bButtonUnlockLamp:=TRUE;
+			ELSE
+				IF (NOT stDoor.bDoorCloseLock) THEN
+					IF GV_General.bIsBlinking1s THEN
+						stDoor.bButtonUnlockLamp:=TRUE;
+					ELSE
+						stDoor.bButtonUnlockLamp:=FALSE;				
+					END_IF	
+				END_IF
+				IF stDoor.bUnlockRequest AND (NOT stDoor.bUnlockAuthorization) AND stDoor.bDoorCloseLock THEN
+					IF GV_General.bIsBlinking05s THEN
+						stDoor.bButtonUnlockLamp:=TRUE;
+					ELSE
+						stDoor.bButtonUnlockLamp:=FALSE;				
+					END_IF	
+				END_IF
+				IF (NOT stDoor.bUnlockRequest) AND (NOT stDoor.bUnlockAuthorization) AND stDoor.bDoorCloseLock THEN
+					stDoor.bButtonUnlockLamp:=FALSE;	
+				END_IF
+			END_IF
+			
+			(*Door close and lock*)
+			IF (NOT stDoor.bDoorOpen) AND stDoor.bDoorSafetyRelay AND (NOT stDoor.bUnlockOut) THEN
+				stDoor.bDoorCloseLock:=TRUE;
+			ELSE
+				stDoor.bDoorCloseLock:=FALSE;			
+			END_IF
+			
+			(*Message 1 = Door open*)
+			IF (NOT stDoor.bDoorCloseLock) THEN // Door open
+				GV_Events.aEventGroup[GV_Doors.aId[iDoorNumber].iEventGroup].aOpMessage[1].fbAlarm.ipArguments.Clear().AddDInt(stDoor.iIdHMI);
+				fbEventHMI(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+			ELSE
+				fbEventHMI(iEventGroup:=GV_Doors.aId[iDoorNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=FALSE);			
+			END_IF
+			
+		END_IF
+	
+ELSE
+	stDoor.bDoorCloseLock:=TRUE; // Door cloe and lock if absent
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

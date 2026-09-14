@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="St_Write_Focas" Id="{30ec55a9-9e38-47e6-b630-0bb2422fdba0}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Write_Focas
+//
+//							Structure pour écriture Focas			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE St_Write_Focas :
+STRUCT
+	
+	(** ARRAY **)
+		aTabValeur : ARRAY [0..499]	OF BYTE ; // Récupération des valeurs à écrire
+	
+	(** UINT **)			
+		uiTypePMC : UINT ; // Type de variable à écrire dans le PMC
+		uiTypeData : UINT ; // Type de donnée à lire (0 = byte, 1 = Word, 2 = Long, 4 = 32-bit floating-point type(30i-B Series/0i-F/PMi-A only), 5 = 64-bit floating-point type(30i-B Series/0i-F/PMi-A only) 
+		uiBitLect : UINT ; // Numéro du bit à lire dans un word dans le PMC
+		uiGrandType : UINT ; // Grandeur du block de donnée à lire Exemple : data_type is 0(byte type) : length = 8 + N			
+		uiPMCAdr1 : UINT ; // Adresse de début de la donnée à lire
+		uiPMCAdr2 : UINT ; // Adresse de fin de la donnée à lire
+						
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

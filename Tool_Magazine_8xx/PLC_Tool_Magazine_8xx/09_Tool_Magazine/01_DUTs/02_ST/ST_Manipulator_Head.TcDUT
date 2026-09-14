@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Manipulator_Head" Id="{a02db2ec-ebc8-4d28-a4b5-328e22243724}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Manipulator_Head
+//
+//								Structure tête manipulateur			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Manipulator_Head :
+STRUCT	
+
+	(** ALARMS FLAG **)
+		bAlAlarme1 : BOOL ; // Alarme 1 alarm
+	
+	(** SETUP FLAG **)
+		bAck : BOOL := FALSE ; // Event acknowledgement
+	
+	(** PROCESS ENUM **)
+		ePositionMag : ENUM_Position_Magazine ; // Position of the Manipulator Head in the magazine
+		ePositionHome : ENUM_Position_Magazine ; // Position of the Home in the magazine
+		
+		ePositionAxis : ENUM_Position_Axis ; // Position of the Manipulator Head
+	
+	(** PROCESS LREAL **)
+		lrXPosition : LREAL ; // X Position of the manipulator
+		lrYPosition : LREAL ; // Y Position of the manipulator
+		lrZPosition : LREAL ; // Z Position of the manipulator
+		lrXPositionTol : LREAL ; // X Position Tolerance
+		lrYPositionTol : LREAL ; // Y Position Tolerance
+		lrZPositionTol : LREAL ; // Z Position Tolerance
+		
+		lrXHome : LREAL ; // X coordinate at Home
+		lrYHome : LREAL ; // Y coordinate at Home
+		lrZHome : LREAL ; // Z coordinate at Home
+		
+		lrXTunnel : LREAL ; // X coordinate at Tunnel
+		lrYTunnel : LREAL ; // Y coordinate at Tunnel
+		lrZTunnelTop : LREAL ; // Z coordinate at Tunnel (Top)
+		lrZTunnelBottom : LREAL ; // Z coordinate at Tunnel (Bottom)
+		
+		lrXBreakage : LREAL ; // X coordinate at breakage sensor
+		lrYBreakage : LREAL ; // Y coordinate at breakage sensor
+		lrZBreakage : LREAL ; // Z coordinate at breakage sensor
+		
+		//lrXReadyTransfer : LREAL ; // X coordinate to be ready for the transfer to the Changing Arm
+		//lrYReadyTransfer : LREAL ; // Y coordinate to be ready for the transfer to the Changing Arm
+		//lrZReadyTransfer : LREAL ; // Z coordinate to be ready for the transfer to the Changing Arm
+		
+		lrXTransferGripper1 : LREAL ; // X coordinate at transfer to the Changing Arm gripper 1
+		lrYTransferGripper1 : LREAL ; // Y coordinate at transfer to the Changing Arm gripper 1
+		lrZTransferGripper1 : LREAL ; // Z coordinate at transfer to the Changing Arm gripper 1
+
+		lrXTransferGripper2 : LREAL ; // X coordinate at transfer to the Changing Arm gripper 2
+		lrYTransferGripper2 : LREAL ; // Y coordinate at transfer to the Changing Arm gripper 2
+		lrZTransferGripper2 : LREAL ; // Z coordinate at transfer to the Changing Arm gripper 2
+	
+	(** PROCESS FLAG **)
+		bAuthorizationManuGripperClose : BOOL ; // Authorization to close the Manipulator Gripper in Manual
+		bAuthorizationManuGripperOpen : BOOL ; // Authorization to open the Mnipulator Gripper in Manual
+		
+		bCtrlBreakage : BOOL ; // Breakage ctrl in progress, for velocity
+		
+	(** ST **)
+		stLocationMemory : ST_Tool_Location ; // Tool_Location structure
+	
+	(** PROCESS INT **)
+		iAbsLocationNumberMemory : INT := 0 ; // Memory -> Number of the location in the Magazine
+		iRelLocationNumberMemory : INT ; // Memory -> Number of the location in relative in the Magazine
+		
+	(** PROCESS FLAG **)
+		bToolPresenceMemory : BOOL ; // Memory -> Tool Presence in the Manipulator
+		
+		bInterferingArm : BOOL ; // Manipulator is interfering with the Changing Arm
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

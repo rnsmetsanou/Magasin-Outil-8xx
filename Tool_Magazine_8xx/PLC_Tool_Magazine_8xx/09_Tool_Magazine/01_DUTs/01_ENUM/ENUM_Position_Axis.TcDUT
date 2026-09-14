@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Position_Axis" Id="{787fa83c-2a48-4c87-b352-111e099d8851}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Door
+//
+//						Enumération des types de porte(s)			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Position_Axis :
+(
+	Unknow := 0 , // Unknow position
+	Work1 := 10 , // At Work position
+	Work2 := 20 , // At Work position
+	Work3 := 30 , // At Work position
+	Work4 := 40 , // At Work position
+	Work5 := 50 , // At Work position
+
+	CNC := 80 , // At CNC position
+	Ref := 90 , // At Ref position
+	Home := 100 // At Home position
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

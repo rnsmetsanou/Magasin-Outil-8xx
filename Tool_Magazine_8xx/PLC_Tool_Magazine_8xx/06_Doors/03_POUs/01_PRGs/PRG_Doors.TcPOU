@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Doors" Id="{3cbe7d42-114d-4d9f-a5b7-4e1f0ce60db9}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Doors
+VAR
+	(** INT **)
+	iDoorLoop : INT := 0 ; // INT use in a FOR Loop
+	iDoorCloseLockNumber : INT := 0 ; // How many doors are close and lock
+	
+	(** FB **)
+	fbDoor : FB_Door ;
+	fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+	
+	tonCycleNotProgess : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Doors
+//
+//					Paramétrage porte(s) + Appel Gestion porte(s)  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** TOOL MAGAZINE DOOR **)
+	GV_Doors.aId[1].bPresence:=TRUE; // Door prensence or not
+	fbEventGroupAssignement(iEventGroup:=GV_Doors.aId[1].iEventGroup);
+	GV_Doors.aId[1].iIdHMI:=1; // Number for events on HMI
+	GV_Doors.aId[1].eType:=ENUM_Door_Type.AutoLockButtonUnlockOn; // Door type
+	GV_Doors.aId[1].bUnlockAuthorization:=GV_IO.diSafetyRelayIntermediateDoor AND ((GV_HMI.stDoors.bDoorUnlockForce OR tonCycleNotProgess.Q OR (NOT GV_Cycle.bStartStop))); // Authorization for unlock the door
+	GV_Doors.aId[1].bButtonUnlock:=GV_IO.diButtonUnlockMagazineDoor; // Button for unlock the door
+	GV_Doors.aId[1].bDoorOpen:=GV_IO.diMagazineDoorOpen; // Door is open
+	GV_Doors.aId[1].bDoorSafetyRelay:=GV_IO.diSafetyRelayMagazineDoor; // Safety realy of the door
+	GV_IO.doButtonUnlockMagazineDoorLamp:=GV_Doors.aId[1].bButtonUnlockLamp; // Lamp of the unlock button
+	GV_IO.doUnlockMagazineDoor:=GV_Doors.aId[1].bUnlockOut; // Unlock the door
+
+	tonCycleNotProgess(IN:=(NOT GV_Cycle.bCycleInProgress),PT:=T#2S);
+
+(** OTHER DOOR **)
+//...
+
+(** FB_Door **)
+	FOR iDoorLoop:=1 TO GV_Doors.iMaxDoors BY 1 DO
+		fbDoor(iDoorNumber:=iDoorLoop,StDoor:=GV_Doors.aId[iDoorLoop]); // Door function block
+	END_FOR
+
+(** DOORS OK **)
+	iDoorCloseLockNumber:=0; // Init the number of doors closed and locked
+	FOR iDoorLoop:=1 TO GV_Doors.iMaxDoors BY 1 DO
+		IF GV_Doors.aId[iDoorLoop].bDoorCloseLock THEN // How many doors are closed and locked
+			iDoorCloseLockNumber:=iDoorCloseLockNumber+1;
+		END_IF
+	END_FOR
+	
+	IF iDoorCloseLockNumber=GV_Doors.iMaxDoors THEN // All doors are closed and locked
+		GV_Doors.bDoorsCloseLock:=TRUE;
+	ELSE
+		GV_Doors.bDoorsCloseLock:=FALSE;
+	END_IF
+	
+(** CHECK MAGAZINE REQUEST **)
+// 	IF (NOT GV_Doors.bDoorsCloseLock) OR GV_Tool_Magazine.bFirstCycleCheckMagazine THEN
+// 		IF GV_HMI.stMagazineCheck.iCheckCycleType=1 THEN // One Location
+// 			GV_Tool_Magazine.bCheckFullMagazineRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckOneMagazineRequest:=TRUE;
+// 			IF GV_Tool_Magazine.stManipulator.bToolPresenceMemory THEN // Manipulator memory
+// 				GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=TRUE;
+// 			ELSE
+// 				GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=FALSE;
+// 			END_IF
+// 			IF GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory THEN // Arm gripper 1 memory
+// 				GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=TRUE;
+// 			ELSE
+// 				GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=FALSE;
+// 			END_IF
+// 			IF GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory THEN // Arm gripper 2 memory
+// 				GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=TRUE;
+// 			ELSE
+// 				GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=FALSE;
+// 			END_IF
+// 			IF GV_CNC.stSpindle.bToolPresenceMemory THEN // Spindle memory
+// 				GV_Tool_Magazine.bCheckSpindleMemoryRequest:=TRUE;
+// 			ELSE
+// 				GV_Tool_Magazine.bCheckSpindleMemoryRequest:=FALSE;
+// 			END_IF
+// 		ELSIF GV_HMI.stMagazineCheck.iCheckCycleType=2 THEN // Full Location
+// 			GV_Tool_Magazine.bCheckFullMagazineRequest:=TRUE;
+// 			GV_Tool_Magazine.bCheckOneMagazineRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckSpindleMemoryRequest:=FALSE;
+// 		ELSE
+// 			GV_Tool_Magazine.bCheckFullMagazineRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckOneMagazineRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=FALSE;
+// 			GV_Tool_Magazine.bCheckSpindleMemoryRequest:=FALSE;
+// 		END_IF
+// 		GV_Tool_Magazine.bFirstCycleCheckMagazine:=FALSE;
+// 	END_IF
+
+GV_Tool_Magazine.bFirstCycleCheckMagazine:=FALSE;
+
+GV_Tool_Magazine.bCheckFullMagazineRequest:=FALSE;
+GV_Tool_Magazine.bCheckOneMagazineRequest:=FALSE;
+			
+GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=FALSE;
+GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=FALSE;
+GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=FALSE;
+GV_Tool_Magazine.bCheckSpindleMemoryRequest:=FALSE;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

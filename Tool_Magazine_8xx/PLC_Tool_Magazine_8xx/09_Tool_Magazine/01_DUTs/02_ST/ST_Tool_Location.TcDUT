@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Tool_Location" Id="{06347183-49b1-419d-b5cf-4f42ba2ad2ad}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Tool_Location
+//
+//								Structure emplacement outil 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 14.01.2026
+//Dernière modification : 14.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 14.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Tool_Location : //140 max dont 3 bloqués 
+STRUCT
+
+	(** SETUP ENUM **)
+		ePositionMag : ENUM_Position_Magazine ; // Position of the location in the Magazine : ENUM_Position_Magazine
+		eToolType : ENUM_Tool_Type := ENUM_Tool_Type.Unknow ; // Type of the tool : ENUM_Tool_Type
+	
+	(** SETUP INT **)
+		iAbsLocationNumber : INT := 0 ; // Number of the location in the Magazine
+		iRelLocationNumber : INT ; // Number of the location in relative in the Magazine
+		
+		(* iAbsRackNumber : INT ; // Number of the rack of the location in absolute in the Magazine *)
+		(* iRelRackNumber : INT ; // Number of the rack of the location in relative in the Magazine -> par exemple le numéro 3 pourrait être le 1er du magasin selon la config du projet *)
+		iRackNumber : INT := 0 ; // Number of the rack of the location in the Magazine
+		
+		iLocationRackNumber : INT := 0 ; // Number of the location in  the rack
+		
+	(** SETUP FLAG **)
+		bEnable : BOOL := FALSE ; // Location enable or not in the Magazine
+		bForbiden : BOOL := FALSE ; // Location is forbiden or not in the Magazine
+		bBlocked: BOOL := FALSE ;  // Location is blocked or not in the Magazine (because of the neighboor location have a big tool or GPS)
+		bUsed : BOOL := FALSE ; // Location is used or not (defined by the User/Operator) 
+		
+		bBreakageOk : BOOL := FALSE ; // Breakage ctl is ok or not
+		bToolPresence : BOOL := FALSE ; // Presence of the tool in the location
+	
+	(** PROCESS LREAL **)
+		lrXcoord : LREAL := 0.0 ; // X coordinate of the location
+		lrYcoord : LREAL := 0.0 ; // Y coordinate of the location
+		lrZcoord : LREAL := 0.0 ; // Z coordinate of the location
+	
+	(** ST **)
+		stToolName : ST_Tool_Name ; // Structure nom outil présent dans l'emplacement
+		stToolParam : ST_Tool_Parameters ; // Structure paramètre outil présent dans l'emplacement
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

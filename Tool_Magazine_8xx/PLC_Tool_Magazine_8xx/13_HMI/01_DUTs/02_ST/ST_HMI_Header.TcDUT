@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Header" Id="{2ce1cdb1-69f2-4bce-9e9f-cb4c15ff34b9}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_HMI_Header
+//
+//							Structure datas en-tête HMI 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Header :
+STRUCT
+	
+	(** SETUP INT **)
+		ix1 : INT ; // ?
+	
+	(** SETUP FLAG **)
+		bx1 : BOOL ; // ?
+
+	(** PROCESS INT **)
+		iy1 : INT ; // ?
+	
+	(** PROCESS FLAG **)
+		by1 : BOOL ; // ?
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCProcessDataIn" Id="{5038f597-1a64-4609-9c55-3d8d86ca2731}">
+    <Declaration><![CDATA[TYPE tstCTCProcessDataIn :
+STRUCT
+	State			:USINT;		
+	stStatusBits	:tstCTCStatusBits;	
+	ActualForce 	:REAL;		
+	ActualSpeed 	:REAL;		
+	ActualPosition 	:REAL;		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

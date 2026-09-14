@@ -1,0 +1,218 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Main" Id="{9378c016-18fe-46a1-b457-60598cd4ecab}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Main
+VAR
+	(** LREAL **)
+		lrCycleTime_ms : REAL ; // Cycle time configured of the Task in ms
+		lrLastExecTime_ms : REAL ;  // Real cycle time of the last cycle of the task in ms
+		lrLastExecTime_s : REAL ;  // Real cycle time of the last cycle of the task in ms
+	
+	(** UDINT **)
+		diTaskIndex : DINT ; // Index of the Task
+		uiCycleTime100ns : UDINT ; // Cycle time configured of the Task in 100 ns ticks
+		uiLastExecTime100ns : UDINT ;  // Real cycle time of the last cycle of the task in 100 ns ticks
+	
+	(** FB **)
+		fbTime   : FB_LocalSystemTime := ( bEnable := TRUE, dwCycle := 1 );
+		fbBlink05 : FB_Blink ;
+		fbBlink1 : FB_Blink ;
+		
+		fbReboot : NT_Reboot ;
+		fbShutdown : NT_Shutdown ;
+		
+	(** Other for test **)
+		by1:BYTE;
+		by2:BYTE;
+		w1:WORD;
+		w2:WORD;
+
+word1 : WORD ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Main
+//
+//				Programme principal, gérant l'appel des sous-programmes     			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** TASK INFOS **)
+	diTaskIndex := GETCURTASKINDEXEX(); // Get the Index of the Task
+	IF diTaskIndex>0 THEN
+		uiCycleTime100ns:=_TaskInfo[diTaskIndex].CycleTime; // Cycle time configured of the Task in 100 ns
+		lrCycleTime_ms:=UDINT_TO_REAL(uiCycleTime100ns)/10_000.0; // Cycle time configured of the Task in ms
+		uiLastExecTime100ns:=_TaskInfo[diTaskIndex].LastExecTime; // Real cycle time of the last cycle of the task in 100 ns
+		lrLastExecTime_ms:=UDINT_TO_REAL(uiLastExecTime100ns)/10_000.0; // Real cycle time of the last cycle of the task in ms
+		lrLastExecTime_s:=lrLastExecTime_ms/1000.0; // Real cycle time of the last cycle of the task in s	
+		
+		GV_General.bFirstCycleTask:=_TaskInfo[diTaskIndex].FirstCycle; //First Cycle of the Task
+		GV_General.uiAdsPort:=_TaskInfo[diTaskIndex].AdsPort; //ADS Port of the Task
+		
+		GV_General.bWatchDog:=_TaskInfo[diTaskIndex].CycleTimeExceeded; //Watchdog of the Task
+	END_IF
+
+(** SYSTEM DATE/TIME **)
+	FbTime();
+	GV_General.dtCurrentDateTime:=SYSTEMTIME_TO_DT(FbTime.systemTime);
+
+(** EMERGECY STOP **)
+	GV_General.bEmergencyStop:=GV_IO.diEmergencyStop OR (GV_CNC.stFanucData.stCncMagazine.biEmergencyStop AND GV_CNC.bEnable);
+
+(** SAFETY **)
+	GV_General.bSafety:=(NOT GV_General.bEmergencyStop) AND GV_IO.diSafetyAreaMagazineOk AND (GV_Doors.bDoorsCloseLock OR GV_Handwheel.aId[1].bEnable);
+	GV_IO.doSafetyAreaMagazineReset:=(NOT GV_IO.diSafetyAreaMagazineOk) AND (NOT GV_General.bEmergencyStop) AND (GV_IO.diSafetyRelayIntermediateDoor OR ((GV_CNC.stFanucData.stCncMagazine.biDoorClosed AND GV_CNC.bEnable) OR (NOT GV_CNC.bEnable))) AND (GV_IO.diSafetyRelayMagazineDoor OR GV_Handwheel.aId[1].bEnable);
+	IF (NOT GV_General.bSafety) THEN
+		GV_Cycle.bInitRequest:=TRUE;
+	END_IF
+	
+(** POWER **)
+	GV_General.bPower:=GV_General.bSafety AND (GV_CNC.stFanucData.stCncMagazine.biPower AND GV_CNC.bEnable) OR (NOT GV_CNC.bEnable);
+(** AIR **)
+	GV_General.bAir:=GV_General.bSafety AND (GV_CNC.stFanucData.stCncMagazine.biAir AND GV_CNC.bEnable) OR (NOT GV_CNC.bEnable);
+
+(** BLINKING FLAG **)
+	FbBlink05(tTimerValue:=T#500MS,bOut=>GV_General.bIsBlinking05s);
+	FbBlink1(tTimerValue:=T#1000MS,bOut=>GV_General.bIsBlinking1s);
+
+(** FIRST CYCLE **)
+	IF (GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu) THEN
+		PRG_FirstCycle();
+		GV_General.bFirstCycleSimu:=FALSE;
+	END_IF
+
+(** OP MODE **)
+	PRG_OpMode();
+  
+(** LAMPS LIGHTS **)
+	PRG_Lamps_Lights();
+  
+(** FANS **)
+	PRG_Fans();
+  
+(** DOORS **)
+	PRG_Doors();
+  
+(** CYLTRONIC **)
+	PRG_Cyltronic();
+ 
+(** CYCLE **)
+ 	PRG_Cycle();
+ 	PRG_Cycle_AlarmsMessages();
+ 
+(** TOOL MAGAZINE **)
+  	GV_General.bSettingSaveAuthorization:=(NOT GV_Cycle.bCycleInProgress) AND (GV_OpMode.eOpMode=ENUM_OpMode.MANU OR GV_OpMode.eOpMode=ENUM_OpMode.NONE) AND GV_Axes.bAxisAllNotMoving AND GV_HMI.iCurrentScreenNumber=312;
+  	IF GV_HMI.stMagazineSettings.bButtonSettingsSave AND GV_General.bSettingSaveAuthorization THEN
+  		PRG_Tool_Magazine_Type1_Refresh();
+ 		GV_HMI.stMagazineSettings.bButtonSettingsSave:=FALSE;
+  	ELSE
+  		PRG_Tool_Magazine_Type1();
+  	END_IF
+
+(** AXIS **)
+ 	PRG_Handwheel();
+ 	PRG_Axis();
+
+(** CNC **)
+ 	PRG_CNC();
+
+(** FOCAS **)
+	//PRG_Focas();
+
+(** HMI **)
+	PRG_HMI();
+
+(** LOG **)
+	PRG_Log();
+	
+(** PERSISTENT DATA **)
+	PRG_SavePersistentData();
+ 
+(** BACKUP **)
+	PRG_Backup();
+
+(** REBOOT **)
+	(* Authorization *)
+		GV_General.bRebootAuthorization:=(NOT GV_Cycle.bCycleInProgress) AND (NOT GV_Cycle.bStartStop) AND GV_Axes.bAxisAllNotMoving;
+
+	(* Request *)
+		IF GV_HMI.rtReboot.Q AND GV_General.bRebootAuthorization THEN
+			GV_General.bRebootRequest:=TRUE;
+		END_IF
+
+	(* Save PersistentData *)
+		IF (NOT GV_General.bRebootRequest) THEN
+			GV_General.bSaveDataRebootDone:=FALSE;
+		END_IF
+
+	(* FB *)
+		IF GV_General.bRebootRequest AND GV_Axes.bAxisAllDisabled AND GV_General.bSaveDataRebootDone AND (NOT fbReboot.BUSY) THEN
+			fbReboot.START:=TRUE;
+		ELSE
+			fbReboot.START:=FALSE;
+		END_IF
+		fbReboot(
+					NETID:=, // Nothing = Local PC
+					DELAY:=1, // Delay before reboot in seconds
+					START:=, // Start the reboot process
+					TMOUT:=, // Nothing=Default value (TimeOut to not exceed when executing ADS command)
+					BUSY=>,
+					ERR=>,
+					ERRID=>
+				  );
+
+(** SHUTDOWN **)
+	(* Authorization *)
+		GV_General.bShutdownAuthorization:=(NOT GV_Cycle.bCycleInProgress) AND (NOT GV_Cycle.bStartStop) AND GV_Axes.bAxisAllNotMoving;
+
+	(* Request *)
+		IF (GV_CNC.stFanucData.stCncMagazine.biShutdown OR GV_HMI.rtShutdown.Q) AND GV_General.bShutdownAuthorization THEN
+			GV_General.bShutdownRequest:=TRUE;
+		END_IF
+
+	(* Save PersistentData *)
+		IF (NOT GV_General.bShutdownRequest) THEN
+			GV_General.bSaveDataShutdownDone:=FALSE;
+		END_IF
+		
+	(* FB *)
+		IF GV_General.bShutdownRequest AND GV_Axes.bAxisAllDisabled AND GV_General.bSaveDataShutdownDone AND (NOT fbShutdown.BUSY) THEN
+			fbShutdown.START:=TRUE;
+		ELSE
+			fbShutdown.START:=FALSE;
+		END_IF
+		fbShutdown(
+					NETID:=, // Nothing = Local PC
+					DELAY:=1, // Delay before shutdown in seconds
+					START:=, // Start the shutdown process
+					TMOUT:=, // Nothing=Default value (TimeOut to not exceed when executing ADS command)
+					BUSY=>,
+					ERR=>,
+					ERRID=>
+				  );
+			  
+(** TEST **)  
+	w1:=1025;	  
+	//MSB  
+	by1:=WORD_TO_BYTE(SHR(w1,8));
+	//LSB
+	by2:=WORD_TO_BYTE(w1 AND 16#FF);
+	w2:=(SHL(BYTE_TO_WORD(by1),8) OR BYTE_TO_WORD(by2));	
+	
+	
+	  ]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

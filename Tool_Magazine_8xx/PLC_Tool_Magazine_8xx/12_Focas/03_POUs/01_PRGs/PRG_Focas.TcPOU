@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Focas" Id="{ac62794c-0d46-493c-8036-65c26f6dc34e}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Focas
+VAR
+	(** INT **)
+		iFocasLoop : INT := 0 ; // Use in a FOR Loop
+		iLocationLoop : INT := 0 ; // Use in a FOR Loop
+	
+	(** FOCAS **)
+		(** ARRAY **)
+			aDataWrite : ARRAY [0..499] OF BYTE ;
+			aDataRead : ARRAY [0..499] OF BYTE ;
+			aData : ARRAY[1..256] OF BYTE ;
+			aDataReset : ARRAY[1..256] OF BYTE ;
+		
+		(** STRING **)
+		 sPartQuantity : STRING ;
+		 
+		(** DWORD **)
+			dwTempDWORD : DWORD ;
+			
+		(** WORD **)
+			wTempWORD : WORD ;
+		
+		(** REAL **)
+			rTempParameter3 : REAL ;
+			rTempParameter4 : REAL ;
+			rTempParameter5 : REAL ;
+			rTempREAL : REAL ;
+
+		(** UINT **)
+			uiAdrStartData : UINT ;
+			uiAdrEndData : UINT ;
+		
+		(** INT **)
+			iTempINT : INT ;
+			iIndex : INT ;
+			iDataIndex : INT ;
+			
+		(** BYTE **)
+			byTempBYTE : BYTE ;
+			byTypeData : BYTE ;
+			byTypePMC : BYTE ;	
+			byDataSize : BYTE ;
+			byDataBitPos : BYTE ;
+		
+		(** FLAG **)
+			bStartComm : BOOL ;
+			bStartFocas : BOOL ;
+			bStopFocas : BOOL ;
+			bStart : BOOL ;
+			bBarLenghtReaded : BOOL ;
+		
+		(** FB **)
+			fb_ConnectionFocas : FB_ConnectionFocas ;
+			fb_ReadFocas : FB_ReadFocas ;
+			fb_WriteFocas : FB_WriteFocas ;
+			tonWaitOpen : TON ;
+END_VAR
+
+
+
+
+			(* Update Tools in GV_Tool_Magazine *)
+// 			FOR iFocasLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+// 				IF GV_Focas.stFocasMagazine.aToolParamIn[iFocasLoop].Location>0 THEN
+// 					FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+// 						IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber=UINT_TO_INT(GV_Focas.stFocasMagazine.aToolParamIn[iFocasLoop].Location) THEN
+// 							GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam:=GV_Focas.stFocasMagazine.aToolParamIn[iFocasLoop]; // Tool Parameters
+// 							GV_Tool_Magazine.aLocation[iLocationLoop].stToolName:=GV_Focas.stFocasMagazine.aToolNameIn[iFocasLoop]; // Tool Name
+// 						END_IF
+// 					END_FOR
+// 				END_IF
+// 			END_FOR
+
+// 			GV_Focas.bWriteStart:=TRUE;
+// 			GV_Focas.iWriteStep:=0;
+// 			IF GV_Focas.bWriteStart AND GV_Focas.iWriteStep=0 AND (NOT fb_WriteFocas.bStartWrite) AND (NOT fb_WriteFocas.bBusy) THEN
+// 				(* Copy Data in structure *)
+// 				GV_Focas.iWriteStep:=1;
+// 			END_IF
+// 			IF GV_Focas.iWriteStep=1 THEN
+// 				(* Parameter for Data *)
+// 				GV_Focas.iWriteStep:=2;
+// 			END_IF
+// 			IF GV_Focas.iWriteStep=2 THEN
+// 				(* End *)
+// 					IF GV_CNC.Start_write_data_focas AND fb_WriteFocas.bDone THEN
+// 						GV_Focas.iWriteStep:=0;
+// 						GV_Focas.bWriteStart:=FALSE;
+// 						GV_Focas.stFocasMagazine.bRefreshIn:=FALSE;
+// 					END_IF
+// 			END_IF
+
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  					PRG_Focas
+//
+//								Gestion Echanges Focas		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------
+// 									R5900-R5999 Available
+//-----------------------------------------------------------------------------------------
+
+(** Communication : Focas <-> Magazine **)
+IF GV_CNC.bFocas THEN
+			
+	(* Start Focas *)
+		IF GV_CNC.bEnable THEN
+			bStartComm:=TRUE;
+		ELSE
+			bStartComm:=FALSE;
+		END_IF
+		
+	(*Time to etablished Focas communication*)
+		tonWaitOpen(IN:=bStartComm,PT:=T#30S);
+		
+	(*Call FB Communication Focas*)
+		fb_ConnectionFocas(
+							bStartComm:=tonWaitOpen.Q,
+							bStopComm:=bStopFocas,
+							iPortComm:=8193,
+							SAdrCommFocas:=,
+							sPathNameExe:='C:\WM\Soft\Focas\CommunicationADS-TC3.exe' ,
+							sDirName:= 'C:\'
+						  );
+		
+	(*Initialisation Reading and Writing data via Focas*)
+		IF (NOT tonWaitOpen.Q) AND bStartComm THEN
+			GV_CNC.bAlFocas:=TRUE; // Focas error
+			(*For reading*)
+				GV_CNC.stFanucData.stFocasData.bStartReadDataFocas:=FALSE;
+				GV_CNC.stFanucData.stFocasData.iReadingPartDataStep:=0;
+			(*For writing*)
+				GV_CNC.stFanucData.stFocasData.bStartWriteDataFocas:=FALSE;		
+				GV_CNC.stFanucData.stFocasData.iWritingPartDataStep:=0;
+		END_IF
+			
+	(* Focas error *)
+		IF GV_Focas.iReadErrorID<>0 OR GV_Focas.iWriteErrorID<>0 AND bStartComm THEN
+			GV_CNC.bAlFocas:=TRUE;
+			(*For reading*)
+				GV_CNC.stFanucData.stFocasData.bStartReadDataFocas:=FALSE;
+				GV_CNC.stFanucData.stFocasData.iReadingPartDataStep:=0;
+			(*For writing*)
+				GV_CNC.stFanucData.stFocasData.bStartWriteDataFocas:=FALSE;		
+				GV_CNC.stFanucData.stFocasData.iWritingPartDataStep:=0;
+			
+			GV_Focas.bReadBusy:=FALSE;
+			GV_Focas.bWriteBusy:=FALSE;
+			GV_Focas.iReadErrorID:=0;
+			GV_Focas.iWriteErrorID:=0;			
+		END_IF
+
+	(** Refresh Exchange IN : Focas -> Magazine **)
+		GV_Focas.stFocasMagazine.bRefreshIn:=GV_General.bIsBlinking05s;
+		IF GV_Focas.stFocasMagazine.bRefreshIn THEN
+			GV_Focas.bReadStart:=TRUE;
+ 			GV_Focas.iReadStep:=0;
+ 			IF GV_Focas.bReadStart AND fb_ConnectionFocas.bFocasOk AND GV_Focas.iReadStep=0 AND GV_Focas.iWriteStep=0 AND (NOT fb_ReadFocas.bStartRead) AND (NOT fb_ReadFocas.bBusy) AND (NOT fb_ReadFocas.bDone) THEN
+ 				(* Copy Data in structure *)
+					byTypePMC:=5;
+					byTypeData:=0;
+					uiAdrStartData:=5800;
+					uiAdrEndData:=5800;
+					byDataSize:=1;
+ 				GV_Focas.iWriteStep:=1;
+ 			END_IF
+			IF GV_Focas.iReadStep=1 AND GV_Focas.bReadStart AND fb_ReadFocas.bDone THEN
+ 				GV_Focas.bReadStart:=FALSE;
+				GV_Focas.iReadStep:=2;
+			END_IF
+			IF GV_Focas.iReadStep=2 THEN
+ 				//ICI;
+				GV_Focas.stFocasMagazine.bRefreshIn:=FALSE;
+			END_IF
+		END_IF
+	
+	
+	(** Refresh Exchange OUT : Magazine -> Focas **)
+		GV_Focas.stMagazineFocas.bRefreshOut:=(NOT GV_General.bIsBlinking05s);
+		IF GV_Focas.stMagazineFocas.bRefreshOut THEN
+			GV_Focas.bWriteStart:=TRUE;
+ 			GV_Focas.iWriteStep:=0;
+ 			IF GV_Focas.bWriteStart AND fb_ConnectionFocas.bFocasOk AND GV_Focas.iReadStep=0 AND GV_Focas.iWriteStep=0 AND (NOT fb_WriteFocas.bStartWrite) AND (NOT fb_WriteFocas.bBusy) AND (NOT fb_WriteFocas.bDone) THEN
+ 				(* Copy Data in structure *)
+					byTypePMC:=5;
+					byTypeData:=0;
+					uiAdrStartData:=5900;
+					uiAdrEndData:=5900;
+					byDataSize:=1;
+ 				GV_Focas.iWriteStep:=1;
+ 			END_IF
+			IF GV_Focas.iWriteStep=1 AND GV_Focas.bWriteStart AND fb_WriteFocas.bDone THEN
+ 				GV_Focas.bWriteStart:=FALSE;
+				GV_Focas.iWriteStep:=2;
+			END_IF
+			IF GV_Focas.iWriteStep=2 THEN
+ 				//ICI;
+				GV_Focas.stMagazineFocas.bRefreshOut:=FALSE;
+			END_IF
+		END_IF
+	
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

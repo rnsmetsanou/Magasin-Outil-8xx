@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCDeviceStatus" Id="{927e5339-3bbd-437b-9e37-7fade2b81329}">
+    <Declaration><![CDATA[TYPE tstCTCDeviceStatus :
+STRUCT
+	DeviceStatus 	:teCTCDeviceStatus; 			// Index 36: Device Status
+	Events 			:ARRAY[0..4]OF tstCTCEvent; 	// Index 37: First 5 pending Events
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

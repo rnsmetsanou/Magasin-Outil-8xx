@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_BackupImport" Id="{3740eda1-f929-471b-831f-2c364ac1cbc0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_BackupImport
+VAR_INPUT
+	(** SETUP STRING **)
+		sFileIn : STRING ;	
+
+	(** PROCESS FLAG **)
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_IN_OUT
+	(** SETUP ARRAY ST **)
+		aData : ARRAY[0..GV_General.udiMaxBackupRow] OF ST_Array_Data ; // Data to Import
+END_VAR
+VAR_OUTPUT
+	(** SETUP STRING **)
+		sFileOut : STRING ;
+		
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR
+	(** STRING **)
+		sNetId : T_AmsNetId := '' ; (* TwinCAT system network address *)
+		sFileName : T_MaxString := '' ; (* CSV destination file path and name *)
+		sPathName : T_MaxString := '' ; (* CSV destination file path*)
+		sCSVLine : STRING(255) := '' ; (* Single CSV text line*)
+		sCSVField : T_MaxString := '' ;
+
+	(** UDINT **)
+		udiBackuphFile : UINT := 0 ; (* File handle of the source file *)
+		udiRow : UDINT ;
+		udiColumn : UDINT ;
+		udiLoopInit : UDINT ;
+		
+	(** INT **)
+		iBackupStep : INT ;
+		iLoop : INT ;
+		iFind : INT ;
+
+	(** FB **)
+	    fbFileOpen  : FB_FileOpen ; (* Opens file *)
+		fbFileGets : FB_FileGets ; (* Writes one record (line) *)
+		fbReader : FB_CSVMemBufferReader ;(* Helper function block used to create CSV data bytes (single record line) *)
+		fbFileClose : FB_FileClose ; (* Closes file *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_BackupImport
+//
+//				Bloc fonction pour importer un Backup des datas au format .CSV    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by Beckhoff -> https://infosys.beckhoff.com/english.php?content=../content/1033/tcplclib_tc2_utilities/35419787.html&id=)
+//Création: 09.03.2026
+//Dernière modification : 10.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 10.03.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** STEPS **)
+	CASE iBackupStep OF
+		
+		0: (* Wait Start *)
+			IF bStart AND (NOT bBusy) THEN
+				sPathName:='C:\WM\Backup\Data\';
+				IF LEN(sFileIn)>4 THEN
+					sFileName:=MID(sFileIn,LEN(sFileIn)-4,3); // Delete [" "]
+				ELSE
+					sFileName:='';
+				END_IF
+				sFileName:=CONCAT(sPathName,sFileName);
+				sFileOut:=sFileName;				
+				bBusy:=TRUE;
+				bError:=FALSE;
+ 				udiErrorID:=0;
+ 				udiRow:=0;
+ 				udiColumn:=0;
+				MEMSET(ADR(aData),0,SIZEOF(aData));
+ 				iBackupStep:=1;
+			END_IF
+
+		1: (* Open source file *)
+			fbFileOpen(bExecute:=FALSE);
+			fbFileOpen(
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						sPathName:=sFileName,
+						nMode:=FOPEN_MODEREAD  OR FOPEN_MODETEXT,
+						ePath:=PATH_GENERIC
+						);
+			iBackupStep:=2;
+
+		2:(* Wait until open not busy *)
+			fbFileOpen(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID=>udiErrorID, 
+						hFile=>udiBackuphFile 
+						);
+			IF (NOT fbFileOpen.bBusy) THEN
+				IF (NOT fbFileOpen.bError) THEN
+					iBackupStep:=3;
+				ELSE(* Error: file not found ? *)
+					iBackupStep:=100;
+				END_IF
+			END_IF
+
+		3: (* Read single line *)
+			fbFileGets(bExecute:=FALSE);
+			fbFileGets( 
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						hFile:=udiBackuphFile,
+						);
+			iBackupStep:=4;
+
+		4: (* Wait until read not busy *)
+			fbFileGets(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID=>udiErrorID,
+						sLine=>sCSVLine
+						);
+			IF NOT fbFileGets.bBusy THEN
+				IF NOT fbFileGets.bError THEN
+					IF fbFileGets.bEOF THEN
+						iBackupStep:=10; // End of file reached => Close source file
+					ELSE
+						(* FB_FileGets returns text line without the CR (carriage return) character.
+						We have to restore the CR character (replace the $L character with $R$L characters) *)
+						IF RIGHT(sCSVLine,1)='$L' THEN
+							sCSVLine:=REPLACE(sCSVLine,'$R$L',2,LEN(sCSVLine));
+						END_IF
+						iBackupStep:=5;
+					END_IF
+				ELSE
+					iBackupStep:=100;
+				END_IF
+			END_IF
+	
+		5: (* Parse single line *)
+			fbReader.eCmd:=eEnumCmd_First;(* Read first field value *)
+			REPEAT
+				fbReader(
+						pBuffer:=ADR(sCSVLine),
+						cbBuffer:=SIZEOF(sCSVLine),
+						getValue=>sCSVField
+						);
+	
+				IF fbReader.bOk THEN
+					fbReader.eCmd:=eEnumCmd_Next;(* Read next field value *)
+	
+					IF udiRow<=GV_General.udiMaxBackupRow THEN
+						IF udiColumn<=GV_General.udiMaxBackupColumn THEN
+							//aData[udiRow].sValue:=CSVFIELD_TO_STRING(sCSVField,FALSE);
+							CASE udiColumn OF
+								0: aData[udiRow].sIndex:=CSVFIELD_TO_STRING(sCSVField,FALSE);
+								1: aData[udiRow].sName:=CSVFIELD_TO_STRING(sCSVField,FALSE);
+								2: aData[udiRow].sType:=CSVFIELD_TO_STRING(sCSVField,FALSE);
+								3: aData[udiRow].sValue:=CSVFIELD_TO_STRING(sCSVField,FALSE);
+							END_CASE
+						END_IF
+					END_IF
+	
+					udiColumn:=udiColumn + 1;(* Increment number of read columns *)
+					IF fbReader.bCRLF THEN(* CRLF == TRUE => End of reacord reached *)
+						udiRow:=udiRow+1;(* Increment number of read records *)
+						udiColumn:=0;(* Reset number of columns *)
+					END_IF
+	
+				ELSE (* Error: End of record reached or all fields read *)
+					iBackupStep:=3;(* Try to read next line *)
+				END_IF
+			UNTIL NOT fbReader.bOk
+			END_REPEAT
+
+		10: (* Close source file *)
+			fbFileClose(bExecute:=FALSE);
+			fbFileClose( 
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						hFile:=udiBackuphFile, 
+						);
+			iBackupStep:=11;
+	
+		11:(* Wait until close not busy *)
+			fbFileClose(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID=>udiErrorID
+						);
+			IF (NOT fbFileClose.bBusy) THEN
+				udiBackuphFile:=0;
+				iBackupStep:=100;
+			END_IF
+	
+		100: (* Error or ready step => cleanup *)
+			IF (udiBackuphFile>0) THEN
+				iBackupStep:=10; (* Close the source file *)
+			ELSE
+				bBusy:=FALSE;
+				GV_General.bImportDataDone:=TRUE;
+				iBackupStep:=0;	(* Ready *)
+			END_IF
+			
+END_CASE
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Handwheel" Id="{0732ed12-5393-44af-ad8c-4ab5e7225269}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Handwheel
+//
+//						Variables boitier manivelle du magasin doutils 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 19.01.2026
+//Dernière modification : 19.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** ARRAY ST **)
+		aId	: ARRAY[1..iMaxHandwheels] OF ST_Handwheel ; // Door Structure	
+
+END_VAR
+
+VAR_GLOBAL
+	
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT TIME **)
+		tPowerTime : TIME := T#3S ; // Power time
+		tInactivityTime : TIME := T#300S ; // Inactivity time : 300s = 5 Minutes
+
+	(** CONSTANT LREAL **)
+		lrUnitIncrx1 : LREAL := 0.001 ; // Unit of Incremental x1 (mm)
+		lrUnitIncrx10 : LREAL := 0.010 ; // Unit of Incremental x1 (mm)
+		lrUnitIncrx100 : LREAL := 0.100 ; // Unit of Incremental x1 (mm)
+		lrUnitIncrx1000 : LREAL := 1.000 ; // Unit of Incremental x1 (mm)
+		
+	(** CONSTANT INT **)
+		iMaxHandwheels : INT := 1; // Max Handwheels
+		iPowerValue : INT := 15172 ; // Analog_output Value : 5V = 10V/2 = 32767/2 = 16383.5 (16384=5.4V -> 15172=5V (303=0.1V))
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCParameters" Id="{89ef7559-f398-4b6c-bddd-3d436cb3c467}">
+    <Declaration><![CDATA[TYPE tstCTCParameters :
+STRUCT
+	TargetPosition		:REAL := 0.0;		// [mm]
+	TargetVelocity		:REAL := 600.0;		// [mm/s]
+	TargetAccDec		:REAL := 5.0;		// [m/s^2]
+	TargetForce			:REAL := 400.0;		// [N]
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

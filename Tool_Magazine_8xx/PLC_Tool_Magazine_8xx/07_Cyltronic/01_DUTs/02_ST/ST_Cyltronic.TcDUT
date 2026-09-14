@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Cyltronic" Id="{84dee0d4-011b-4af4-9629-51f6bc851cb4}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Cyltronic
+//
+//								Structure Cyltronic
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.03.2026
+//Dernière modification : 04.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Cyltronic :
+STRUCT
+
+	(** SETUP T_AmsNetID **)
+		(* For IO/Link *)
+			netID : T_AmsNetID ;
+
+	(** SETUP ENUM **)
+		eType : ENUM_Cyltronic_Type ; // Type
+		(* For IO/Link *)
+			ePort : E_IolPort ; // Port on the EL6224
+			eState : teCTCStep ; // State
+				
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+		iIdHMI : INT := 0 ; // Number for events on HMI
+	
+	(** SETUP FLAG **)
+		bEventAck : BOOL := FALSE ; // Events Acknowledgement
+		bPresence : BOOL := FALSE ; // Presence or not
+	
+	(** ALARMS FLAG **)
+		bAlDriveFault : BOOL := FALSE ; // Drive in Fault
+	
+	(** PROCESS ARRAY **)
+		(* For IO/Link *)
+			aProcessDataInRaw AT %I* : ARRAY[0..13] OF BYTE ;
+			aProcessDataOutRaw AT %Q* : ARRAY[0..7] OF BYTE ; 
+	
+	(** PROCESS REAL **)
+		(* For IO/Link *)
+			(*Jog*)
+				lrJogPos : REAL ; // Jog Position
+				lrJogVel : REAL ; // Jog Velocity
+				lrJogAccDec : LREAL ; // Jog Acceleration and Deceleration
+				lrJogForce : LREAL ; // Jog Force
+			(*Auto*)
+				lrAutoPos : LREAL ; // AUTO Postion
+				lrAutoVel : LREAL ; // AUTO Velocity
+				lrAutoAccDec : LREAL ; // AUTO Acceleration
+				lrAutoForce : LREAL ; // Jog Force
+	
+	(** PROCESS INT **)
+
+	(** PROCESS FLAG + R_TRIG **)
+		(* For IO/Link *)
+			(*Power*)
+				bPowerEnable : BOOL := FALSE ; // Can be Powered
+			(*Halt*)
+				bHaltExecute : BOOL := FALSE ; // Execute a STOP
+				bHaltDone : BOOL := FALSE ; // STOP is Done
+		bAuthorizationManuCyltronicRest : BOOL ; // Authorization to move to Rest in Manual
+		bAuthorizationManuCyltronicWork : BOOL ; // Authorization to move to Work in Manual
+		bAuthorizationAutoCyltronicRest : BOOL ; // Authorization to move to Rest in AUTO
+		bAuthorizationAutoCyltronicWork : BOOL ; // Authorization to move to Work in AUTO
+		
+		bReleaseBreakOutput AT %Q* : BOOL ;
+
+		bWorkPositionCmd : BOOL := FALSE ; // Command to go to work position
+			rtWorkPositionCmd : R_TRIG ; // Trigger of the command to go to work position
+		bWorkPositionDone : BOOL := FALSE ; // Go to work position is Done
+		bRestPositionCmd : BOOL := FALSE ; // Command to go to rest position
+			rtRestPositionCmd : R_TRIG ; // Trigger of the command to go to rest position
+		bRestPositionDone : BOOL := FALSE ; // Go to rest position is Done
+	
+		(* For IO/Link *)
+			bStartWriteConfig : BOOL := FALSE ; // Start for write the config
+	
+	(** PROCESS ST **)
+		(* For IO/Link *)
+			stProcessDataIn : tstCTCProcessDataIn ; // Process Data In
+			stProcessDataOut : tstCTCProcessDataOut ; // Process Data Out
+		
+			stConfigDefault : tstCTCConfiguration ; // Default Configuration
+			stConfigRead : tstCTCConfiguration ; // Configuration Read
+			stConfigWrite : tstCTCConfiguration ; // Configuration Write
+			stParameters : tstCTCParameters ; // Parameters
+			
+			stStatus : tstCTCDeviceStatus ; // Status
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

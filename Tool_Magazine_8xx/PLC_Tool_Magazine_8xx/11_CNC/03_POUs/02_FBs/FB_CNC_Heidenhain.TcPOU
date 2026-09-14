@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CNC_Heidenhain" Id="{dee3cd41-f140-47ea-85b1-82b24e5e55e8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CNC_Heidenhain
+VAR_INPUT
+	(** INT **)
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+	stCncData : ST_CNC_Heidenhain_Data ;
+END_VAR
+VAR
+	(** FB **)
+	fbInitEvents : FB_Init_Events ;
+	fbEventHMI : FB_Event_HMI ;
+	fbLifeBlink : FB_Blink ;
+		tonLifeON : TON ;
+		tonLifeOFF : TON ;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_CNC_Heidenhain
+//
+//								Gestion CNC Heidenhain    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+IF GV_CNC.bPresence THEN
+		
+//	(** EVENTS **)
+//		(* Init on FirstCycle *)
+//			IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+//				(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+//				GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.CncFanucAlarms.Alarm1,TRUE,0);
+//				GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.CncFanucOpMessages.Message1,TRUE,0);	
+//				fbInitEvents(iEventGroup:=GV_Events.iEventGroupGeneralEvent, strEventType:='ALARM', strEventGuid:='8530B2D2-E45D-443A-863F-6CD9B6401CBE', tcEventSeverity:=2);
+//				fbInitEvents(iEventGroup:=GV_Events.iEventGroupGeneralEvent, strEventType:='OpMESSAGE', strEventGuid:='203DF915-0E17-41A7-9E70-D7D6B508BD1C', tcEventSeverity:=1);
+//			END_IF
+	
+//	(** ALARMS **)
+//		(* Acknowledgement *)
+//		GV_CNC.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement
+	
+//		(* Life bit *)
+//			fbLifeBlink(tTimerValue:=T#500MS,bOut=>GV_CNC.stFanucData.stMagazineCNC.boLife); // Life bit Magazine->CNC
+//			(*Fault*)
+//			tonLifeON(IN:=GV_CNC.stFanucData.stCncMagazine.biLife,PT:=T#1000MS); // Life bit fault CNC->Magazine
+//			tonLifeOFF(IN:=(NOT GV_CNC.stFanucData.stCncMagazine.biLife),PT:=T#1000MS); // Life bit fault CNC->Magazine
+//			(*Reset Fault = Ack*)
+//			IF GV_CNC.bEventAck THEN
+//				GV_CNC.bAlLife:=FALSE;
+//			END_IF
+//			(*Set Fault*)
+//			IF (tonLifeON.Q OR tonLifeOFF.Q) AND GV_CNC.bEnable=TRUE THEN
+//				GV_CNC.bAlLife:=TRUE;
+//			END_IF
+//			(*Alarm 1 = Life bit*)	
+//			IF GV_CNC.bAlLife THEN
+//				GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[1].fbAlarm.ipArguments.Clear();
+//				fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=TRUE);
+//			ELSE
+//				fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=FALSE);
+//			END_IF
+	
+//		(* Alarm present *)
+//		fbEventHMI.M_Event_Group_State(iEventGroup:=GV_CNC.iEventGroup,bEventPresence=>GV_Events.aEventGroup[GV_CNC.iEventGroup].bAlarmPresence);
+	
+//	(** OpMESSAGES **)
+//		(* Message 1 = Nor ready *)
+//			IF GV_Events.aEventGroup[GV_CNC.iEventGroup].bAlarmPresence=TRUE AND GV_CNC.bEnable=TRUE THEN
+//				GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[1].fbAlarm.ipArguments.Clear();
+//				fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+//			ELSE
+//				fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=FALSE);
+//			END_IF
+
+	
+//	(** CNC MANAGEMENT **)
+	
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

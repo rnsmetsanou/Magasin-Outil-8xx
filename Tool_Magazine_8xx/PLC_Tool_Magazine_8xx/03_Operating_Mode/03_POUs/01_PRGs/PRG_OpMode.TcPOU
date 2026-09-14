@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_OpMode" Id="{1c210749-737a-4068-8e5d-9ebee0f204f6}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_OpMode
+VAR
+	(** R_TRIG **)
+		rtInitCycleDone : R_TRIG ;
+		rtInitRequest : R_TRIG ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_OpMode
+//
+//								Programme op Mode			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.02.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.02.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** EVENTS **)
+
+(** REQUEST **)
+	rtInitCycleDone(CLK:=GV_Cycle.bInitCycleDone);
+	rtInitRequest(CLK:=GV_Cycle.bInitRequest);
+	
+	(* Init *)
+		IF GV_HMI.rtINIT.Q OR rtInitRequest.Q OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND ((NOT GV_Cycle.bCycleInProgress) OR (GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))) AND (NOT GV_Cycle.bInitCycleDone)) THEN
+			GV_OpMode.eOpModeRequest:=ENUM_OpMode.INIT;
+		END_IF
+	(* Auto *)
+		IF (GV_HMI.rtAUTO.Q (*OR rtInitCycleDone.Q*)) AND GV_Cycle.bInitCycleDone THEN
+			GV_OpMode.eOpModeRequest:=ENUM_OpMode.AUTO;
+		END_IF
+	(* Manu *)
+		IF GV_HMI.rtMANU.Q THEN
+			GV_OpMode.eOpModeRequest:=ENUM_OpMode.MANU;
+		END_IF
+
+(** AUTHORIZATION **)
+		(* Init *)
+			GV_OpMode.bInitAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_General.bAir AND (*GV_Axes.bAxisAllOperational AND*) GV_Axes.bAxisAllNotMoving AND (((NOT GV_Cycle.bCycleInProgress) OR (GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))) OR GV_Cycle.eCycleStep=ENUM_Cycle_Step.Error);
+		(* Auto *)
+			GV_OpMode.bAutoAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_General.bAir AND (*GV_Axes.bAxisAllOperational AND*) GV_Axes.bAxisAllNotMoving AND GV_Cycle.bInitCycleDone;
+		(* Manu *)
+			GV_OpMode.bManuAllowed:=(*GV_General.bSafety AND*) GV_General.bPower AND GV_General.bAir AND (*GV_Axes.bAxisAllOperational AND*) GV_Axes.bAxisAllNotMoving AND ((NOT GV_Cycle.bCycleInProgress) OR GV_Cycle.eCycleStep=ENUM_Cycle_Step.Error);
+	
+(** OPMODE **)
+	(*Transition*)
+		IF GV_OpMode.eOpModeRequest<>GV_OpMode.eOpMode THEN 
+			CASE GV_OpMode.eOpModeRequest OF
+		
+				ENUM_OpMode.INIT :
+					IF GV_OpMode.bInitAllowed THEN
+						GV_HMI.stAxes.iVelocityPourcent:=0; // Velocity 0%
+						//GV_Cycle.bInitCycleDone:=FALSE;
+						GV_OpMode.eOpMode:=ENUM_OpMode.INIT;
+					END_IF
+		
+				ENUM_OpMode.AUTO :
+					IF GV_OpMode.bAutoAllowed THEN
+						GV_HMI.stAxes.iVelocityPourcent:=0; // Velocity 0%
+						GV_OpMode.eOpMode:=ENUM_OpMode.AUTO;
+					END_IF
+		
+				ENUM_OpMode.MANU :
+					IF GV_OpMode.bManuAllowed THEN
+						GV_HMI.stAxes.iVelocityPourcent:=0; // Velocity 0%
+						GV_OpMode.eOpMode:=ENUM_OpMode.MANU;
+					END_IF
+		
+			END_CASE
+		END_IF
+	(*InProgress*)
+ 		CASE GV_OpMode.eOpMode OF
+  		
+//  			ENUM_OpMode.INIT :
+//  			 IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_General.bAir) (*OR (NOT GV_Axes.bAxisAllOperational)*) THEN
+//  				 GV_OpMode.eOpMode:=ENUM_OpMode.None;
+//  			 END_IF
+//  		
+//  			ENUM_OpMode.AUTO :
+//  			 IF ((NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_General.bAir) (*OR (NOT GV_Axes.bAxisAllOperational)*)) OR ((NOT GV_Cycle.bCycleInProgress) AND (NOT GV_Cycle.bInitCycleDone)) THEN
+//  				 GV_OpMode.eOpMode:=ENUM_OpMode.None;
+//  			 END_IF
+//  			 
+  			ENUM_OpMode.MANU :
+  			 IF (*(NOT GV_General.bSafety) OR*) (NOT GV_General.bPower) OR (NOT GV_General.bAir) (*OR (NOT GV_Axes.bAxisAllOperational)*) THEN
+  				 GV_OpMode.eOpMode:=ENUM_OpMode.None;
+  			 END_IF
+ 			 
+  		END_CASE
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

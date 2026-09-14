@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Fanuc_Data" Id="{dd0df9c0-ccd2-41d7-9212-cbbd89716c10}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Fanuc_Data
+//
+//								Structure CNC_Fanuc Data 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Fanuc_Data :
+STRUCT
+
+	(** ST **)	
+		stCncMagazine : ST_CNC_Fanuc_Exchange_In_1 ; // Structure Exchange CNC -> Magazine
+		stMagazineCNC : ST_CNC_Fanuc_Exchange_Out_1 ; // Structure Exchange Magzine -> CNC
+		stFocasData : ST_CNC_Fanuc_Focas_Data ; // Structure for Focas data
+		
+	(** INT **)
+		iSpindleToolLocation : INT ;
+		iToolToLoadLocation : INT ;
+		iSpindleToolType : INT ;
+		iToolToLoadType : INT ;
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Handwheel_2" Id="{a1b7d5b9-013a-4ab5-afd7-617c995cf338}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Handwheel_2
+VAR_INPUT
+	(** INT **)
+		iHandwheelNumber : INT ; // Number of the handwheel
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+		stHandwheel : ST_Handwheel ;
+END_VAR
+VAR
+	(** LREAL **)
+		lrJogUnitValue : LREAL ; // Unit value for the jog
+		lrJogMaxSpeed : LREAL ; // Max Speed for te Jog (in function of the Axis) (mm/s)
+		lrJogMaxIncrCycle : LREAL ; // Max Incrément per PLC cycle for Jog
+	
+	(** DINT **)
+		diCounterValueMemory : DINT ; // Memory Value of the Counter
+		diDeltaPulses : DINT ; // Delta of the pulses
+		diJogMaxPulseCycle : DINT ; // Max Pulse by PLC Cycle
+	
+	(** FLAG **)
+		bChange : BOOL ;
+		bJogRequest : BOOL ; // Request for Jog	
+		bJogRequestMemory : BOOL ; // Memory Request for Jog	
+	
+	(** FB **)
+		TonPowerON : TON ; // Power timer
+		TonPowerOFF : TON ; // Power timer
+		TonInactivity : TON ; // Inactivity timer
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_Handwheel_2
+//
+//							Gestion manivelle(s) déportée(s)   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 30.02.2026
+//Dernière modification : 30.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+IF stHandwheel.bPresence AND stHandwheel.bEnable THEN
+		
+	(** EVENTS **)
+	
+		
+	(** ALARMS **)
+		
+		
+	(** MESSAGES **)
+	//Manivelle active
+	
+	(** SELECTOR **) // GRAY code
+		(* Axis X/Y/Z/Arm*)
+			IF (NOT stHandwheel.bAxisSelectorB0) AND (NOT stHandwheel.bAxisSelectorB1) AND (NOT stHandwheel.bAxisSelectorB2) THEN // 0-0-0
+				stHandwheel.eAxisSelect:=ENUM_Axis_Select.X;	
+				lrJogMaxSpeed:=GV_Axes.lrJogMaxSpeedAxisX;
+			ELSIF stHandwheel.bAxisSelectorB0 AND (NOT stHandwheel.bAxisSelectorB1) AND (NOT stHandwheel.bAxisSelectorB2) THEN // 1-0-0
+				stHandwheel.eAxisSelect:=ENUM_Axis_Select.Y;	
+				lrJogMaxSpeed:=GV_Axes.lrJogMaxSpeedAxisY;
+			ELSIF stHandwheel.bAxisSelectorB0 AND stHandwheel.bAxisSelectorB1 AND (NOT stHandwheel.bAxisSelectorB2) THEN // 1-1-0
+				stHandwheel.eAxisSelect:=ENUM_Axis_Select.Z;	
+				lrJogMaxSpeed:=GV_Axes.lrJogMaxSpeedAxisZ;
+			ELSIF (NOT stHandwheel.bAxisSelectorB0) AND stHandwheel.bAxisSelectorB1 AND (NOT stHandwheel.bAxisSelectorB2) THEN // 0-1-0
+				stHandwheel.eAxisSelect:=ENUM_Axis_Select.Arm;	
+				lrJogMaxSpeed:=GV_Axes.lrJogMaxSpeedAxisArm;
+			ELSE
+				stHandwheel.eAxisSelect:=ENUM_Axis_Select.None;
+				lrJogMaxSpeed:=0.0;
+			END_IF
+		(* Incremental x0/x1/x10/x100/x1000*)
+			IF (NOT stHandwheel.bIncrSelectorB0) AND (NOT stHandwheel.bIncrSelectorB1) AND (NOT stHandwheel.bIncrSelectorB2) THEN // 0-0-0
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.x0;
+				//stHandwheel.lrJogVel:=0.0;
+				lrJogUnitValue:=0.0;
+			ELSIF stHandwheel.bIncrSelectorB0 AND (NOT stHandwheel.bIncrSelectorB1) AND (NOT stHandwheel.bIncrSelectorB2) THEN // 1-0-0
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.x1;
+				//stHandwheel.lrJogVel:=(lrJogMaxSpeed/1000);
+				lrJogUnitValue:=GV_Handwheel.lrUnitIncrx1;
+			ELSIF stHandwheel.bIncrSelectorB0 AND stHandwheel.bIncrSelectorB1 AND (NOT stHandwheel.bIncrSelectorB2) THEN // 1-1-0
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.x10;
+				//stHandwheel.lrJogVel:=(lrJogMaxSpeed/100);
+				lrJogUnitValue:=GV_Handwheel.lrUnitIncrx10;
+			ELSIF (NOT stHandwheel.bIncrSelectorB0) AND stHandwheel.bIncrSelectorB1 AND (NOT stHandwheel.bIncrSelectorB2) THEN // 0-1-0
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.x100;
+				//stHandwheel.lrJogVel:=(lrJogMaxSpeed/10);
+				lrJogUnitValue:=GV_Handwheel.lrUnitIncrx100;
+			ELSIF (NOT stHandwheel.bIncrSelectorB0) AND stHandwheel.bIncrSelectorB1 AND stHandwheel.bIncrSelectorB2 THEN // 0-1-1
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.x1000;
+				//stHandwheel.lrJogVel:=(lrJogMaxSpeed/1);
+				lrJogUnitValue:=GV_Handwheel.lrUnitIncrx1000;
+			ELSE
+				stHandwheel.eIncrSelect:=ENUM_Handwheel_Incr_Select.Unknow;
+				//stHandwheel.lrJogVel:=0.0;
+				lrJogUnitValue:=0.0;
+			END_IF			
+
+	(** POWER **)
+		(* Inactivity on the handwheel *)
+// 			IF stHandwheel.bButtonPlus OR stHandwheel.bButtonMinus OR stHandwheel.bButtonFast 
+// 			OR (stHandwheel.eAxisSelect<>stHandwheel.eAxisSelectMemory) OR (stHandwheel.eIncrSelect<>stHandwheel.eIncrSelectMemory)
+// 			OR diDeltaPulses<>0 THEN
+// 				stHandwheel.bActivity:=TRUE;
+// 			ELSE
+// 				stHandwheel.bActivity:=FALSE;
+// 			END_IF
+// 			TonInactivity(IN:=(NOT stHandwheel.bActivity),PT:=GV_Handwheel.tInactivityTime);
+		(* ON/OFF *)
+// 			IF (NOT stHandwheel.bButtonPlus) AND (NOT stHandwheel.bButtonMinus) THEN
+// 				bChange:=FALSE;
+// 			END_IF
+// 			TonPowerON(IN:=(stHandwheel.bButtonPlus AND stHandwheel.bButtonMinus AND (NOT stHandwheel.bPower)),PT:=GV_Handwheel.tPowerTime);
+// 			TonPowerOFF(IN:=(stHandwheel.bButtonPlus AND stHandwheel.bButtonMinus AND stHandwheel.bPower),PT:=GV_Handwheel.tPowerTime);
+// 			IF TonPowerON.Q AND (NOT bChange) AND (NOT GV_General.bEmergencyStop) THEN
+// 				stHandwheel.bPower:=TRUE;
+// 				bChange:=TRUE;
+// 			END_IF
+// 			IF (TonPowerOFF.Q AND (NOT bChange))THEN
+// 				stHandwheel.bPower:=FALSE;
+// 				bChange:=TRUE;
+// 			END_IF
+// 			IF TonInactivity.Q OR GV_General.bEmergencyStop THEN
+// 				stHandwheel.bPower:=FALSE;
+// 			END_IF	
+			stHandwheel.bPower:=(stHandwheel.bEnable AND GV_General.bSafety);
+
+
+	(** CONTER -> PULSE **)
+		(* Max Pulse *) 
+			diJogMaxPulseCycle:=MAX(1,REAL_TO_DINT(200*MAX(PRG_MAIN.lrLastExecTime_s,0.005))); // 100 pulses/tr -> 2tr/s by the human = 200pulses/s -> Task speed
+		(* Ask *)
+			IF stHandwheel.bSoftwareGateValid AND stHandwheel.bPower THEN // Counter is allowed
+				diDeltaPulses:=(UDINT_TO_DINT(stHandwheel.udiCounterValue)-diCounterValueMemory); // Delta pulses
+				diCounterValueMemory:=UDINT_TO_DINT(stHandwheel.udiCounterValue); // Memory
+			ELSE
+				diDeltaPulses:=0;
+				diCounterValueMemory:=UDINT_TO_DINT(stHandwheel.udiCounterValue);
+			END_IF
+		(* Limit Pulse *)
+			IF ABS(diDeltaPulses)>diJogMaxPulseCycle THEN
+				diDeltaPulses:=0;
+			END_IF	
+	
+	(** JOG **)
+		(* Max Incr *) 
+			//lrJogMaxIncrCycle:=MIN(lrJogMaxSpeed*PRG_MAIN.lrLastExecTime_s,lrJogUnitValue*DINT_TO_REAL(diJogMaxPulseCycle)); // Max Speed (mm/s) * Task time (s)
+			lrJogMaxIncrCycle:=lrJogUnitValue*DINT_TO_REAL(diJogMaxPulseCycle);
+		(* Direction *)
+			IF diDeltaPulses>0 OR stHandwheel.bButtonPlus AND (NOT stHandwheel.bButtonMinus) THEN
+				stHandwheel.eJogDirection:=ENUM_Jog_Direction.Plus;
+			ELSIF diDeltaPulses<0 OR (NOT stHandwheel.bButtonPlus) AND stHandwheel.bButtonMinus THEN
+				stHandwheel.eJogDirection:=ENUM_Jog_Direction.Minus;
+			ELSE
+				stHandwheel.eJogDirection:=ENUM_Jog_Direction.None;			
+			END_IF
+		(* Incremental Request *)
+			(*Ask*)
+				stHandwheel.lrJogIncrRequest:=0.0;
+				IF stHandwheel.bPower AND stHandwheel.eAxisSelect<>ENUM_Axis_Select.None AND stHandwheel.eIncrSelect<>ENUM_Handwheel_Incr_Select.Unknow AND stHandwheel.eJogDirection<>ENUM_Jog_Direction.None THEN
+					IF diDeltaPulses<>0 THEN
+						stHandwheel.lrJogIncrRequest:=DINT_TO_REAL(diDeltaPulses)*lrJogUnitValue; // +/- X Pulse with the handwheel
+						stHandwheel.eJogMode:=ENUM_Jog_Mode.Inching;
+					ELSIF stHandwheel.bButtonPlus AND (NOT stHandwheel.bButtonMinus) THEN
+						stHandwheel.lrJogIncrRequest:=lrJogUnitValue; // + 1 Pulse with the button (decide withe Jog direction, not here)
+						stHandwheel.eJogMode:=ENUM_Jog_Mode.Inching;
+						//stHandwheel.eJogMode:=ENUM_Jog_Mode.Continous;
+					ELSIF (NOT stHandwheel.bButtonPlus) AND stHandwheel.bButtonMinus THEN
+						stHandwheel.lrJogIncrRequest:=lrJogUnitValue; // - 1 Pulse with the button (decide withe Jog direction, not here)
+						stHandwheel.eJogMode:=ENUM_Jog_Mode.Inching;
+						//stHandwheel.eJogMode:=ENUM_Jog_Mode.Continous;
+					ELSE
+						stHandwheel.eJogMode:=ENUM_Jog_Mode.None;
+					END_IF		
+				ELSE
+						stHandwheel.eJogMode:=ENUM_Jog_Mode.None;
+				END_IF		
+			(*Limit Incr*)
+				IF stHandwheel.lrJogIncrRequest>lrJogMaxIncrCycle THEN
+					stHandwheel.lrJogIncrRequest:=lrJogMaxIncrCycle;
+				END_IF
+				IF stHandwheel.lrJogIncrRequest<(-lrJogMaxIncrCycle) THEN
+					stHandwheel.lrJogIncrRequest:=(-lrJogMaxIncrCycle);
+				END_IF
+		(* Request *)
+			IF stHandwheel.bPower AND stHandwheel.eAxisSelect<>ENUM_Axis_Select.None AND stHandwheel.eIncrSelect<>ENUM_Handwheel_Incr_Select.Unknow AND stHandwheel.eJogDirection<>ENUM_Jog_Direction.None AND stHandwheel.eJogMode<>ENUM_Jog_Mode.None AND stHandwheel.lrJogIncrRequest<>0 THEN
+				bJogRequest:=TRUE;
+			ELSE
+				bJogRequest:=FALSE;
+			END_IF
+			(*Rising Edge*)
+				stHandwheel.bJogRequestRisingEdge:=(bJogRequest AND (NOT bJogRequestMemory));
+				bJogRequestMemory:=bJogRequest;
+
+	(** MEMORY **) // To compare and set the inactivity
+		(* Axis Selector *)
+			IF stHandwheel.eAxisSelect<>stHandwheel.eAxisSelectMemory THEN
+				stHandwheel.eAxisSelectMemory:=stHandwheel.eAxisSelect;
+			END_IF
+		(* Incremental Selector *)
+			IF stHandwheel.eIncrSelect<>stHandwheel.eIncrSelectMemory THEN
+				stHandwheel.eIncrSelectMemory:=stHandwheel.eIncrSelect;
+			END_IF
+
+ELSE
+	(** POWER **)
+		(* ON/OFF *)
+			stHandwheel.bPower:=FALSE;
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

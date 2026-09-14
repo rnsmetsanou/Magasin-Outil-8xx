@@ -1,0 +1,385 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Manipulator_Breakage" Id="{c4b4cc10-7894-4888-9855-db55b3817d39}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Manipulator_Breakage
+VAR_INPUT
+	(** SETUP ST **)
+		stToolLocation : ST_Tool_Location ; // Tool_Location structure of the Tool to Crl
+
+	(** SETUP TIME **)
+		tTimeout : TIME ; // Max time for breakage ctrl
+
+	(** SETUP LREAL **)
+		lrZOffsetSensor : LREAL ; // Z Offset above the breakage sensor
+		lrToleranceLength : LREAL ; // Tolerance for tool length
+		lrMeasureVelocity : LREAL ; // Velocity for the measure
+		
+	(** PROCESS FLAG **)
+		bInit : BOOL ; // Init the FB
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** STRING **)
+		strTextLog : STRING ; // Text to Log
+
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+	
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+		bBreakageDone : BOOL ; // Breakage ctrl done
+		bXError : BOOL ; // Axis X Error
+		bYError : BOOL ; // Axis Y Error
+		bZError : BOOL ; // Axis Z Error
+		bArmError : BOOL ; // Axis Arm Error
+		
+	(** FB **)
+		tonTimeout : TON ; // TON timeout of the breakage ctrl
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Manipulator_Breakage
+//
+//				Management of tool breakage detection by the manipulator
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.02.2026
+//Dernière modification : 08.04.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.02.2026 (G.GOETZ) -> Création
+// 08.04.2026 (G.GOETZ) -> Ajout Init + Modification du cycle
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonTimeout();
+
+(** AXIS ERRORS **)
+	bXError:=(GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bYError:=(GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bZError:=(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bArmError:=(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		iStep:=0;
+		bInit:=FALSE;
+	END_IF
+
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle *)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			
+			tonTimeout.IN:=FALSE;
+			
+			GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+			bBreakageDone:=FALSE;
+
+			(* Idle->Setup *)
+				IF bStart AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 0_Idle->1_Setup');
+					iStep:=1; // Next Step
+				END_IF
+				
+		1: (* Step 1 = Setup *)
+			(*Log*)
+				(*OffsetSensor*)
+					strTextLog:=LREAL_TO_STRING(lrZOffsetSensor);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : 1_Setup : Offset Sensor = ',strTextLog));
+				(*ToleranceLength*)
+					strTextLog:=LREAL_TO_STRING(lrToleranceLength);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : 1_Setup : Tolerance Tool Length = ',strTextLog));	
+				(*MeasureVelocity*)	
+					strTextLog:=LREAL_TO_STRING(lrMeasureVelocity);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : 1_Setup : Measure Velocity (Not used) = ',strTextLog));	
+				(*Timeout*)
+					strTextLog:=TIME_TO_STRING(tTimeout);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : 1_Setup : Timeout = ',strTextLog));
+				PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 1_Setup->2_Process');
+				
+			tonTimeout.PT:=tTimeout;
+			iStep:=2; // Next Step
+			
+		2: (* Step 2 = ProcessPrepa (YHome->ZOffset->X->Y) *)
+			tonTimeout.IN:=TRUE; // Start TON timeout
+	
+			CASE iSubStep OF
+				
+				0: (* Start YHome move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYHome;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 0 : Start YHome move');
+					iSubStep:=1; // Next SubStep
+				
+				1: (* Wait YHome move done *)
+					IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 1 : YHome move done');
+						iSubStep:=2; // Next SubStep
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=21; // 21 = Step 2 SubStep 1 Error Axis Y
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+				
+				2: (* Start ZOffset move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZBreakage+stToolLocation.stToolParam.Size+lrZOffsetSensor;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 2 : Start ZOffset move');
+					iSubStep:=3; // Next SubStep
+					
+				3: (* Wait ZOffset move done *)
+					IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 3 : ZOffset move done');
+						iSubStep:=4; // Next SubStep
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=23; // 23 = Step 2 SubStep 3 Error Axis Z
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				4: (* Start X move *)
+					GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrXBreakage;
+					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 4 : Start X move');
+					iSubStep:=5; // Next SubStep
+					
+				5: (* Wait X move done *)
+					IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 5 : X move done');
+						iSubStep:=6; // Next SubStep
+					ELSIF bXError THEN
+						bError:=TRUE;
+						udiErrorID:=25; // 25 = Step 2 SubStep 5 Error Axis X
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				6: (* Start Y move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYBreakage;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 6 : Start Y move');
+					iSubStep:=1; // Next SubStep
+				
+				7: (* Wait Y done *)
+					IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa : 7 : Y move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_ProcessPrepa->3_ProcessCtrl');
+						iSubStep:=0; // End SubStep
+						iStep:=3; // Next Step
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=27; // 27 = Step 2 SubStep 7 Error Axis Y
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_Process=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+				IF tonTimeout.Q AND tonTimeout.PT<>T#0S THEN
+					bError:=TRUE;
+					udiErrorID:=29; // 29 = Step 2 Error Timeout 9
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 2_Process : Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+					iSubStep:=0; // Stop SubStep
+					iStep:=0; // Idle Step
+				END_IF
+			END_CASE
+
+		3: (* Step 3 = ProcessCtrl (ZSensorTol->CTRL->ZOffset->Y_Home) *)
+			
+			CASE iSubStep OF
+				
+				0: (* Start Z move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZBreakage+stToolLocation.stToolParam.Size-lrToleranceLength;
+					GV_Tool_Magazine.stManipulator.bCtrlBreakage:=TRUE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 0 : Start Z move');
+					iSubStep:=1; // Next SubStep
+				
+				1: (* Wait Z move done *)
+					IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZerror) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 1 : Z move done');
+						iSubStep:=2; // Next SubStep
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=31; // 31 = Step 3 SubStep 1 Error Axis Z
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				2: (* CTRL Breakage *)
+					IF GV_Tool_Magazine.uiBreakageSensor<>0 THEN
+						stToolLocation.bBreakageOk:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 2 : CTRL Breakage OK');
+						iSubStep:=3; // Next SubStep
+					ELSE
+						stToolLocation.bBreakageOk:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 2 : CTRL Breakage NOK');
+						iSubStep:=3; // Next SubStep
+					END_IF
+
+				3: (* Start ZOffset move *) // Above sensor
+					GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZBreakage+stToolLocation.stToolParam.Size+lrZOffsetSensor;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 3 : Start ZOffset move');
+					iSubStep:=4; // Next SubStep
+					
+				4: (* Wait ZOffset move done *) // Above sensor
+					IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 4 : ZOffset move done');
+						iSubStep:=5; // Next SubStep
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=34; // 34 = Step 3 SubStep 4 Error Axis Z
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				5: (* Start YHome move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYHome;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 5 : Start YHome move');
+					iSubStep:=5; // Next SubStep
+				
+				6: (* Wait YHome move done *)
+					IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						bBreakageDone:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : 6 : YHome move done');
+						iSubStep:=0; // End SubStep
+						iStep:=0; // Idle Step
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=36; // 36 = Step 3 SubStep 6 Error Axis Y
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+			END_CASE
+				
+			IF bBreakageDone THEN
+				GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+				tonTimeout.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl->0_Idle');
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : Done with success');	
+				iSubStep:=0; // End SubStep
+				iStep:=0; // Idle Step
+				bDone:=TRUE;
+				bBusy:=FALSE;
+			END_IF
+			IF tonTimeout.Q AND tonTimeout.PT<>T#0S THEN
+				bError:=TRUE;
+				udiErrorID:=39; // 39 = Step 3 Error Timeout 9
+				tonTimeout.IN:=FALSE;
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				GV_Tool_Magazine.stManipulator.bCtrlBreakage:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Breakage : 3_ProcessCtrl : Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Breakage : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0; // Stop SubStep
+				iStep:=0; // Idle Step
+			END_IF
+			
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

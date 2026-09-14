@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Tool_Type" Id="{f3b3aaff-e0a7-4e41-baf6-4db2c7fc177b}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Tool_Type
+//
+//							Enumération des types d'outils			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 14.01.2026
+//Dernière modification : 14.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 14.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Tool_Type :
+(
+	Unknow := 0 , // Unknow type
+	Small := 1 , // Small tool
+	Big := 2 , // Big tool
+	GPS70 := 3 // GPS70 
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Spindle" Id="{2910ba86-77e7-4a95-82be-50619aa9fd17}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Spindle
+//
+//								Structure Broche 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Spindle :
+STRUCT
+	
+	(** ST **)
+		stLocationMemory : ST_Tool_location ; // Tool_Location structure
+		
+	(** PROCESS INT **)
+		iAbsLocationNumberMemory : INT := 0 ; // Memory -> Number of the location in the Magazine
+		iRelLocationNumberMemory : INT ; // Memory -> Number of the location in relative in the Magazine
+		
+	(** PROCESS FLAG **)
+		bToolPresenceMemory : BOOL ; // Memory -> Tool Presence in the Manipulator
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

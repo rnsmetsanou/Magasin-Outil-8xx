@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Cycle" Id="{9a2006e4-2afd-42b0-8cf0-b947a65f8369}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_HMI_Cycle
+//
+//								Structure Cycle HMI			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 05.03.2026
+//Dernière modification : 05.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 05.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Cycle :
+STRUCT
+
+	(** STRING **)
+		sCurrentCycle : STRING(100) ;
+		//sCurrentCycleStep : STRING(50) ;
+
+	(** FLAG + R_Trig **)
+		bButtonStartStop : BOOL ; // Button for Start/Stop Cycle
+			rtButtonStartStop : R_TRIG ; // Trigger for Start/Stop Cycle
+		bButtonStart : BOOL ; // Button for Start Cycle
+			rtButtonStart : R_TRIG ; // Trigger for Start Cycle
+		bButtonStop : BOOL ; // Button for Stop Cycle
+			rtButtonStop : R_TRIG ; // Trigger for Stop Cycle
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

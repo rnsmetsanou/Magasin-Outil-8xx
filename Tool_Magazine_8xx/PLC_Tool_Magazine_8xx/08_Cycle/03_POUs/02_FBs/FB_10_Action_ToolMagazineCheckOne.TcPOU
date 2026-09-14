@@ -1,0 +1,567 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_10_Action_ToolMagazineCheckOne" Id="{a9b03a6b-b87a-4c6e-975e-22bfdf64748d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_10_Action_ToolMagazineCheckOne
+VAR_INPUT
+	(** SETUP ST **)
+		stToolLocation : ST_Tool_Location ; // Tool_Location structure of the Tool to Check	
+
+	(** SETUP TIME **)
+		tTimeout : TIME ; // Max time for the check
+		(*Tunnel*)
+			tTunnelTimeout : TIME ; // Value of the timeout for travel the tunnel
+			
+	(** SETUP LREAL **)
+		lrToolDistance : LREAL ; // Theoretical distance in mm for tool presence
+		lrToolDistanceTolerance : LREAL ; // Tolerance in distance in mm for tool presence
+
+	(** SETUP FLAG **)
+		bCheckSensorManipulatorGripper : BOOL ; // Check the manipulator gripper sensor at the beginning
+
+	(** PROCESS FLAG **)
+	    bInit : BOOL ; // Init the Fb
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** SETUP ENUM **)
+		(*Tunnel*)
+			eTunnelMode : ENUM_Tunnel_Mode; // Tunnel mode for travel (fbTunnel)
+		
+	(** PROCESS STRING **)
+		strTextLog : STRING ; // Text to Log
+		
+	(** PROCESS LREAL **)
+		lrToolPresenceRack : LREAL ; // Conversion in mm of the Tool Presence in Rack sensor
+
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+		
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+		(*Tunnel*)
+			bTunnelTravel : BOOL ; // Need to travel the tunnel
+		bToleranceOK : BOOL ; // Tolerance for the Tool Presence in Rack is OK
+		
+	(** FB **)
+		tonTimeout : TON ; // TON timeout of the check
+		(*Tunnel*)
+			fbTunnel : FB_Manipulator_Tunnel ;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_10_Action_ToolMagazineCheckOne
+//
+//					Management of Check One Tool Location by the manipulator
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 16.02.2026
+//Dernière modification : 16.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 16.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonTimeout();
+	fbTunnel( // Call Tunnel travel
+			eTunnelMode:=eTunnelMode,
+			tTimeout:=tTunnelTimeout
+			);
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		bBusy:=FALSE;
+		bDone:=FALSE;
+		bError:=FALSE;
+		udiErrorID:=0;
+		iStep:=0;
+		iSubStep:=0;
+		bInit:=FALSE;
+	END_IF
+	
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle + Check *)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			tonTimeout.IN:=FALSE;
+			bTunnelTravel:=FALSE;
+			bToleranceOK:=FALSE;
+			lrToolPresenceRack:=0.0;
+			(* Idle->Setup *)
+				IF rtStart.Q AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						(*ToolDistance*)
+							strTextLog:=LREAL_TO_STRING(lrToolDistance);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Tool Distance = ',strTextLog));
+						(*ToolDistanceTolerance*)
+							strTextLog:=LREAL_TO_STRING(lrToolDistanceTolerance);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Tool Distance Tolerance = ',strTextLog));	
+						(*Timeout*)
+							strTextLog:=TIME_TO_STRING(tTimeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Timeout = ',strTextLog));	
+					
+					(* Check manipulator *)
+						IF (NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) THEN
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator memory Check = OK');
+								
+								IF bCheckSensorManipulatorGripper THEN
+									IF (NOT GV_IO.diToolPresenceCone) THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator sensor Check = FALSE = OK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle->1_Tunnel');
+										iStep:=1;
+									ELSE
+										bError:=TRUE;
+										udiErrorID:=002; // 002 = Step 0 Error Manipulator Sensor Check 02
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator sensor Check = TRUE = NOK');
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle=Error');
+											PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+										iStep:=0; // Idle Step
+									END_IF
+								ELSE
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator sensor Check : Not controlled');
+										PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle->1_Tunnel');
+									iStep:=1;
+								END_IF
+						ELSE
+							bError:=TRUE;
+							udiErrorID:=001; // 001 = Step 0 Error Manipulator Memory Check 01
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator memory Check = NOK');
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator memory = Presence');
+								strTextLog:=INT_TO_STRING(GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory);
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator memory Location Number Abs = ',strTextLog));
+								strTextLog:=INT_TO_STRING(GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory);
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 0_Idle : Manipulator memory Location Number Rel = ',strTextLog));
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 0_Idle=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iStep:=0; // Idle Step
+						END_IF
+
+				END_IF
+			
+			1: (* Step 1 = Tunnel passage (if needed) *)
+				tonTimeout.PT:=tTimeout;
+				tonTimeout.IN:=TRUE;
+					
+				IF (NOT bTunnelTravel) THEN
+					IF (stToolLocation.ePositionMag=ENUM_Position_Magazine.Bottom AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom) OR (stToolLocation.ePositionMag=ENUM_Position_Magazine.Top AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top) THEN
+						bTunnelTravel:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel : No Need to Travel');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel->2_MoveLocation');
+						iSubStep:=0; // For next Step
+						iStep:=2; // Next Step
+					END_IF	
+					IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Bottom AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+						eTunnelMode:=ENUM_Tunnel_MODE.TopToBottom;
+						bTunnelTravel:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel : Need to Travel Top->Bottom');
+					END_IF
+					IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Top AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+						eTunnelMode:=ENUM_Tunnel_MODE.BottomToTop;
+						bTunnelTravel:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel : Need to Travel Bottom->Top');
+					END_IF			
+					IF stToolLocation.ePositionMag<>ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // Manipulator Unknow position
+						bError:=TRUE;
+						udiErrorID:=101; // 101 = Step 1 Error Tunnel 01
+						bTunnelTravel:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iStep:=0; // Idle Step
+					END_IF
+					IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag<>ENUM_Position_Magazine.Unknow THEN // ToolLocation Unknow position
+						bError:=TRUE;
+						udiErrorID:=102; // 102 = Step 1 Error Tunnel 02
+						bTunnelTravel:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iStep:=0; // Idle Step
+					END_IF
+					IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // ToolLocation AND Manipulator Unknow position
+						bError:=TRUE;
+						udiErrorID:=103; // 103 = Step 1 Error Tunnel 03
+						bTunnelTravel:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iStep:=0; // Idle Step
+					END_IF
+				END_IF
+				
+				IF bTunnelTravel AND (NOT fbTunnel.bStart) AND (NOT fbTunnel.bBusy) THEN // Tunnel Start
+					fbTunnel.bStart:=TRUE;
+				END_IF
+				IF fbTunnel.bDone THEN // Tunnel Done
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel->2_MoveLocation');
+					iSubStep:=0; // For next Step
+					iStep:=2; // Next Step
+				ELSIF fbTunnel.bError THEN // Tunnel Error
+					bError:=TRUE;
+					udiErrorID:=100+fbTunnel.udiErrorID; // 1xx = Step 1 Error + Error xx fbTunnel
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0;
+					iStep:=0; // Idle Step
+				END_IF
+				IF tonTimeout.Q THEN
+					bError:=TRUE;
+					udiErrorID:=199; // 199 = Step 1 Error Timeout 99
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 1_Tunnel : Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+					iSubStep:=0; // Stop SubStep
+					iStep:=0; // Idle Step
+				END_IF
+			
+			2: (* Step 2 = Move to Location *)
+				
+				CASE iSubStep OF // X->Z->Y
+
+				0: (* Start X move *)
+					GV_Axes.stAxisX.lrAutoPosAbs:=stToolLocation.lrXcoord;
+					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 0 : Start X move');
+					iSubStep:=1; // Next SubStep
+
+				1: (* Wait X move done *)
+					IF GV_Axes.stAxisX.bAutoDone THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 1 : X move done');
+						iSubStep:=2; // Next SubStep
+					ELSIF GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+						bError:=TRUE;
+						udiErrorID:=211; // 211 = Step 2 SubStep 1 Error Axis X 1
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+				2: (* Start Z move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=stToolLocation.lrZcoord+lrToolDistance;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 2 : Start Z move');
+					iSubStep:=3; // Next SubStep
+
+				3: (* Wait Z move done *)
+				   IF GV_Axes.stAxisZ.bAutoDone THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 3 : Z move done');
+						iSubStep:=4; // Next SubStep
+					ELSIF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+						bError:=TRUE;
+						udiErrorID:=231; // 231 = Step 2 SubStep 3 Error Axis Z 1
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				4: (* Start Y move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=stToolLocation.lrYcoord;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 4 : Start Y move');
+					iSubStep:=5; // Next Step
+
+				5: (* Wait Y move done *)
+				   IF GV_Axes.stAxisY.bAutoDone THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : 5 : Y move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation->4_Check');
+						iSubStep:=0; // End SubStep
+						iStep:=3; // Next Step
+					ELSIF GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+						bError:=TRUE;
+						udiErrorID:=251; // 251 = Step 2 SubStep 5 Error Axis Y 1
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				END_CASE
+				
+				IF tonTimeout.Q THEN
+					bError:=TRUE;
+					udiErrorID:=299; // 299 = Step 2 Error Timeout 99
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 2_MoveLocation : Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+					iSubStep:=0; // Stop SubStep
+					iStep:=0; // Idle Step
+				END_IF
+	
+			3: (* Step 3 = Check Tool presence in Location *)
+				(*Conversion*)
+					lrToolPresenceRack:=(INT_TO_LREAL(GV_IO.aiToolPresenceRack))*(2/32767); //(0..10V) = (0..32767) = (0..2mm)
+				(*Tolerance*)
+					IF lrToolPresenceRack>=(lrToolDistance-lrToolDistanceTolerance) AND lrToolPresenceRack<=(lrToolDistance+lrToolDistanceTolerance) THEN
+						bToleranceOK:=TRUE;
+					ELSE
+						bToleranceOK:=FALSE;
+					END_IF
+				(*Check*)
+					IF bToleranceOK THEN
+						(*Update*)
+							stToolLocation.bToolPresence:=TRUE; // OK
+						(*Log*)
+							strTextLog:=INT_TO_STRING(GV_IO.aiToolPresenceRack);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 3_Check : Sensor in INT = ',strTextLog));
+							strTextLog:=LREAL_TO_STRING(lrToolPresenceRack);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 3_Check : Sensor in LREAL(mm) = ',strTextLog));
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 3_Check : Tolerance = OK');	
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 3_Check->4_Tunnel');					
+						bToleranceOK:=FALSE;	
+						lrToolPresenceRack:=0.0;
+						iStep:=4; // Next Step
+					ELSE
+						(*Update*)
+							stToolLocation.bToolPresence:=FALSE; // NOK
+						(*Log*)
+							strTextLog:=INT_TO_STRING(GV_IO.aiToolPresenceRack);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 3_Check : Sensor in INT = ',strTextLog));
+							strTextLog:=LREAL_TO_STRING(lrToolPresenceRack);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : 3_Check : Sensor in LREAL(mm) = ',strTextLog));
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 3_Check : Tolerance = NOK');	
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 3_Check->4_Tunnel');						
+						bToleranceOK:=FALSE;	
+						lrToolPresenceRack:=0.0;
+						iStep:=4; // Next Step
+					END_IF
+
+		4: (* Step 4 = Tunnel passage (if needed) *)
+			IF (NOT bTunnelTravel) THEN
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel : No Need to Travel');
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel->5_PositionHome');
+					iSubStep:=0; // For next Step
+					iStep:=5; // Next Step
+				END_IF	
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+					eTunnelMode:=ENUM_Tunnel_MODE.BottomToTop;
+					bTunnelTravel:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel : Need to Travel Bottom->Top');
+				END_IF			
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // Manipulator Unknow position
+					bError:=TRUE;
+					udiErrorID:=401; // 401 = Step 4 Error Tunnel 01
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iStep:=0; // Idle Step
+				END_IF
+			END_IF
+			
+			IF bTunnelTravel AND (NOT fbTunnel.bStart) AND (NOT fbTunnel.bBusy) THEN // Tunnel Start
+				fbTunnel.bStart:=TRUE;
+			END_IF
+			IF fbTunnel.bDone THEN // Tunnel Done
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel->5_PositionHome');
+				iSubStep:=0; // For next Step
+				iStep:=5; // Next Step
+			ELSIF fbTunnel.bError THEN // Tunnel Error
+				bError:=TRUE;
+				udiErrorID:=400+fbTunnel.udiErrorID; // 4xx = Step 4 Error + Error xx fbTunnel
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0; // Idle Step
+			END_IF
+			
+				IF tonTimeout.Q THEN
+					bError:=TRUE;
+					udiErrorID:=499; // 459 = Step 4 Error Timeout 99
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 4_Tunnel : Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+					iSubStep:=0; // Stop SubStep
+					iStep:=0; // Idle Step
+				END_IF
+				
+		5: (* Step 5 = Home Position*)
+		
+			CASE iSubStep OF //Y->X->Z
+
+				0: (* Start Y home move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYHome;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 0 : Start Y home move');
+					iSubStep:=1; // Next Step
+				
+				1: (* Wait Y home move done *)
+				IF GV_Axes.stAxisY.bAutoDone THEN
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 1 : Y move done');
+					iSubStep:=2; // Next SubStep
+				ELSIF GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+					bError:=TRUE;
+					udiErrorID:=511; // 511 = Step 5 SubStep 1 Error Axis Y 1
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					tonTimeout.IN:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iSubStep:=0; // Stop SubStep
+					iStep:=0; // Idle Step
+				END_IF
+				
+				2: (* Start X home move *)
+					GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrXHome;
+					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 2 : Start X home move');
+					iSubStep:=3; // Next Step
+					
+				3: (* Wait X home move done *)
+					IF GV_Axes.stAxisX.bAutoDone THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 3 : X move done');
+						iSubStep:=4; // Next SubStep
+					ELSIF GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+						bError:=TRUE;
+						udiErrorID:=531; // 511 = Step 5 SubStep 3 Error Axis X 1
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+				
+				4: (* Start Z home move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZHome;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 4 : Start X home move');
+					iSubStep:=5; // Next Step
+					
+				5: (* Wait Z home move done *)
+					IF GV_Axes.stAxisZ.bAutoDone THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : 5 : Y move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome->0_Idle');
+						tonTimeout.IN:=FALSE;
+						iSubStep:=0; // End SubStep
+						iStep:=0; // End Step
+						bDone:=TRUE;
+						bBusy:=FALSE;
+					ELSIF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0 THEN
+						bError:=TRUE;
+						udiErrorID:=551; // 551 = Step 5 SubStep 5 Error Axis Z 1
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeout.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+			END_CASE
+
+			IF tonTimeout.Q AND tonTimeout.PT<>T#0S THEN
+				bError:=TRUE;
+				udiErrorID:=599; // 599 = Step 5 Error Timeout 99
+				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+				tonTimeout.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_10_Action_ToolMagazineCheckOne : 5_PositionHome : Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_10_Action_ToolMagazineCheckOne : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0; // Stop SubStep
+				iStep:=0; // Idle Step
+			END_IF
+
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

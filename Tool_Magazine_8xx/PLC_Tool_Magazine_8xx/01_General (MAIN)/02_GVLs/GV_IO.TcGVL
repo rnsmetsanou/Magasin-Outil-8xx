@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_IO" Id="{a77eefa5-4127-40f2-ae81-21123ade8b41}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_IO
+//
+//					Variables d'entrées et de sorties    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création	
+// 16.01.2026 (G.GOETZ) -> Modif Schéma électrique / Changement de config. matérielle	
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL
+	
+	(** INPUT **)
+	
+		(* I271 *)
+			diEmergencyStop AT %I* : BOOL ; // Input Emergency Stop of the Magazine only
+			diHandwheelAxisSelectorB0 AT %I* : BOOL ; // Input Handwheel Axis Selector Bit 0 (X)
+			diHandwheelAxisSelectorB1 AT %I* : BOOL ; // Input Handwheel Axis Selector Bit 1 (Y)
+			diHandwheelAxisSelectorB2 AT %I* : BOOL ; // Input Handwheel Axis Selector Bit 2 (Z)
+			diSafetyRelayMagazineDoor AT %I* : BOOL ; // Input Safety Relay Magazine Door
+			diReserve2716 AT %I* : BOOL ; // Input Reserve I271.6
+			diReserve2717 AT %I* : BOOL ; // Input Reserve I271.7	
+			diToolPresenceCone AT %I* : BOOL ; // Input Tool Presence in Cone (Manipulator)
+			
+			diSafetyAreaMagazineOk AT %I* : BOOL ; // Input Safety Area Magazine Ok	
+			diIntermediateDoorNotClosed AT %I* : BOOL ; // Input Intermediate Door (magazine-cnc) not Closed
+			diReserve27111 AT %I* : BOOL ; // Input Reserve I271.11
+			diToolPresenceArmGripper1 AT %I* : BOOL ; // Input Tool Presence in Gripper 1 of the changer arm
+			diToolPresenceArmGripper2 AT %I* : BOOL ; // Input Tool Presence in Gripper 2 of the changer arm
+			diButtonUnlockMagazineDoor AT %I* : BOOL ; // Input Button for Unlock Magazine Door
+			diMagazineDoorOpen AT %I* : BOOL ; // Input Magazine Door Open
+			diSafetyRelayIntermediateDoor AT %I* : BOOL ; // Input Safety Relay Intermediate Door
+
+	(** INPUT/OUTPUT **)
+	
+		(* IO273 *)
+			diHandwheelTrackA AT %I* : BOOL ; // Input Handwheel Track A
+			diHandwheelTrackB AT %I* : BOOL ; // Input Handwheel Track B	
+			udiHandwheelCounterValue AT %I* : UDINT ; // Input Handwheel Counter Value
+  			biHandwheelCounterUnderflow AT %I* : BOOL ; // Input Handwheel Counter underflow
+  			biHandwheelCounterOverflow AT %I* : BOOL ; // Input Handwheel Counter Overflow
+			biSoftwareGateValid AT %I* : BOOL ; // Input Handwhell Counter is Valid
+			biHandwheelSetCounterDone AT %I* : BOOL ; // Input Handwhell Counter is Set
+			udoHandwheelCounterValue AT %Q* : UDINT ; // Ouput Handwheel Counter Value
+			boHandwheelSetCounter  AT %Q* : BOOL ; // Ouput set Handwheel Counter Value
+			boSoftwareGateSet AT %Q* : BOOL ; // Ouptput set valid Handwheel
+			diHandwheelButtonPlus AT %I* : BOOL ; // Input Handwheel Button Plus	
+			diHandwheelButtonMinus AT %I* : BOOL ; // Input Handwheel Button Minus
+			pwmMagazineArmorFanOutput AT %Q* : UINT ; // Output Magazine Armor Fan (PWM)
+			pwmMagazineArmorFanPeriod AT %Q* : UINT ; // PWM_output Magazine Armor Fan (PWM)
+			aiToolPresenceRack AT %I* : INT ; // Analog_input Tool Presence in Rack (Voltage) = (0..10V) = (0..32767) = (0..2mm)
+			
+			diHandwheelIncrSelectorB0 AT %I* : BOOL ; // Input Handwheel Incremental Selector Bit 0
+			diHandwheelIncrSelectorB1 AT %I* : BOOL ; // Input Handwheel Incremental Selector Bit 1
+			diHandwheelIncrSelectorB2 AT %I* : BOOL ; // Input Handwheel Incremental Selector Bit 2
+			diHandwheelButtonFast AT %I* : BOOL ; // Input Handweel Button Fast
+			doReserve27313 AT %Q* : BOOL ; //Output Reserve IO273.13
+			aoHandwheelPower AT %Q* : INT ; // Analog_output Handwheel Power (Voltage) = (5V) = 10/2 = 32767/2 = 16384
+	
+	(** OUTPUT **)
+	
+		(* O275 *)
+			doButtonUnlockMagazineDoorLamp AT %Q* : BOOL ; // Output Lamp of the Button for Unlock Magazine Door
+			doUnlockMagazineDoor AT %Q* : BOOL ; // Output Unlock Magazine Door
+			doReserve2753 AT %Q* : BOOL ; // Output Reserve O275.3
+			doReserve2754 AT %Q* : BOOL ; // Output Reserve O275.4
+			doReserve2755 AT %Q* : BOOL ; // Output Reserve O275.5
+			doSafetyAreaMagazineReset AT %Q* : BOOL ; // Output Safety Relay Magazine Door Reset
+			doReserve2757 AT %Q* : BOOL ; // Output Reserve O275.7
+			doReserve2758 AT %Q* : BOOL ; // Output Reserve O275.8
+		
+			doMagazineLight AT %Q* : BOOL ; // Output Magazine Light
+			doReserve27510 AT %Q* : BOOL ; // Output Reserve O275.10
+			doReserve27511 AT %Q* : BOOL ; // Output Reserve O275.11
+			doReserve27512 AT %Q* : BOOL ; // Output Reserve O275.12
+			doReserve27513 AT %Q* : BOOL ; // Output Reserve O275.13
+			doReserve27514 AT %Q* : BOOL ; // Output Reserve O275.14
+			doReserve27515 AT %Q* : BOOL ; // Output Reserve O275.15
+			doReserve27516 AT %Q* : BOOL ; // Output Reserve O275.16
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

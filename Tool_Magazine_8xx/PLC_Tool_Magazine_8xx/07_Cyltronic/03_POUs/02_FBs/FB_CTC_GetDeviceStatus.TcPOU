@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CTC_GetDeviceStatus" Id="{b76b3ae2-f854-4804-8189-a9f3d4e4a492}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CTC_GetDeviceStatus
+VAR_INPUT
+	AmsNetid 		:T_AmsNetid;
+	IolPort			:E_IolPort;
+	GetStatus		:BOOL;
+END_VAR
+VAR_OUTPUT
+	stDeviceStatus	:tstCTCDeviceStatus;
+	Busy 			:BOOL;
+	Done 			:BOOL;
+	Failed 			:BOOL;
+END_VAR
+VAR
+	FB_IolRead_0 		:FB_IolRead;
+	bInit 				:BOOL := FALSE;
+	eStep 				:teCTCGDSStep;
+	bufferArray			:ARRAY[0..56] OF BYTE;	// must be 57 bytes long: 19 Events with each 3 bytes
+	tonTimeout 			:TON;
+	R_TRIG_GetStatus	:R_TRIG;
+	iEventIndex			:USINT;
+	temp_word1			:WORD;
+	temp_word2			:WORD;
+	temp_word3			:WORD;
+END_VAR
+VAR CONSTANT
+	INDEX_DEVICE_STATUS				:USINT := 36;
+	INDEX_DETAILED_DEVICE_STATUS	:USINT := 37;
+	NUMBER_OF_EVENTS				:USINT := 4;	// because its an index, its number of events - 1
+END_VAR
+
+
+
+
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+	FB_CTC_GetDeviceStatus V2.0
+	Cyltronic AG, June 2024
+
+	Function Block that reads Index 36 and 37 to provide detailed information
+	of current IO-Link events 
+*)
+
+FB_IolRead_0.sNetId := AmsNetid;
+FB_IolRead_0.nIolPort := IolPort;
+
+IF(bInit = FALSE)THEN
+	bInit := TRUE;	
+
+	Busy 	:= FALSE;
+	Done 	:= FALSE;
+	Failed 	:= FALSE;
+END_IF;
+
+CASE eStep OF
+        // ====================================================
+        // === #CTC_GDS_IDLE ==================================
+        // ====================================================
+    CTC_GDS_IDLE:
+        
+		FB_IolRead_0.bExecute := FALSE;
+		tonTimeout.IN := FALSE;
+	
+		R_TRIG_GetStatus.CLK := GetStatus;
+		
+		IF(R_TRIG_GetStatus.Q)THEN
+			iEventIndex := 0;
+			eStep := CTC_GDS_READ_STATUS_START;
+		END_IF
+        
+        // ====================================================
+        // === #CTC_GDS_READ_STATUS_START =====================
+        // ====================================================
+    CTC_GDS_READ_STATUS_START:
+        
+        Busy := TRUE;
+        Done := FALSE;
+        Failed := FALSE;
+        
+		FB_IolRead_0.pDSTBuf	:= ADR(bufferArray);
+		FB_IolRead_0.cbBufLen	:= 1;
+		FB_IolRead_0.nIndex 	:= INDEX_DEVICE_STATUS;
+		FB_IolRead_0.nSubindex 	:= 0;
+		FB_IolRead_0.bExecute	:= TRUE;
+        
+        tonTimeout.IN := FALSE;
+        
+        eStep := CTC_GDS_READ_STATUS_WAIT;
+        
+        // ====================================================
+        // === #CTC_GDS_READ_STATUS_WAIT ======================
+        // ====================================================
+    CTC_GDS_READ_STATUS_WAIT:
+        
+        tonTimeout.IN := TRUE;
+        
+        IF ((FB_IolRead_0.bDone = TRUE) OR tonTimeout.Q) THEN
+            Failed := Failed OR tonTimeout.Q;
+            FB_IolRead_0.bExecute := FALSE;
+            
+            // process data: Device Status, Index 36, is the first byte
+            stDeviceStatus.DeviceStatus := BYTE_TO_INT(bufferArray[0]);
+            
+            eStep := CTC_GDS_READ_DETSTAT_START;
+            
+        END_IF;
+        
+        // ====================================================
+        // === CTC_CONFIG_READ_FINISH =========================
+        // ====================================================
+    CTC_GDS_READ_DETSTAT_START:
+        
+		FB_IolRead_0.pDSTBuf	:= ADR(bufferArray);
+		FB_IolRead_0.cbBufLen	:= 57;
+		FB_IolRead_0.nIndex 	:= INDEX_DETAILED_DEVICE_STATUS;
+		FB_IolRead_0.nSubindex 	:= 0;
+		FB_IolRead_0.bExecute	:= TRUE;
+        
+        tonTimeout.IN := FALSE;
+        
+        iEventIndex := 0;
+        
+        eStep := CTC_GDS_READ_DETSTAT_WAIT;
+        
+        // ====================================================
+        // === CTC_GDS_READ_DETAILED_STATUS_WAIT ==============
+        // ====================================================
+    CTC_GDS_READ_DETSTAT_WAIT:
+        
+        tonTimeout.IN := TRUE;
+        
+        IF ((FB_IolRead_0.bDone = TRUE) OR tonTimeout.Q) THEN
+            Failed := Failed OR tonTimeout.Q;
+            FB_IolRead_0.bExecute := FALSE;
+            
+            // process data: Detailed Device Status, Index 37, is the current eventqueue
+            // --> 1 byte qulifier, 2 bytes event identifier, then repeat for the next event. We extract the first 5
+            FOR iEventIndex := 0 TO NUMBER_OF_EVENTS BY 1 DO
+                
+                stDeviceStatus.Events[iEventIndex].Qualifier := BYTE_TO_USINT(bufferArray[iEventIndex*3]);
+                temp_word1 := BYTE_TO_WORD(bufferArray[iEventIndex*3+2]);
+				temp_word2 := BYTE_TO_WORD(bufferArray[iEventIndex*3+1]);
+				temp_word3 := temp_word1 OR SHL(temp_word2,8);
+				stDeviceStatus.Events[iEventIndex].Event := WORD_TO_INT(temp_word3);
+           
+            END_FOR;
+            
+            eStep := CTC_GDS_IDLE;
+            Busy := FALSE;
+            Done := TRUE;
+            
+        END_IF;
+        
+    ELSE
+        eStep := CTC_GDS_IDLE;
+        
+END_CASE;
+	
+//call FBs
+R_TRIG_GetStatus();
+tonTimeout(PT := T#2S);
+FB_IolRead_0();]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

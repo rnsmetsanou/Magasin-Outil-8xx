@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Axis" Id="{dcb027cc-3b5a-40e4-bfd5-5e621f434479}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Axis
+//
+//							Structure pour les Axes		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 29.01.2026
+//Dernière modification : 29.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 29.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Axis :
+STRUCT
+	
+	(** ST **)
+		stDriveAx8206 : ST_Beckhoff_Drive_AX8206 ; // Structure Drive YX8206
+
+	(** SETUP STRING **)
+		strIdHMI : STRING[20] := '' ; // String for events on HMI
+	
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+		iIdHMI : INT := 0 ; // Number for events on HMI
+	
+	(** SETUP FLAG **)
+		bPresence : BOOL := FALSE ; // Presence or not
+		bEventAck : BOOL := FALSE ; // Events Acknowledgement
+
+	(** ALARMS FLAG **)
+		bAlAxisFault : BOOL := FALSE ; // Axis in Fault
+	
+	(** PROCESS ENUM **)
+		//eStatus : ENUM_Axis_Status ; // Status
+		(*Jog*)
+			eJogMode : TC2_MC2.E_JogMode ; // Jog Mode
+
+	(** PROCESS LREAL **)
+		(*Jog*)
+			lrJogPos : LREAL ; // Jog Position
+			lrJogVel : LREAL ; // Jog Velocity
+			lrJogAcc : LREAL ; // Jog Acceleration
+			lrJogDec : LREAL ; // Jog Decelration
+			lrJogJerk : LREAL ; // Jog Jerk
+		(*Auto*)
+			lrAutoPosAbs : LREAL ; // AUTO Postion
+			lrAutoVelAbs : LREAL ; // AUTO Velocity
+			lrAutoAccAbs : LREAL ; // AUTO Acceleration
+			lrAutoDecAbs : LREAL ; // AUTO Decelration
+			lrAutoJerkAbs : LREAL ; // AUTO Jerk
+		(*ReadParameter*)
+			lrReadlrValue : LREAL ; // Read LREAL Parameter Value
+			lrReadMinSoftPosLimit : LREAL ; // Read LREAL Parameter : Min Soft Limit Value
+			lrReadMaxSoftPosLimit : LREAL ; // Read LREAL Parameter : Max Soft Limit Value
+		(*WriteParameter*)
+			lrValueMin : LREAL ; // Min Soft Limit Value for Write
+			lrValueMax : LREAL ; // Max Soft Limit Value for Write
+			lrWritelrValue : LREAL ; // Write LREAL Parameter Value
+			
+	(** PROCESS FLAG **)
+		(*Power*)
+			bPowerEnable : BOOL := FALSE ; // Can be Powered
+		(*Stop*)
+			bStopExecute : BOOL := FALSE ; // Execute a STOP
+			bStopDone : BOOL ; // STOP is Done
+		(*Halt*)
+			bHaltExecute : BOOL := FALSE ; // Execute a HALT
+			bHaltDone : BOOL ; // HALT is Done
+		(*Abort*)
+			bAbort : BOOL := FALSE ; // Have to Abort the mouvement
+		(*Jog*)
+			bJogEnable : BOOL ; // Can move in Jog
+			bJogPlus : BOOL ; // Jog +
+			bJogMinus : BOOL ; // Jog -
+			bJogDone : BOOL ; // Jog move is done
+		(*Auto*)
+			bAutoEnable : BOOL ; // Can move in AUTO
+			bAutoCmdAbs : BOOL ; // AUTO command
+			bAutoDone : BOOL ; // AUTO move is done
+		(*Reset*)
+			bResetCmd : BOOL ; // Reset command
+		(*Referencing*)
+			bSetOffsetExecute: BOOL ; // Referencing the position at 0
+			bDeleteOffsetExecute: BOOL ; // Delete the Referencing position
+		(*ReadParameter*)
+			bReadbEnable : BOOL ; // Read BOOL Parameter Enable
+			bReadlrEnable : BOOL ; // Read LREAL Parameter Enable
+			bReadbValue : BOOL ; // Read BOOL Parameter Value
+			bReadbValid : BOOL ; // Read BOOL Parameter is Valid
+			bReadlrValid : BOOL ; // Read LREAL Parameter is Valid
+			bReadEnMinSoftPosLimit : BOOL ; // Read BOOL Parameter : Min Soft Limit Enable
+			bReadEnMaxSoftPosLimit : BOOL ; // Read BOOL Parameter : Max Soft Limit Enable
+		(*WriteParameter*)
+			bWritebExecute : BOOL ; // Write BOOL Parameter Enable
+			bWritelrExecute : BOOL ; // Write LREAL Parameter Enable
+			bWritebValue : BOOL ; // Write BOOL Parameter Value
+			bWritebDone : BOOL ; // Write BOOL Parameter is Done
+			bWritebBusy : BOOL ; // Write BOOL Parameter is Busy
+			bWritelrDone : BOOL ; // Write LREAL Parameter is Done
+			bWritelrBusy : BOOL ; // Write LREAL Parameter is Busy
+			
+	(** MC **)
+		(*ReadParameter*)
+			mcAxisReadParameterb : MC_AxisParameter ; // Parameter to Read (BOOL)
+			mcAxisReadParameterlr : MC_AxisParameter ; // Parameter to Read (LREAL)
+		(*WriteParameter*)
+			mcAxisWriteParameterb : MC_AxisParameter ; // Parameter to Write (BOOL)
+			mcAxisWriteParameterlr : MC_AxisParameter ; // Parameter to Write (LREAL)
+			
+END_STRUCT
+END_TYPE
+
+(* Beckhoff specific parameters *) (* Index-Group 0x4000 + ID*)
+(*
+TYPE MC_AxisParameter : (
+(* Beckhoff specific parameters *) (* Index-Group 0x4000 + ID*)
+ AxisEnMinSoftPosLimit,              (* bool  *) (* IndexOffset= 16#0001_000B *)
+ AxisMinSoftPosLimit,                (* lreal *) (* IndexOffset= 16#0001_000D *)
+ AxisEnMaxSoftPosLimit,              (* bool  *) (* IndexOffset= 16#0001_000C *)
+ AxisMaxSoftPosLimit,                (* lreal *) (* IndexOffset= 16#0001_000E *)
+*)]]></Declaration>
+  </DUT>
+</TcPlcObject>

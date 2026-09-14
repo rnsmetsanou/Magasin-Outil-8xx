@@ -1,0 +1,300 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Manipulator_Tunnel_5" Id="{5908a2c9-b48c-405a-b77c-78c00ad3fdb1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Manipulator_Tunnel_5
+VAR_INPUT
+	(** SETUP ENUM **)
+		eTunnelMode : ENUM_Tunnel_Mode ; // Mode of the tunnel	
+
+	(** SETUP TIME **)
+		tTimeout : TIME ; // Max time for travel the tunnel
+
+	(** PROCESS FLAG **)
+		bInit : BOOL ; // Init the FB
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** STRING **)
+		strTextLog : STRING ; // Text to Log
+
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+	
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+		bTunnelTravelDone : BOOL ; // Tunnel travel done
+		bXError : BOOL ; // Axis X Error
+		bYError : BOOL ; // Axis Y Error
+		bZError : BOOL ; // Axis Z Error
+		bArmError : BOOL ; // Axis Arm Error
+		
+	(** FB **)
+		tonTimeout : TON ; // TON timeout of the tunnel travel
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  		FB_Manipulator_Tunnel
+//
+//			Management of the manipulator passage through the tunnel
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 06.02.2026
+//Dernière modification : 08.04.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 06.02.2026 (G.GOETZ) -> Création
+// 08.04.2026 (G.GOETZ) -> Ajout Init + Modification du cycle
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonTimeout();
+
+(** AXIS ERRORS **)
+	bXError:=(GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bYError:=(GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bZError:=(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bArmError:=(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		iStep:=0;
+		bInit:=FALSE;
+	END_IF
+
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle *)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			
+			tonTimeout.IN:=FALSE;
+			
+			bTunnelTravelDone:=FALSE;
+			
+			(* Idle->Setup *)
+				IF bStart AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 0_Idle->1_Setup');
+					iStep:=1; // Next Step
+				END_IF
+				
+		1: (* Step 1 = Setup *)
+			(*Log*)
+				(*TunnelMode*)
+					CASE eTunnelMode OF
+						ENUM_Tunnel_Mode.TopToBottom:		strTextLog:='TopToBottom';
+						ENUM_Tunnel_Mode.BottomToTop:		strTextLog:='BottomToTop';
+					END_CASE
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : 1_Setup : Tunnel Mode = ',strTextLog));
+				(*Timeout*)
+					strTextLog:=TIME_TO_STRING(tTimeout);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : 1_Setup : Timeout = ',strTextLog));				
+				PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 1_Setup->2_Process');
+				
+			tonTimeout.PT:=tTimeout;
+			iStep:=2; // Next Step
+			
+		2: (* Step 2 = Process (Y->(XFirst)->Z->X) *) // -> (* Step 2 = Process (Y->(ZLowestRacKTop)->(XFirst)) *) + (* Step 3 = Process (Z->X) *)	
+			tonTimeout.IN:=TRUE; // Start TON timeout
+
+				CASE iSubStep OF
+		
+					0: (* Start Y move *)
+						GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYTunnel;
+						GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 0 : Start Y move');
+						iSubStep:=1; // Next SubStep
+						
+					1: (* Wait Y move done *)
+					   IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+							GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 1 : Y move done');
+
+							CASE eTunnelMode OF 
+								ENUM_Tunnel_Mode.TopToBottom: // X Top
+									IF GV_Tool_Magazine.stManipulator.lrXPosition<GV_Tool_Magazine.lrXFirstLocationTop THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 1->2 : XFirstTop');
+										iSubStep:=2; // Next SubStep
+									ELSE
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 1->4 : Z');
+										iSubStep:=4; // Next SubStep
+									END_IF
+								ENUM_Tunnel_Mode.BottomToTop: // X Bottom
+									IF GV_Tool_Magazine.stManipulator.lrXPosition<GV_Tool_Magazine.lrXFirstLocationBottom THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 1->2 : XFirstBottom');
+										iSubStep:=2; // Next SubStep
+									ELSE
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 1->4 : Z');
+										iSubStep:=4; // Next SubStep
+									END_IF
+							END_CASE
+						ELSIF bYError THEN
+							bError:=TRUE;
+							udiErrorID:=21; // 21 = Step 2 SubStep 1 Error Axis Y
+							GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+							tonTimeout.IN:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iSubStep:=0; // Stop SubStep
+							iStep:=0; // Idle Step
+						END_IF
+						
+					2: (* Start XFirst move *)
+						CASE eTunnelMode OF 
+							ENUM_Tunnel_Mode.TopToBottom: // X Top
+								GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.lrXFirstLocationTop;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 2 : Start XFirstTop move');
+							ENUM_Tunnel_Mode.BottomToTop: // X Bottom
+								GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.lrXFirstLocationBottom;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 2 : Start XFirstBottom move');
+						END_CASE
+						GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+						iSubStep:=3; // Next SubStep
+
+					3: (* Wait XFirst move done *)
+					   IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+							GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 3 : XFirst move done');
+							iSubStep:=4; // Next SubStep
+						ELSIF bXError THEN
+							bError:=TRUE;
+							udiErrorID:=23; // 23 = Step 2 SubStep 3 Error Axis X
+							GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+							tonTimeout.IN:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iSubStep:=0; // Stop 
+							iStep:=0; // Idle Step
+						END_IF
+						
+					4: (* Start Z move *)
+						CASE eTunnelMode OF 
+							ENUM_Tunnel_Mode.TopToBottom: // Z bottom position
+								GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZTunnelBottom;
+							ENUM_Tunnel_Mode.BottomToTop: // Z top position
+								GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrZTunnelTop;
+						END_CASE
+						IF (GV_Axes.stAxisZ.lrAutoPosAbs=GV_Tool_Magazine.stManipulator.lrZTunnelBottom) OR (GV_Axes.stAxisZ.lrAutoPosAbs=GV_Tool_Magazine.stManipulator.lrZTunnelTop) THEN
+							GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+						ELSE
+							GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						END_IF
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 4 : Start Z move');
+						iSubStep:=5; // Next Step
+		
+					5: (* Wait Z move done *)
+					   IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+							GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+							tonTimeout.IN:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 5 : Z move done');
+							iSubStep:=6; // End SubStep
+						ELSIF bZError THEN
+							bError:=TRUE;
+							udiErrorID:=25; // 25 = Step 2 SubStep 5 Error Axis Z
+							GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+							tonTimeout.IN:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iSubStep:=0; // Stop SubStep
+							iStep:=0; // Idle Step
+						END_IF
+						
+					6: (* Start X move *)
+						GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrXTunnel;
+						GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 6 : Start X move');
+						iSubStep:=7; // Next SubStep
+		
+					7: (* Wait X move done *)
+					   IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+							GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : 7 : X move done');
+							bTunnelTravelDone:=TRUE;
+							iSubStep:=0; // Next SubStep
+						ELSIF bXError THEN
+							bError:=TRUE;
+							udiErrorID:=27; // 27 = Step 2 SubStep 7 Error Axis X
+							GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+							tonTimeout.IN:=FALSE;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iSubStep:=0; // Stop SubStep
+							iStep:=0; // Idle Step
+						END_IF
+
+					END_CASE
+			
+			IF bTunnelTravelDone THEN
+				tonTimeout.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : Done with success');
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process->0_Idle');
+				iSubStep:=0; // End SubStep
+				iStep:=0; // Idle Step
+				bDone:=TRUE;
+				bBusy:=FALSE;
+			END_IF
+			
+			IF tonTimeout.Q AND tonTimeout.PT<>T#0S THEN
+				bError:=TRUE;
+				udiErrorID:=29; // 29 = Step 2 Error Timeout 9
+				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+				tonTimeout.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Tunnel : 2_Process : Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Tunnel : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0; // Stop SubStep
+				iStep:=0; // Idle Step
+			END_IF
+			
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

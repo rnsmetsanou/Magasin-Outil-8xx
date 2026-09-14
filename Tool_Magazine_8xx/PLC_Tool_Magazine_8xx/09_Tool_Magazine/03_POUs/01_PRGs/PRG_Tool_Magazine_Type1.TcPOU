@@ -1,0 +1,412 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Tool_Magazine_Type1" Id="{40f62e8c-bf37-4234-80c6-7915135def67}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Tool_Magazine_Type1
+VAR
+	(** ENUM **)
+		(*Manipulator Gripper mvmnt*)
+			eGripperMode : ENUM_Gripper_Mode; // Gripper mode for gripper mouvement (fbGripper)
+
+	(** TIME **)
+		(*Manipulator Gripper mvmnt*)
+			tGripperTime : TIME ; // Mouvement duration for gripper mouvement (fbGripper)
+
+	(** LREAL **)
+		lrTeachRackZ : LREAL := 0.0 ; // Z for Teach Rack
+		lrTeachAllX : LREAL := 0.0 ; // X for Teach All
+		lrTeachAllY : LREAL := 0.0 ; // Y for Teach All
+		lrTeachAllZ : LREAL := 0.0 ; // Z for Teach All
+		
+	(** INT **)
+		iRackLoop : INT := 0 ; // Use in a FOR Loop
+		iLocationLoop : INT := 0 ; // Use in a FOR Loop
+		iCheckLocationLoop : INT := 0 ; // Use in a FOR Loop
+		iTeachLoop : INT := 0 ; // Use in a FOR Loop
+		iCount : INT := 0 ; // Use for count in a FOR Loop
+		
+	(** FLAG **)
+		(*Manipulator Gripper mvmnt*)
+			bGripperSensor : BOOL ; // Sensor check for gripper mouvement (fbGripper)
+	
+	(** FB **)
+		fbReverseToolLocation : FB_ArrayToolLocation_Reverse ;
+		fbGripperManu : FB_Manipulator_Gripper ;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  		PRG_Tool_Magazine_Type1
+//
+//					Gestion magasin outils durant le cycle		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 14.01.2026
+//Dernière modification : 14.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 14.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** DATAS **)
+
+	(** Check Location ordering**)
+		IF GV_Tool_Magazine.bFullCheckMagazineInitLocation THEN
+			GV_Tool_Magazine.iCheckLocationTopSize:=0;
+			GV_Tool_Magazine.iCheckLocationBottomSize:=0;
+			FOR iCheckLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+				GV_Tool_Magazine.aCheckLocation[iCheckLocationLoop]:=GV_Tool_Magazine.stEmptyToolLocation;
+			END_FOR
+		END_IF
+
+	(* Infos Locations *) // aLocation
+		FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+
+			(*Tool presence*) // bToolPresence
+				//IF GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam.Number<>0 THEN
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence:=TRUE;
+				//ELSE
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence:=FALSE;		
+				//END_IF
+			
+			(*Tool type*)// eToolType
+				//IF GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence THEN //  -> Revoir la philosophie
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam.Size=1 OR TRUE THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Small;
+					ELSIF GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam.Size=2 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Big;
+					ELSIF GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam.Size=3 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Big;
+					ELSE
+						GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Unknow;
+					END_IF
+				//ELSE
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Unknow;
+				//END_IF
+			
+			(*Location blocked*) // bBlocked
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>1 THEN
+					IF GV_Tool_Magazine.aLocation[iLocationLoop-1].bBlocked=FALSE AND GV_Tool_Magazine.aLocation[iLocationLoop-1].iRackNumber=GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber AND (GV_Tool_Magazine.aLocation[iLocationLoop-1].eToolType=ENUM_Tool_Type.Big OR GV_Tool_Magazine.aLocation[iLocationLoop-1].eToolType=ENUM_Tool_Type.GPS70) THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked:=TRUE;
+					ELSE
+						GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked:=FALSE;
+					END_IF
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked:=FALSE;
+				END_IF
+				
+			(** Check Location ordering**)
+				IF GV_Tool_Magazine.bFullCheckMagazineInitLocation THEN
+					FOR iCheckLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+						IF GV_Tool_Magazine.aCheckLocation[iCheckLocationLoop].iRelLocationNumber=0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber<>0 THEN
+							IF GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag=ENUM_Position_Magazine.Top THEN
+								GV_Tool_Magazine.aCheckLocation[iCheckLocationLoop]:=GV_Tool_Magazine.aLocation[iLocationLoop];
+								GV_Tool_Magazine.iCheckLocationTopSize:=GV_Tool_Magazine.iCheckLocationTopSize+1;
+							ELSIF GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag=ENUM_Position_Magazine.Bottom THEN
+								GV_Tool_Magazine.aCheckLocation[iCheckLocationLoop]:=GV_Tool_Magazine.aLocation[iLocationLoop];
+								GV_Tool_Magazine.iCheckLocationBottomSize:=GV_Tool_Magazine.iCheckLocationBottomSize+1;
+							END_IF
+							EXIT; // Stop For Loop
+						//ELSE
+						//	GV_Tool_Magazine.aCheckLocation[iCheckLocationLoop]:=GV_Tool_Magazine.stEmptyToolLocation;
+						END_IF
+					END_FOR
+				END_IF
+				
+		END_FOR
+		(* Reverse Location*)
+		IF GV_Tool_Magazine.bFullCheckMagazineInitLocation THEN
+			fbReverseToolLocation(
+									aArray:=GV_Tool_Magazine.aCheckLocation,
+									iHighSize:=GV_Tool_Magazine.iCheckLocationTopSize,
+									iLowSize:=GV_Tool_Magazine.iCheckLocationBottomSize,
+									bReverseHigh:=TRUE,
+									bReverseLow:=TRUE,
+									bReverseRowHigh:=TRUE,
+									bReverseRowLow:=TRUE
+									);
+		END_IF
+		GV_Tool_Magazine.bFullCheckMagazineInitLocation:=FALSE;
+		
+(** MANIPULATOR HEAD **)
+	(*Axis Position*)
+		GV_Tool_Magazine.stManipulator.lrXPosition:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		GV_Tool_Magazine.stManipulator.lrYPosition:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+		GV_Tool_Magazine.stManipulator.lrZPosition:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+	(*Memory*)
+		IF (GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory<>0 AND GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory<>0) THEN
+			GV_Tool_Magazine.stManipulator.bToolPresenceMemory:=TRUE;
+		ELSE
+			GV_Tool_Magazine.stManipulator.bToolPresenceMemory:=FALSE;
+		END_IF
+	(*PositionMag*)
+		IF GV_Tool_Magazine.stManipulator.lrZPosition>=500 THEN //GV_Tool_Magazine.lrZLowestRackTop-1(*GV_Tool_Magazine.stManipulator.lrZTunnelTop*) THEN
+			GV_Tool_Magazine.stManipulator.ePositionMag:=ENUM_Position_Magazine.Top;
+		ELSIF GV_Tool_Magazine.stManipulator.lrZPosition<=GV_Tool_Magazine.stManipulator.lrZTunnelBottom THEN
+			GV_Tool_Magazine.stManipulator.ePositionMag:=ENUM_Position_Magazine.Bottom;
+		ELSE
+			GV_Tool_Magazine.stManipulator.ePositionMag:=ENUM_Position_Magazine.Unknow;
+		END_IF
+	(*Positions*)	
+		IF GV_Tool_Magazine.stManipulator.lrXPosition<=(GV_Tool_Magazine.stManipulator.lrXHome+GV_Tool_Magazine.stManipulator.lrXPositionTol) AND GV_Tool_Magazine.stManipulator.lrXPosition>=(GV_Tool_Magazine.stManipulator.lrXHome-GV_Tool_Magazine.stManipulator.lrXPositionTol) AND // X
+		   GV_Tool_Magazine.stManipulator.lrYPosition<=(GV_Tool_Magazine.stManipulator.lrYHome+GV_Tool_Magazine.stManipulator.lrYPositionTol) AND GV_Tool_Magazine.stManipulator.lrYPosition>=(GV_Tool_Magazine.stManipulator.lrYHome-GV_Tool_Magazine.stManipulator.lrYPositionTol) AND // Y
+		   GV_Tool_Magazine.stManipulator.lrZPosition<=(GV_Tool_Magazine.stManipulator.lrZHome+GV_Tool_Magazine.stManipulator.lrZPositionTol) AND GV_Tool_Magazine.stManipulator.lrZPosition>=(GV_Tool_Magazine.stManipulator.lrZHome-GV_Tool_Magazine.stManipulator.lrZPositionTol) THEN // Z
+			GV_Tool_Magazine.stManipulator.ePositionAxis:=ENUM_Position_Axis.Home;
+		//ELSIF
+		ELSE
+			GV_Tool_Magazine.stManipulator.ePositionAxis:=ENUM_Position_Axis.Unknow;
+		END_IF
+		(*YTunnel=YHome*)
+			GV_Tool_Magazine.stManipulator.lrYTunnel:=GV_Tool_Magazine.stManipulator.lrYHome;
+	(*Exclusion Zones*)
+		
+	
+	(*Close/Clamp Gripper Manual Authorization*)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_General.bSafety AND GV_General.bPower AND GV_General.bAir AND (*xxx AND *) (NOT fbGripperManu.bStart) AND (NOT fbGripperManu.bBusy) THEN
+			GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperClose:=TRUE; ;
+		ELSE
+			GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperClose:=FALSE;
+		END_IF
+	(*Close/Clamp Gripper Manual Command*)
+		IF GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperClose AND GV_HMI.stManipulatorGripper.rtCloseManupulatorGripper.Q THEN
+			eGripperMode:=ENUM_Gripper_Mode.Close; // Gripper mode
+			tGripperTime:=GV_HMI.stManipulatorGripper.tMouvementClose; // Gripper mouvement time
+			bGripperSensor:=FALSE; //GV_HMI.stManipulatorGripper.bCheckSensorOpen; // Gripper check sensor
+			fbGripperManu.bStart:=TRUE; // Gripper Start
+			(*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('MANUAL : GripperClamp -> SATRT');
+		END_IF
+	(*Open/Unclamp Gripper Manual Authorization*)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_General.bSafety AND GV_General.bPower AND GV_General.bAir AND (*xxx AND *) (NOT fbGripperManu.bStart) AND (NOT fbGripperManu.bBusy) THEN
+			GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperOpen:=TRUE;
+		ELSE
+			GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperOpen:=FALSE;
+		END_IF
+	(*Open/Unclamp Gripper Manual Command*)
+		IF GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperOpen AND GV_HMI.stManipulatorGripper.rtOpenManupulatorGripper.Q THEN
+			eGripperMode:=ENUM_Gripper_Mode.Open; // Gripper mode
+			tGripperTime:=GV_HMI.stManipulatorGripper.tMouvementOpen; // Gripper mouvement time
+			bGripperSensor:=FALSE; //GV_HMI.stManipulatorGripper.bCheckSensorClose; // Gripper check sensor
+			fbGripperManu.bStart:=TRUE; // Gripper Start
+			(*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('MANUAL : GripperUnclamp -> SATRT');
+		END_IF
+		
+	(*FB_Gripper Manual*)
+		fbGripperManu( // Call Griper mouvement
+				eGripperMode:=eGripperMode,
+				tMouvementDuration:=tGripperTime,
+				bSensorCheck:=bGripperSensor
+				);
+		IF fbGripperManu.bDone THEN // Gripper Done
+			fbGripperManu.bStart:=FALSE;
+			(*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('MANUAL : Gripper -> DONE');
+		ELSIF fbGripperManu.bError THEN // Gripper Error
+			//bError:=TRUE;
+			//udiErrorID:=?00+fbGripper.udiErrorID; // ?xx = ? + Error xx fbGripperManu
+			fbGripperManu.bStart:=FALSE;
+			(*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('MANUAL : GripperUnclamp -> ERROR');
+				PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('MANUAL : GripperUnclamp : ErrorID=',UDINT_TO_STRING(fbGripperManu.udiErrorID)));
+		END_IF
+			
+(** CHANGING ARM **)
+	(*Axis Position*)
+		GV_Tool_Magazine.stArm.lrArmPosition:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0;
+	(*Memory*)
+		(*Gripper1*)
+			IF GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory<>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory<>0 THEN
+				GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory:=TRUE;
+			ELSE
+				GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory:=FALSE;
+			END_IF
+		(*Gripper2*)
+			IF GV_Tool_Magazine.stArm.aGripper[2].iAbsLocationNumberMemory<>0 AND GV_Tool_Magazine.stArm.aGripper[2].iRelLocationNumberMemory<>0 THEN
+				GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory:=TRUE;
+			ELSE
+				GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory:=FALSE;
+			END_IF
+	(*Positions*)
+		IF GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmHome+GV_Tool_Magazine.stArm.lrArmPositionTol) AND GV_Tool_Magazine.stArm.lrArmPosition>=(GV_Tool_Magazine.stArm.lrArmHome-GV_Tool_Magazine.stArm.lrArmPositionTol) THEN
+			GV_Tool_Magazine.stArm.ePositionAxis:=ENUM_Position_Axis.Home;
+		ELSIF GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmManipulator+GV_Tool_Magazine.stArm.lrArmPositionTol) AND GV_Tool_Magazine.stArm.lrArmPosition>=(GV_Tool_Magazine.stArm.lrArmManipulator-GV_Tool_Magazine.stArm.lrArmPositionTol) THEN 
+			GV_Tool_Magazine.stArm.ePositionAxis:=ENUM_Position_Axis.Work1;
+		ELSIF GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmCNC+GV_Tool_Magazine.stArm.lrArmPositionTol) AND GV_Tool_Magazine.stArm.lrArmPosition>=(GV_Tool_Magazine.stArm.lrArmCNC-GV_Tool_Magazine.stArm.lrArmPositionTol) THEN 
+			GV_Tool_Magazine.stArm.ePositionAxis:=ENUM_Position_Axis.CNC;
+		ELSE
+			GV_Tool_Magazine.stArm.ePositionAxis:=ENUM_Position_Axis.Unknow;
+		END_IF
+
+	(*Evacuate*)
+		//IF GV_CNC.stFanucData.stCncMagazine.biEvacuateArm AND  THEN
+			
+		//END_IF
+
+(** TEACHING **)
+	(* Selected Location *)
+		IF GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation THEN
+			GV_HMI.stMagazineTeach.sTeachLocationSelected:=INT_TO_STRING(GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRelLocationNumber);
+		END_IF
+	
+	(* Authorization *)
+		GV_Tool_Magazine.bAuthorizationTeachLocation:=(NOT GV_Cycle.bCycleInProgress) AND GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.bAxisAllNotMoving AND (*GV_Axes.bAxisAllOperational AND*) GV_HMI.iCurrentScreenNumber=310 AND GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation;
+		GV_Tool_Magazine.bAuthorizationTeachRack:=(NOT GV_Cycle.bCycleInProgress) AND GV_HMI.iCurrentScreenNumber=310;
+		GV_Tool_Magazine.bAuthorizationTeachAllTop:=(NOT GV_Cycle.bCycleInProgress) AND GV_HMI.iCurrentScreenNumber=310;
+		GV_Tool_Magazine.bAuthorizationTeachAllBottom:=(NOT GV_Cycle.bCycleInProgress) AND GV_HMI.iCurrentScreenNumber=310;
+		GV_Tool_Magazine.bAuthorizationTeachPositions:=(NOT GV_Cycle.bCycleInProgress) AND GV_HMI.iCurrentScreenNumber=311;
+	
+	(* Limit *)
+		IF GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation THEN
+			IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].ePositionMag=ENUM_Position_Magazine.Top THEN
+				GV_Tool_Magazine.lrMinXTeach:=GV_Tool_Magazine.lrMinXFirstLocationTop;
+				GV_Tool_Magazine.lrMaxXTeach:=GV_Tool_Magazine.lrMaxXFirstLocationTop;
+				GV_Tool_Magazine.lrMinYTeach:=GV_Tool_Magazine.lrMinYLocationTop;
+				GV_Tool_Magazine.lrMaxYTeach:=GV_Tool_Magazine.lrMaxYLocationTop;
+				GV_Tool_Magazine.lrMinZTeach:=GV_Tool_Magazine.lrMinZLowestRackTop;
+				GV_Tool_Magazine.lrMaxZTeach:=GV_Tool_Magazine.lrMaxZLowestRackTop;
+			ELSIF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].ePositionMag=ENUM_Position_Magazine.Bottom THEN
+				GV_Tool_Magazine.lrMinXTeach:=GV_Tool_Magazine.lrMinXFirstLocationBottom;
+				GV_Tool_Magazine.lrMaxXTeach:=GV_Tool_Magazine.lrMaxXFirstLocationBottom;
+				GV_Tool_Magazine.lrMinYTeach:=GV_Tool_Magazine.lrMinYLocationBottom;
+				GV_Tool_Magazine.lrMaxYTeach:=GV_Tool_Magazine.lrMaxYLocationBottom;
+				GV_Tool_Magazine.lrMinZTeach:=GV_Tool_Magazine.lrMinZLowestRackBottom;
+				GV_Tool_Magazine.lrMaxZTeach:=GV_Tool_Magazine.lrMaxZLowestRackBottom;
+			ELSE
+				GV_Tool_Magazine.lrMinXTeach:=9999.999;
+				GV_Tool_Magazine.lrMaxXTeach:=9999.999;
+				GV_Tool_Magazine.lrMinYTeach:=9999.999;
+				GV_Tool_Magazine.lrMaxYTeach:=9999.999;
+				GV_Tool_Magazine.lrMinZTeach:=9999.999;
+				GV_Tool_Magazine.lrMaxZTeach:=9999.999;
+			END_IF
+		END_IF
+		
+	(* Teach Location *)
+		IF GV_HMI.stMagazineTeach.rtTeachLocation.Q AND GV_Tool_Magazine.bAuthorizationTeachLocation AND GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation THEN
+			GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0; // Round 10e-3
+			GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0; // Round 10e-3
+			GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.ActPos*1000.0))/1000.0; // Round 10e-3
+		END_IF
+
+	(* Teach Rack *)
+		IF GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation THEN
+			
+			IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRelLocationNumber>1 THEN
+				IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected)].iRackNumber<GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber THEN
+					GV_HMI.stMagazineTeach.bVisuTeachRack:=TRUE;
+				ELSE
+					IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected)].iRackNumber=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber AND GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected)].iRelLocationNumber=0 THEN
+						GV_HMI.stMagazineTeach.bVisuTeachRack:=TRUE;
+					ELSE
+						GV_HMI.stMagazineTeach.bVisuTeachRack:=FALSE;
+					END_IF
+				END_IF
+			ELSE
+				IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRelLocationNumber=1 THEN
+					GV_HMI.stMagazineTeach.bVisuTeachRack:=TRUE;
+				ELSE
+					GV_HMI.stMagazineTeach.bVisuTeachRack:=FALSE;
+				END_IF
+			END_IF
+			
+			IF GV_HMI.stMagazineTeach.rtTeachRack.Q AND GV_HMI.stMagazineTeach.bVisuTeachRack AND GV_Tool_Magazine.bAuthorizationTeachRack THEN
+				IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].ePositionMag=ENUM_Position_magazine.Top THEN
+					iCount:=0;
+					lrTeachRackZ:=0;
+					FOR iTeachLoop:=(GV_HMI.stMagazineTeach.iTeachLocationSelected+1) TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+						IF iTeachLoop=(GV_HMI.stMagazineTeach.iTeachLocationSelected+1) THEN
+							lrTeachRackZ:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrZcoord;
+						END_IF
+						IF GV_Tool_Magazine.aLocation[iTeachLoop].iRackNumber=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber THEN
+							GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrXcoord+(GV_Tool_Magazine.lrXLocationOffsetTop*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord*1000.0))/1000.0; // Round 10e-3
+							GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrYcoord+(GV_Tool_Magazine.lrYLocationOffsetTop*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));;
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord*1000.0))/1000.0; // Round 10e-3
+ 							GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=lrTeachRackZ-(GV_Tool_Magazine.lrZRelCompensationLocationTop*iCount); // Compensation
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord*1000.0))/1000.0; // Round 10e-3
+							iCount:=iCount+1;
+						ELSE
+							EXIT;
+						END_IF
+					END_FOR
+				ELSIF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].ePositionMag=ENUM_Position_magazine.Bottom THEN
+					iCount:=0;
+					lrTeachRackZ:=0;
+					FOR iTeachLoop:=(GV_HMI.stMagazineTeach.iTeachLocationSelected+1) TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+						IF iTeachLoop=(GV_HMI.stMagazineTeach.iTeachLocationSelected+1) THEN
+							lrTeachRackZ:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrZcoord;
+						END_IF
+						IF GV_Tool_Magazine.aLocation[iTeachLoop].iRackNumber=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber THEN
+							GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrXcoord+(GV_Tool_Magazine.lrXLocationOffsetBottom*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord*1000.0))/1000.0; // Round 10e-3
+							GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrYcoord+(GV_Tool_Magazine.lrYLocationOffsetBottom*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord*1000.0))/1000.0; // Round 10e-3
+							GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=lrTeachRackZ-(GV_Tool_Magazine.lrZRelCompensationLocationBottom*iCount); // Compensation
+								GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord*1000.0))/1000.0; // Round 10e-3
+							iCount:=iCount+1;
+						ELSE
+							EXIT;
+						END_IF
+					END_FOR
+				//ELSE
+					// Normally not possible to be here -> Can't select from HMI a Location with (ENUM_Position_magazine<>Top OR ENUM_Position_magazine<>Bottom)
+				END_IF
+			END_IF
+			
+		END_IF
+	
+	(* Teach All Top *)
+// 		IF GV_HMI.stMagazineTeach.iTeachLocationSelected>0 AND (GV_HMI.stMagazineTeach.iTeachLocationSelected+1)<=GV_Tool_Magazine.iMaxAbsLocation THEN
+// 			
+// 			IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRelLocationNumber=1 AND GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].ePositionMag=ENUM_Position_magazine.Top THEN
+// 				IF GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber = 1eR Rack du haut THEN
+// 					GV_HMI.stMagazineTeach.bVisuTeachAllTop:=TRUE;
+// 				ELSE
+// 					GV_HMI.stMagazineTeach.bVisuTeachAllTop:=FALSE;
+// 				END_IF
+// 			ELSE
+// 				GV_HMI.stMagazineTeach.bVisuTeachAllTop:=FALSE;
+// 			END_IF
+// 	
+// 			IF GV_HMI.stMagazineTeach.rtTeachAllTop.Q AND GV_HMI.stMagazineTeach.bVisuTeachAllTop AND GV_Tool_Magazine.bAuthorizationTeachAllTop THEN
+// 				iCount:=0;
+// 				lrTeachAllX:=0.0;
+// 				lrTeachAllY:=0.0;
+// 				lrTeachAllZ:=0.0;
+// 				
+// 				
+// 				FOR iTeachLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocationTop BY 1 DO
+// 					
+// 					// Ne pas modifier la position rel 1 car apprise, on part justement de ces valeurs pour recalculer le reste
+// 					
+// // 					IF iTeachLoop=(GV_HMI.stMagazineTeach.iTeachLocationSelected+1) THEN
+// // 						lrTeachRackZ:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrZcoord;
+// // 					END_IF
+// // 					IF GV_Tool_Magazine.aLocation[iTeachLoop].iRackNumber=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].iRackNumber THEN
+// // 						GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrXcoord+(GV_Tool_Magazine.lrXLocationOffsetTop*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));
+// // 							GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrXcoord*1000.0))/1000.0; // Round 10e-3
+// // 						GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=GV_Tool_Magazine.aLocation[(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)].lrYcoord+(GV_Tool_Magazine.lrYLocationOffsetTop*(iTeachLoop-(GV_HMI.stMagazineTeach.iTeachLocationSelected+1)));;
+// // 							GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrYcoord*1000.0))/1000.0; // Round 10e-3
+// //  						GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=lrTeachRackZ-(GV_Tool_Magazine.lrZRelCompensationLocationTop*iCount); // Compensation
+// // 							GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iTeachLoop].lrZcoord*1000.0))/1000.0; // Round 10e-3
+// // 						iCount:=iCount+1;
+// // 					ELSE
+// // 						EXIT;
+// // 					END_IF
+// 				END_FOR
+// 				
+// 				
+// 				
+// 			END_IF
+// 	
+// 		END_IF
+
+	(* Teach All Bottom *)
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Cyltronic" Id="{6f9dc098-edfc-4b3e-8c96-0ce82d4f864a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Cyltronic
+VAR_INPUT
+	(** INT **)
+		iCyltroNumber : INT ; // Number of the cyltronic
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+		stCyltronic : ST_Cyltronic ;
+END_VAR
+VAR
+	(** FLAG **)
+		(*fbCTC*)
+			bCTCDone : BOOL ; // fbCTCPlcOpen is Done
+			bCTCBusy : BOOL ; // fbCTCPlcOpen is Busy
+			bCTCWarning : BOOL ; // fbCTCPlcOpen Warning
+			bCTCError : BOOL ; // fbCTCPlcOpen Error	
+		bTeachStart : BOOL ;
+		bHomeStart : BOOL ;
+		bHalt : BOOL ;
+
+	(** FB **)
+		fbInitEvents : FB_Init_Events ;
+		fbEventHMI : FB_Event_HMI ;
+	
+		fbCTCBasic : FB_CTC_Basic ;
+		fbCTCReadConfig : FB_CTC_ReadWriteConfig ;
+		fbCTCWriteConfig : FB_CTC_ReadWriteConfig ;
+		fbCTCGetDeviceStatus : FB_CTC_GetDeviceStatus ;
+		fbCTCPlcOpen : FB_CTC_PlcOpen ;
+		
+bEssai : BOOL ;
+		
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_Cyltronic
+//
+//								Gestion Cyltronic 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.03.2026
+//Dernière modification : 04.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.03.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+IF stCyltronic.bPresence THEN
+		
+	(** EVENTS **)
+		IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+			GV_Events.aEventGroup[GV_Cyltronic.aId[iCyltroNumber].iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.CyltronicAlarms.Alarm1,TRUE,0);
+			GV_Events.aEventGroup[GV_Cyltronic.aId[iCyltroNumber].iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.CyltronicOpMessages.Message1,TRUE,0);	
+			fbInitEvents(iEventGroup:=GV_Cyltronic.aId[iCyltroNumber].iEventGroup,strEventType:='ALARM',strEventGuid:='B84E62CB-48E4-46DB-ADFD-2D2E7A2978F6',tcEventSeverity:=2);
+			fbInitEvents(iEventGroup:=GV_Cyltronic.aId[iCyltroNumber].iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='6E644DA8-210C-419D-A327-FA38AE35A6A6',tcEventSeverity:=1);
+		END_IF
+			
+	(** ALARMS **)
+		(* Drive fault *)
+			(*Reset fault*)
+				IF stCyltronic.bEventAck THEN
+					stCyltronic.bAlDriveFault:=FALSE;
+				END_IF
+			(*Set fault*)
+				IF stCyltronic.eState=teCTCStep.FB_CTC_ERROR THEN
+					stCyltronic.bAlDriveFault:=TRUE;
+				END_IF
+			(*Alarm 1 = Drive in fault*)
+				IF stCyltronic.bAlDriveFault THEN
+					GV_Events.aEventGroup[GV_Cyltronic.aId[iCyltroNumber].iEventGroup].aAlarm[1].fbAlarm.ipArguments.Clear().AddDInt(stCyltronic.iIdHMI);
+					fbEventHMI(iEventGroup:=stCyltronic.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=stCyltronic.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=FALSE);			
+				END_IF
+				
+	(** MESSAGES **)
+
+	(** CYLTRONIC TYPES MANAGEMENT **)
+	
+	(* 1 DiDo Technology *)
+		//IF stCyltronic.eType=ENUM_Cyltronic_Type.DiDo THEN
+			
+		//END_IF
+	
+	(* 2 IO/Link Technology *)	
+		IF stCyltronic.eType=ENUM_Cyltronic_Type.IOLink THEN
+			(* Configuration Read (acyclic) *)
+				fbCTCReadConfig(
+								// IN
+								AmsNetid:=stCyltronic.netID,
+								IolPort:=stCyltronic.ePort,
+								Read:=GV_General.bIsBlinking1s,
+								Write:=FALSE,
+								// IN_OUT
+								pstConfiguration:=stCyltronic.stConfigRead,
+								// OUT
+								Busy=>,
+								Done=>,
+								AtLeastOneParameterFailed=>,
+							   );
+							   
+			(* Configuration Write (acyclic) *)
+				IF (stCyltronic.stConfigRead.MaxSpeedFreePositioning<>stCyltronic.stConfigWrite.MaxSpeedFreePositioning OR 
+					stCyltronic.stConfigRead.MaxForceFreePositioning<>stCyltronic.stConfigWrite.MaxForceFreePositioning OR
+					stCyltronic.stConfigRead.MaxAccDec<>stCyltronic.stConfigWrite.MaxAccDec OR
+					stCyltronic.stConfigRead.HomeMode<>stCyltronic.stConfigWrite.HomeMode OR
+					stCyltronic.stConfigRead.EndPositionOut<>stCyltronic.stConfigWrite.EndPositionOut OR
+					stCyltronic.stConfigRead.EndPositionIn<>stCyltronic.stConfigWrite.EndPositionIn) 
+					AND (NOT fbCTCReadConfig.Busy) THEN
+					stCyltronic.bStartWriteConfig:=TRUE;
+				ELSE
+					stCyltronic.bStartWriteConfig:=FALSE;
+				END_IF
+			
+				fbCTCWriteConfig(
+								// IN
+								AmsNetid:=stCyltronic.netID,
+								IolPort:=stCyltronic.ePort,
+								Read:=FALSE,
+								Write:=FALSE,//stCyltronic.bStartWriteConfig,
+								// IN_OUT
+								pstConfiguration:=stCyltronic.stConfigWrite,
+								// OUT
+								Busy=>,
+								Done=>,
+								AtLeastOneParameterFailed=>,
+							   );
+							   
+			(* Status (acyclic) *)
+				fbCTCGetDeviceStatus(
+									// IN
+									AmsNetid:=stCyltronic.netID,
+									IolPort:=stCyltronic.ePort,
+									GetStatus:=GV_General.bIsBlinking1s AND (NOT fbCTCGetDeviceStatus.Busy),
+									// OUT
+									stDeviceStatus=>stCyltronic.stStatus,
+									Busy=>,
+									Done=>,
+									Failed=>,
+									);
+
+			(* Exchange *)
+// 				fbCTCBasic(
+// 						   // IN
+// 						   ProcessDataInRaw:=stCyltronic.aProcessDataInRaw,
+// 						   MotionMode:=,
+// 						   
+// 						   // OUT
+// 						   ProcessDataOutRaw=>stCyltronic.aProcessDataOutRaw,
+// 						   State=>stCyltronic.eState,
+// 						   
+// 						   
+// 						   );
+				stCyltronic.stParameters.TargetPosition:=stCyltronic.stConfigRead.EndPositionOut-4.136;//181.7;
+				stCyltronic.stParameters.TargetForce:=200;
+				fbCTCPlcOpen(
+							// IN
+							ProcessDataInRaw:=stCyltronic.aProcessDataInRaw,
+							Enable:=stCyltronic.bPresence,
+							Power:=stCyltronic.bPowerEnable,
+							Teach:=bTeachStart,
+							Home:=bHomeStart,
+							MoveIn:=stCyltronic.bWorkPositionCmd,// AND fbCTCPlcOpen.Homed,
+							MoveOut:=,//stCyltronic.bRestPositionCmd,// AND fbCTCPlcOpen.Homed,
+							MoveAbsolute:=stCyltronic.bRestPositionCmd,
+							MoveContinuous:=,
+							Halt:=stCyltronic.bHaltExecute OR bHalt,
+							Reset:=stCyltronic.bEventAck,
+							BrakeMode:=,
+							BrakeDelay:=,
+							stParameters:=stCyltronic.stParameters,
+							stConfiguration:=stCyltronic.stConfigRead, // Not for write the config but to compare
+							// OUT
+							ProcessDataOutRaw=>stCyltronic.aProcessDataOutRaw,
+							State=>stCyltronic.eState,
+							ControllerOn=>,
+							ActualPosition=>,
+							ActualVelocity=>,
+							ActualForce=>,
+							Homed=>,
+							Busy=>bCTCBusy,
+							Done=>bCTCDone,
+							Warning=>bCTCWarning,
+							WarningID=>,
+							Error=>bCTCError,
+							ReleaseBrake=>,
+							stProcessDataIn=>stCyltronic.stProcessDataIn,
+							stProcessDataOut=>stCyltronic.stProcessDataOut,
+							);
+							
+			(* Work Done *)
+				IF stCyltronic.bWorkPositionCmd AND stCyltronic.stProcessDataIn.stStatusBits.LimitSwitchIn AND stCyltronic.stProcessDataIn.stStatusBits.MotionCommandCompleted AND (NOT bCTCBusy) THEN
+					stCyltronic.bWorkPositionDone:=TRUE;
+					stCyltronic.bRestPositionDone:=FALSE;
+				END_IF
+			(* Rest Done *)
+				IF stCyltronic.bRestPositionCmd AND (*stCyltronic.stProcessDataIn.stStatusBits.LimitSwitchOut AND*) stCyltronic.stProcessDataIn.stStatusBits.MotionCommandCompleted AND (NOT bCTCBusy) THEN
+					stCyltronic.bWorkPositionDone:=FALSE;
+					stCyltronic.bRestPositionDone:=TRUE;
+				END_IF
+			(* Halt Done *)
+				IF stCyltronic.bHaltExecute AND (NOT bCTCBusy) AND bCTCDone THEN
+					stCyltronic.bHaltDone:=TRUE;
+					stCyltronic.bWorkPositionDone:=FALSE;
+					stCyltronic.bRestPositionDone:=FALSE;
+				ELSE
+					stCyltronic.bHaltDone:=FALSE;
+				END_IF
+		END_IF
+	
+//ELSE
+
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

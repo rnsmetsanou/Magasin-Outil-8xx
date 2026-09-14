@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Fanuc_Focas_Data" Id="{bd79b300-f66b-4d40-9d47-73962ed49848}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Fanuc_Focas_Data
+//
+//								Structure CNC_Fanuc Data 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Fanuc_Focas_Data :
+STRUCT
+	
+	(** ARRAY **)
+	aDataReadBYTE : ARRAY [0..499] OF BYTE ;
+	
+	(** INT **)
+	iWritingPartDataStep : INT ;
+	iReadingPartDataStep : INT ;
+	iWritePartDataCmd : INT ;
+	iReadPartDataCmd : INT ;
+	
+	(** BYTE **)
+	byReadIndex: BYTE ;
+
+	(** BOOL **)
+	bStartWriteDataFocas : BOOL ;	
+	bStartReadDataFocas : BOOL ;
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

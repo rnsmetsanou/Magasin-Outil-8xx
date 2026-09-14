@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Handwheel_Incr_Select" Id="{b31345e3-6e8b-443b-bbb2-b284bb2f3929}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  		ENUM_Handwheel_Axis_Select
+//
+//				Enumération des Axes du sélecteur de la manivelle déportée			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Handwheel_Incr_Select :
+(
+	Unknow := 0 , // Unknow Speed
+	x0 := 1 ,
+	x1 := 2 , // Speed *1
+	x10 := 3 , // Speed *10
+	x100 := 4 , // Speed *100
+	x1000 := 5 // Speed *1000
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

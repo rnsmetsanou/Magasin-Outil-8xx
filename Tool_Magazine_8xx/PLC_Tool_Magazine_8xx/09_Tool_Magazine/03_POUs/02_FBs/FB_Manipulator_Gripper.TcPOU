@@ -1,0 +1,191 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Manipulator_Gripper" Id="{617ef62d-274e-4143-ba89-7fd48c1f7b3f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Manipulator_Gripper
+VAR_INPUT
+	(** SETUP ENUM **)
+		eGripperMode : ENUM_Gripper_Mode ; // Mode of the gripper	
+
+	(** SETUP TIME **)
+		tMouvementDuration : TIME ; // Duration of the mouvement
+
+	(** SETUP FLAG **)
+		bSensorCheck : BOOL ; // With or without check of the presence sensor
+
+	(** PROCESS FLAG **)
+		bInit : BOOL ; // Init the FB
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** STRING **)
+		strTextLog : STRING ; // Text to Log
+
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+	
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+	
+	(** FB **)
+		tonWaitMouvement : TON ; // TON to wait the mouvement duration before the check
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Manipulator_Gripper
+//
+//				Motion control of the BERG gripper of the manipulator
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 05.02.2026
+//Dernière modification : 08.04.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 05.02.2026 (G.GOETZ) -> Création
+// 08.04.2026 (G.GOETZ) -> Ajout Init
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonWaitMouvement();
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		iStep:=0;
+		bInit:=FALSE;
+	END_IF
+
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle *)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			
+			tonWaitMouvement.IN:=FALSE;
+			
+			(* Idle->Setup *)
+				IF bStart AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 0_Idle->1_Setup');
+					iStep:=1; // Next Step
+				END_IF
+				
+		1: (* Step 1 = Setup *)
+			(*Log*)
+				(*GripperMode*)
+					CASE eGripperMode OF
+						ENUM_Gripper_Mode.Open:		strTextLog:='Open';
+						ENUM_Gripper_Mode.Close:	strTextLog:='Close';
+					END_CASE
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Gripper : 1_Setup : Gripper Mode = ',strTextLog));
+				(*SensorCheck*)
+					IF bSensorCheck THEN
+						strTextLog:='With';
+					ELSE
+						strTextLog:='Without';
+					END_IF
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Gripper : 1_Setup : Sensor Check = ',strTextLog));
+				(*MouvementDuration*)
+					strTextLog:=TIME_TO_STRING(tMouvementDuration);
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Gripper : 1_Setup : Mouvement Duration = ',strTextLog));				
+				PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 1_Setup->2_Process');
+				
+			tonWaitMouvement.PT:=tMouvementDuration;
+			iStep:=2; // Next Step
+			
+		2: (* Step 2 = Process *)
+			tonWaitMouvement.IN:=TRUE; // Start TON mouvement
+			
+			CASE eGripperMode OF 
+				
+				ENUM_Gripper_Mode.Open: // Open = Unclamp
+					GV_CNC.stFanucData.stMagazineCNC.boOpenManipulatorGripper:=TRUE; // Ask to the CNC to Open the Gripper
+					IF tonWaitMouvement.Q THEN
+						IF bSensorCheck THEN // With Sensor Check
+							IF (NOT GV_IO.diToolPresenceCone) THEN // Sensor
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process : Done with success');
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process->0_Idle');
+								iStep:=0; // Idle Step
+								bDone:=TRUE;
+								bBusy:=FALSE;
+							ELSE
+								bError:=TRUE;
+								udiErrorID:=21; // 21 = Step 2 Error 1
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process :Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Gripper : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+								iStep:=0; // Idle Step
+							END_IF
+						ELSE // Without Sensor Check
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process : Done with success');
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process->0_Idle');
+							iStep:=0; // Idle Step
+							bDone:=TRUE;
+							bBusy:=FALSE;
+						END_IF
+					END_IF
+		
+				ENUM_Gripper_Mode.Close: // Close = Clamp
+					GV_CNC.stFanucData.stMagazineCNC.boOpenManipulatorGripper:=FALSE; // Ask to the CNC to Closen the Gripper
+					IF tonWaitMouvement.Q THEN
+						IF bSensorCheck THEN // With Sensor Check
+							IF GV_IO.diToolPresenceCone THEN // Sensor
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process : Done with success');
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process->0_Idle');
+								iStep:=0; // Idle Step
+								bDone:=TRUE;
+								bBusy:=FALSE;
+							ELSE
+								bError:=TRUE;
+								udiErrorID:=22; // 22 = Step 2 Error 2
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process :Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_Manipulator_Gripper : ErrorID = ',UDINT_TO_STRING(udiErrorID)));
+								iStep:=0; // Idle Step
+							END_IF
+						ELSE // Without Sensor Check
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process : Done with success');
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_Manipulator_Gripper : 2_Process->0_Idle');
+							iStep:=0; // Idle Step
+							bDone:=TRUE;
+							bBusy:=FALSE;
+						END_IF
+					END_IF
+					
+			END_CASE
+			
+	END_CASE
+	]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Axis_Status" Id="{e61b4863-3a90-489c-808f-0236303e8751}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  			ENUM_Axis_Status
+//
+//						Enumération des Etats des Axes			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 29.01.2026
+//Dernière modification : 29.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 29.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Axis_Status :
+(
+	OFF := 0 , // OFF
+	Powering := 1 , // Powering in progress
+	Ready := 2 , // Ready (not in movement)
+	Homing := 3 , // Référencement in progress
+	Jogging := 4 , // Moving in Jog	
+	Autoing := 5 , // Moving in AUTO
+	Error := 6 // Error
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

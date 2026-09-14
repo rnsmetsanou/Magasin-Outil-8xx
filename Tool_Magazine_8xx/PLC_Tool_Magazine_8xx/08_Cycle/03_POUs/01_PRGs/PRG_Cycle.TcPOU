@@ -1,0 +1,1672 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Cycle" Id="{83b6ed4b-abd1-416e-8abe-c7e2309dc7ce}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Cycle
+VAR
+	(** STRING **)
+		sTextLog : STRING ; // Text to Log
+		sTxtCycleStep : STRING ; // Text of the cycle step in progress
+		sTxtCyclePrevStep : STRING ; // Text od the previous cycle step
+
+	(** INT **)
+		iLocationLoop : INT := 0 ; // Use in a FOR Loop
+		iSequenceLoop : INT := 0 ;  // Use in a FOR Loop
+		
+	(** FLAG **)
+		bInitAllDone : BOOL ; // InitAll is Done
+		bInitDataDone : BOOL ; // InitData is Done
+		bReadyDone : BOOL ; // Ready is Done
+		bPreparationDone : BOOL ; // Preparation/Anticipation is Done
+		bBuildSequenceDone : BOOL ; // BuildSequence is Done
+		bExecuteSequenceDone : BOOL ; // ExecuteSequence is Done
+		bEndDone : BOOL ; // End is Done
+		bErrorDone : BOOL ; // Error is Done
+		
+	(** FB **)
+		fb_Init : FB_20_Action_Initialization ;
+	
+		fb_PickToolMagazine : FB_01_Action_PickToolMagazine ;
+		fb_ManipulatorArm : FB_02_Action_TransferManipulatorToArm ;
+		fb_ArmCNC : FB_03_Action_TransferArmCnc ;
+		fb_ArmManipulator : FB_04_Action_TransferArmToManipulator ;
+		fb_PlaceToolMagazine : FB_05_Action_PlaceToolMagazine ;
+		
+		fb_MagazineCheckOne : FB_10_Action_ToolMagazineCheckOne ;
+		fb_MagazineCheckFull : FB_11_Action_ToolMagazineCheckAll ;
+		
+		tonInit : TON ;
+	iRemplissage60: INT;
+	bRemplissage60: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Cycle
+//
+//					Gestion des cycles du magasin d'outils     			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.02.2026
+//Dernière modification : 09.04.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création	
+// 20.02.2026 (G.GOETZ) -> Add : (** CYCLE INIT **)
+// 09.04.2026 (G.GOETZ) -> FB modificaiton
+//-----------------------------------------------------------------------------------------
+
+// IF bRemplissage60 THEN
+// 	FOR iRemplissage60:=1 TO GV_Tool_Magazine.iMaxAbsLocationTop BY 1 DO
+// 		GV_Tool_Magazine.aLocation[iRemplissage60].stToolParam.Size:=60;
+// 	END_FOR
+// 	bRemplissage60:=FALSE;
+// END_IF
+
+(** EVENTS **)
+
+(** START/STOP **)
+	(* Start *)
+		IF GV_General.bSafety AND GV_General.bPower AND GV_General.bAir AND (GV_HMI.stCycle.rtButtonStartStop.Q OR GV_HMI.stCycle.rtButtonStart.Q) AND (NOT GV_Cycle.bStartStop) AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO OR GV_OpMode.eOpMode=ENUM_OpMode.INIT)  THEN
+			GV_Cycle.bStartStop:=TRUE;
+		END_IF
+	(* Stop *)
+		IF ((NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_General.bAir) OR GV_HMI.stCycle.rtButtonStartStop.Q OR GV_HMI.stCycle.rtButtonStop.Q) AND GV_Cycle.bStartStop AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO OR GV_OpMode.eOpMode=ENUM_OpMode.INIT)  THEN
+			GV_Cycle.bStartStop:=FALSE;
+		END_IF
+
+(** ACK **)
+	GV_Cycle.bResetError:=GV_HMI.bEventAck;
+
+(** CYCLE INIT **)
+	tonInit(PT:=T#1S);
+	IF GV_OpMode.eOpMode=ENUM_OpMode.INIT AND GV_Cycle.bStartStop (*AND (NOT GV_Cycle.bInitCycleDone)*) THEN
+		
+		tonInit.IN:=TRUE;
+		GV_Cycle.eCycleStep:=ENUM_Cycle_Step.InitData;
+	
+		(* Init Step *)
+			GV_Cycle.bInitCycleDone:=FALSE;
+			bReadyDone:=FALSE;
+			bBuildSequenceDone:=FALSE;
+			bExecuteSequenceDone:=FALSE;
+			GV_Cycle.bAnticipateLoadRequest1:=FALSE;
+			GV_Cycle.bAnticipateLoadRequest2:=FALSE;
+			GV_Cycle.bAnticipateLoadDone:=FALSE;
+			GV_Cycle.bAnticipateUnloadRequest3:=FALSE;
+			GV_Cycle.bAnticipateUnloadRequest4:=FALSE;
+			GV_Cycle.bActionRunning:=FALSE;
+			GV_Cycle.bActionError:=FALSE;
+			GV_Cycle.udiErrorID:=0;
+		(* Init Sequence *)
+			FOR iSequenceLoop:=1 TO GV_Cycle.iMaxActions BY 1 DO
+				GV_Cycle.aSequence[iSequenceLoop]:=ENUM_Cycle_Action.None;
+			END_FOR
+			GV_Cycle.iSeqLength:=0;
+			GV_Cycle.iSeqIndex:=1;
+		(* Init Cycle *)
+			GV_Cycle.eCycleType:=ENUM_Cycle_Type.None;
+			GV_Cycle.iSpindleToolLocation:=0;
+			GV_Cycle.iToolToLoadLocationAbs:=0;
+			GV_Cycle.iToolToLoadLocationRel:=0;
+			GV_Cycle.iToolToUnloadLocationAbs:=0;
+			GV_Cycle.iToolToUnloadLocationRel:=0;
+			GV_Cycle.iToolToCheckLocationAbs:=0;
+			GV_Cycle.iArmGripperLoad:=0;
+			GV_Cycle.iArmGripperUnload:=0;
+			GV_Cycle.bTransferArmToCnc:=FALSE;
+			GV_Cycle.iGripperArmToCncNumber:=0;
+			GV_Cycle.bTransferCncToArm:=FALSE;
+			GV_Cycle.iGripperCncToArmNumber:=0;
+		(* Init FB *)
+			fb_PickToolMagazine(bInit:=TRUE,bStart:=FALSE);
+			fb_ManipulatorArm(bInit:=TRUE,bStart:=FALSE);
+			fb_ArmCNC(bInit:=TRUE,bStart:=FALSE);
+			fb_ArmManipulator(bInit:=TRUE,bStart:=FALSE);
+			fb_PlaceToolMagazine(bInit:=TRUE,bStart:=FALSE);
+			fb_MagazineCheckOne(bInit:=TRUE,bStart:=FALSE);
+			fb_MagazineCheckFull(bInit:=TRUE,bStart:=FALSE);
+		(* Init Axis *)
+			GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+		
+// 		(* FB_Init *)
+// 			IF (NOT GV_Cycle.bInitSet) THEN // Start if not already running
+// 				fb_Init.bInit:=TRUE;
+// 				GV_Cycle.bInitSet:=TRUE;
+// 			END_IF
+// 			IF (NOT fb_Init.bInit) AND (NOT fb_Init.bStart) THEN // Start if not already running
+// 				fb_Init.bStart:=TRUE;
+// 			END_IF
+// 			fb_Init( // Call Fb_Action
+// 					(*Tunnel*)
+// 						tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 					(*Step 2*)
+// 						tMove2Timeout:=T#0S, // Not used			
+// 					);
+// 			IF fb_Init.bDone AND (NOT fb_Init.bError) (*tonInit.Q*) THEN
+// 				GV_Cycle.bInitSet:=FALSE;
+// 				GV_Cycle.bInitCycleDone:=TRUE;
+// 				GV_Cycle.bInitRequest:=FALSE;
+// 				GV_Cycle.bStartStop:=FALSE;
+// 			ELSIF fb_Init.bError THEN
+// 				GV_Cycle.bInitSet:=FALSE;
+// 				GV_Cycle.bInitCycleDone:=FALSE;
+// 			END_IF
+			
+		IF tonInit.Q THEN
+			GV_Cycle.bInitCycleDone:=TRUE;
+			GV_Cycle.bInitRequest:=FALSE;
+			GV_Cycle.bStartStop:=FALSE;
+		ELSE
+			GV_Cycle.bInitCycleDone:=FALSE;
+		END_IF
+	ELSE
+		tonInit.IN:=FALSE;
+	END_IF
+
+(** CYCLE AUTO **)
+	IF GV_OpMode.eOpMode=ENUM_OpMode.AUTO THEN
+	
+		CASE GV_Cycle.eCycleStep OF
+			
+			ENUM_Cycle_Step.InitAll: // Step InitAll = 0
+				(* Init Step *)
+					bInitAllDone:=FALSE;
+					bInitDataDone:=FALSE;
+					bReadyDone:=FALSE;
+					bBuildSequenceDone:=FALSE;
+					bExecuteSequenceDone:=FALSE;
+					GV_Cycle.bAnticipateLoadRequest1:=FALSE;
+					GV_Cycle.bAnticipateLoadRequest2:=FALSE;
+					GV_Cycle.bAnticipateLoadDone:=FALSE;
+					GV_Cycle.bAnticipateUnloadRequest3:=FALSE;
+					GV_Cycle.bAnticipateUnloadRequest4:=FALSE;
+					GV_Cycle.bActionRunning:=FALSE;
+					GV_Cycle.bActionError:=FALSE;
+					GV_Cycle.udiErrorID:=0;
+				(* Init Sequence *)
+					FOR iSequenceLoop:=1 TO GV_Cycle.iMaxActions BY 1 DO
+						GV_Cycle.aSequence[iSequenceLoop]:=ENUM_Cycle_Action.None;
+					END_FOR
+					GV_Cycle.iSeqLength:=0;
+					GV_Cycle.iSeqIndex:=1;
+				(* Init Cycle *)
+					GV_Cycle.eCycleType:=ENUM_Cycle_Type.None;
+					GV_Cycle.iSpindleToolLocation:=0;
+					GV_Cycle.iToolToLoadLocationAbs:=0;
+					GV_Cycle.iToolToLoadLocationRel:=0;
+					GV_Cycle.iToolToUnloadLocationAbs:=0;
+					GV_Cycle.iToolToUnloadLocationRel:=0;
+					GV_Cycle.iToolToCheckLocationAbs:=0;
+					GV_Cycle.iArmGripperLoad:=0;
+					GV_Cycle.iArmGripperUnload:=0;
+					GV_Cycle.bTransferArmToCnc:=FALSE;
+					GV_Cycle.iGripperArmToCncNumber:=0;
+					GV_Cycle.bTransferCncToArm:=FALSE;
+					GV_Cycle.iGripperCncToArmNumber:=0;
+				(* Init FB *)
+					fb_Init(bInit:=TRUE,bStart:=FALSE);
+					fb_PickToolMagazine(bInit:=TRUE,bStart:=FALSE);
+					fb_ManipulatorArm(bInit:=TRUE,bStart:=FALSE);
+					fb_ArmCNC(bInit:=TRUE,bStart:=FALSE);
+					fb_ArmManipulator(bInit:=TRUE,bStart:=FALSE);
+					fb_PlaceToolMagazine(bInit:=TRUE,bStart:=FALSE);
+					fb_MagazineCheckOne(bInit:=TRUE,bStart:=FALSE);
+					fb_MagazineCheckFull(bInit:=TRUE,bStart:=FALSE);
+				(* Init Axis *)
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+			
+					//Cycle de remise en position Home, automatique ("Home securisé") + fermeture porte intermédiaire ?
+
+					bInitAllDone:=TRUE;
+				(* Next Step *)	
+					IF bInitAllDone AND GV_Cycle.bStartStop AND GV_Cycle.bInitCycleDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Ready; // Go to Step Ready
+					END_IF
+				
+			ENUM_Cycle_Step.InitData: // Step InitData = 1
+				(* Init Step *)
+					bInitAllDone:=FALSE;
+					bInitDataDone:=FALSE;
+					bReadyDone:=FALSE;
+					bBuildSequenceDone:=FALSE;
+					bExecuteSequenceDone:=FALSE;
+					GV_Cycle.bAnticipateLoadRequest1:=FALSE;
+					GV_Cycle.bAnticipateLoadRequest2:=FALSE;
+					GV_Cycle.bAnticipateLoadDone:=FALSE;
+					GV_Cycle.bAnticipateUnloadRequest3:=FALSE;
+					GV_Cycle.bAnticipateUnloadRequest4:=FALSE;
+					GV_Cycle.bActionRunning:=FALSE;
+					GV_Cycle.bActionError:=FALSE;
+					GV_Cycle.udiErrorID:=0;
+				(* Init Sequence *)
+					FOR iSequenceLoop:=1 TO GV_Cycle.iMaxActions BY 1 DO
+						GV_Cycle.aSequence[iSequenceLoop]:=ENUM_Cycle_Action.None;
+					END_FOR
+					GV_Cycle.eCycleType:=ENUM_Cycle_Type.None;
+				(* Init Cycle *)
+					GV_Cycle.eCycleType:=ENUM_Cycle_Type.None;
+					GV_Cycle.iSpindleToolLocation:=0;
+					GV_Cycle.iToolToLoadLocationAbs:=0;
+					GV_Cycle.iToolToLoadLocationRel:=0;
+					GV_Cycle.iToolToUnloadLocationAbs:=0;
+					GV_Cycle.iToolToUnloadLocationRel:=0;
+					GV_Cycle.iToolToCheckLocationAbs:=0;
+					GV_Cycle.iArmGripperLoad:=0;
+					GV_Cycle.iArmGripperUnload:=0;
+					GV_Cycle.bTransferArmToCnc:=FALSE;
+					GV_Cycle.iGripperArmToCncNumber:=0;
+					GV_Cycle.bTransferCncToArm:=FALSE;
+					GV_Cycle.iGripperCncToArmNumber:=0;
+				(* Init FB *)
+					fb_Init(bInit:=TRUE,bStart:=FALSE);
+					fb_PickToolMagazine(bInit:=TRUE,bStart:=FALSE);
+					fb_ManipulatorArm(bInit:=TRUE,bStart:=FALSE);
+					fb_ArmCNC(bInit:=TRUE,bStart:=FALSE);
+					fb_ArmManipulator(bInit:=TRUE,bStart:=FALSE);
+					fb_PlaceToolMagazine(bInit:=TRUE,bStart:=FALSE);
+					fb_MagazineCheckOne(bInit:=TRUE,bStart:=FALSE);
+					fb_MagazineCheckFull(bInit:=TRUE,bStart:=FALSE);
+				(* Init Axis *)
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+			
+					bInitDataDone:=TRUE;
+				(* Next Step *)	
+					IF bInitDataDone AND GV_Cycle.bStartStop AND GV_Cycle.bInitCycleDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Ready; // Go to Step Ready
+					END_IF
+				
+			ENUM_Cycle_Step.Ready: // Step Ready = 2
+				//IF (NOT GV_Cycle.bStartStop) THEN
+				//	(*Log*)
+				//		PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 2_Ready=STOP');
+				//	GV_Cycle.eCycleStep:=ENUM_Cycle_Step.End; // Go to Step End
+				//END_IF
+				
+				bReadyDone:=FALSE;
+
+				(* CheckMagazineFull *)
+					IF GV_Tool_Magazine.bCheckFullMagazineRequest THEN
+						IF (NOT fb_MagazineCheckFull.bStart) AND (NOT fb_MagazineCheckFull.bInit) AND (NOT fb_MagazineCheckFull.bBusy) AND (NOT fb_MagazineCheckOne.bBusy) THEN
+							fb_MagazineCheckFull.bStart:=TRUE;
+						END_IF
+						
+						IF fb_MagazineCheckFull.bBusy THEN
+							fb_MagazineCheckFull.bStart:=FALSE;
+						END_IF
+						
+// 						fb_MagazineCheckFull( // Call Fb_Action
+// 											(*ToolLocation*)
+// 												lrToolDistance:=GV_HMI.stMagazineCheck.lrToolDistance,
+// 												lrToolDistanceTolerance:=GV_HMI.stMagazineCheck.lrToolDistanceTolerance,
+// 											(*Manipulator*)
+// 												bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+// 											(*Tunnel*)
+// 												tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 											(*TimeOut*)
+// 												tTimeOut:=GV_HMI.stMagazineCheck.tTimeoutOne,
+// 											);
+						IF fb_MagazineCheckFull.bDone AND (NOT fb_MagazineCheckFull.bError) THEN
+							fb_MagazineCheckFull.bStart:=FALSE;
+							GV_Tool_Magazine.bCheckFullMagazineRequest:=FALSE;
+						ELSIF fb_MagazineCheckFull.bError THEN
+							fb_MagazineCheckFull.bStart:=FALSE;
+							GV_Cycle.udiErrorID:=21;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 2_Ready=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+							GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+						END_IF
+						
+					END_IF
+				(* CheckMagazineOne *)
+					IF GV_Tool_Magazine.bCheckOneMagazineRequest THEN
+						
+						IF GV_Tool_Magazine.bCheckManipulatorMemoryRequest AND GV_HMI.stMagazineCheck.bCheckManipulatorLocation THEN // Manipulator Request
+							GV_Cycle.iToolToCheckLocationAbs:=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory;
+						ELSIF GV_Tool_Magazine.bCheckArmGripper1MemoryRequest AND GV_HMI.stMagazineCheck.bCheckArmGripper1Location THEN // Arm gripper 1 Request
+							GV_Cycle.iToolToCheckLocationAbs:=GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory;
+						ELSIF GV_Tool_Magazine.bCheckArmGripper2MemoryRequest AND GV_HMI.stMagazineCheck.bCheckArmGripper2Location THEN // Arm gripper 2 Request
+							GV_Cycle.iToolToCheckLocationAbs:=GV_Tool_Magazine.stArm.aGripper[2].iAbsLocationNumberMemory;
+						ELSIF GV_Tool_Magazine.bCheckSpindleMemoryRequest AND GV_HMI.stMagazineCheck.bCheckSpindleLocation THEN // Spindle Request
+							GV_Cycle.iToolToCheckLocationAbs:=GV_CNC.stSpindle.iAbsLocationNumberMemory;
+						ELSE
+							GV_Tool_Magazine.bCheckOneMagazineRequest:=FALSE;
+							GV_Cycle.iToolToCheckLocationAbs:=0;
+						END_IF
+						
+						IF GV_Tool_Magazine.bCheckOneMagazineRequest AND GV_Cycle.iToolToCheckLocationAbs>0 AND (NOT fb_MagazineCheckOne.bStart) AND (NOT fb_MagazineCheckOne.bInit) AND (NOT fb_MagazineCheckOne.bBusy) AND (NOT fb_MagazineCheckFull.bBusy) THEN
+							fb_MagazineCheckOne.bStart:=TRUE;
+						END_IF
+						IF fb_MagazineCheckOne.bBusy THEN
+							fb_MagazineCheckOne.bStart:=FALSE;
+						END_IF
+// 						fb_MagazineCheckOne( // Call Fb_Action
+// 											(*ToolLocation*)
+// 												stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToCheckLocationAbs],
+// 												lrToolDistance:=GV_HMI.stMagazineCheck.lrToolDistance,
+// 												lrToolDistanceTolerance:=GV_HMI.stMagazineCheck.lrToolDistanceTolerance,
+// 											(*Manipulator*)
+// 												bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+// 											(*Tunnel*)
+// 												tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 											(*TimeOut*)
+// 												tTimeOut:=GV_HMI.stMagazineCheck.tTimeoutOne,
+// 											);
+						IF fb_MagazineCheckOne.bDone AND (NOT fb_MagazineCheckOne.bError) THEN
+							fb_MagazineCheckOne.bStart:=FALSE;
+							IF GV_Tool_Magazine.bCheckManipulatorMemoryRequest AND GV_Cycle.iToolToCheckLocationAbs=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory THEN
+								GV_Tool_Magazine.bCheckManipulatorMemoryRequest:=FALSE;
+							END_IF
+							IF GV_Tool_Magazine.bCheckArmGripper1MemoryRequest AND GV_Cycle.iToolToCheckLocationAbs=GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory THEN
+								GV_Tool_Magazine.bCheckArmGripper1MemoryRequest:=FALSE;
+							END_IF
+							IF GV_Tool_Magazine.bCheckArmGripper2MemoryRequest AND GV_Cycle.iToolToCheckLocationAbs=GV_Tool_Magazine.stArm.aGripper[2].iAbsLocationNumberMemory THEN
+								GV_Tool_Magazine.bCheckArmGripper2MemoryRequest:=FALSE;
+							END_IF
+							IF GV_Tool_Magazine.bCheckSpindleMemoryRequest AND GV_Cycle.iToolToCheckLocationAbs=GV_CNC.stSpindle.iAbsLocationNumberMemory THEN
+								GV_Tool_Magazine.bCheckSpindleMemoryRequest:=FALSE;
+							END_IF
+						ELSIF fb_MagazineCheckOne.bError THEN
+							fb_MagazineCheckOne.bStart:=FALSE;
+							GV_Cycle.udiErrorID:=22;
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 2_Ready=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+							GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+						END_IF
+						
+					END_IF
+
+				(* Ready Done *)
+					IF GV_Cycle.bStartStop AND (GV_CNC.stFanucData.stCncMagazine.biToolAnticipation OR ((NOT GV_CNC.stFanucData.stCncMagazine.biToolAnticipation) AND (GV_CNC.stFanucData.stCncMagazine.biLoadRequest OR GV_CNC.stFanucData.stCncMagazine.biUnloadRequest OR GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest)))  THEN
+						IF (NOT GV_Tool_Magazine.bCheckFullMagazineRequest) AND (NOT GV_Tool_Magazine.bCheckOneMagazineRequest) THEN 
+							bReadyDone:=TRUE;
+						END_IF
+					END_IF
+				(* Next Step *)
+					IF bReadyDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Preparation; // Go to Step Preparation
+					END_IF
+
+			ENUM_Cycle_Step.Preparation: // Step Preparation = 3
+				bPreparationDone:=FALSE;
+				GV_Cycle.eCycleType:=ENUM_Cycle_Type.None;
+				
+// 				(***** PREPARATION/ANTICIPATION *****)
+// 				
+// 					(* Anticipation - Pick Tool + Manipulator to Arm *)
+// 						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+// 						GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+// 						(NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) AND (NOT GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory) AND (NOT GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory) AND (NOT GV_Cycle.bAnticipateLoadRequest) AND (NOT GV_Cycle.bAnticipateLoadDone) AND (NOT GV_Cycle.bAnticipateUnloadRequest) THEN
+// 					
+// 							FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+// 								IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber=GV_CNC.stFanucData.iToolToLoadLocation AND GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence AND
+// 								GV_Tool_Magazine.aLocation[iLocationLoop].bEnable AND GV_Tool_Magazine.aLocation[iLocationLoop].bUsed AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden) AND
+// 								GV_Tool_Magazine.aLocation[iLocationLoop].eToolType=GV_CNC.stFanucData.iToolToLoadType THEN
+// 									GV_Cycle.iToolToLoadLocationAbs:=iLocationLoop;
+// 									EXIT;
+// 								END_IF
+// 							END_FOR
+// 							
+// 							IF GV_Cycle.iToolToLoadLocationAbs=0 THEN
+// 									GV_Cycle.udiErrorID:=31;
+// 									(*Log*)
+// 										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 							ELSE
+// 								GV_Cycle.bAnticipateLoadRequest:=TRUE;
+// 								GV_Cycle.iToolToLoadLocationRel:=GV_CNC.stFanucData.iToolToLoadLocation;
+// 							END_IF
+// 							
+// 						END_IF
+// 
+// 						IF GV_Cycle.bAnticipateLoadRequest AND (NOT GV_Cycle.bAnticipateUnloadRequest) AND GV_Cycle.iToolToLoadLocationAbs>0 THEN
+// 					
+// 							IF (NOT fb_PickToolMagazine.bStart) AND (NOT fb_PickToolMagazine.bInit) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+// 								fb_PickToolMagazine.bStart:=TRUE;
+// 								fb_ManipulatorArm.bStart:=FALSE;
+// 								fb_PlaceToolMagazine.bStart:=FALSE;
+// 								fb_ArmManipulator.bStart:=FALSE;
+// 								GV_Cycle.bAnticipateUnLoadDone:=FALSE;
+// 							END_IF
+// 	
+// 							IF fb_PickToolMagazine.bBusy THEN
+// 								fb_PickToolMagazine.bStart:=FALSE;
+// 							END_IF
+// 							
+// 							IF (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+// 								fb_PickToolMagazine( // Call Fb_Action
+// 													(*ToolLocation*)
+// 														stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToLoadLocationAbs],
+// 														lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+// 													(*Manipulator*)
+// 														bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+// 													(*Gripper*)
+// 														tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+// 														bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+// 														tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+// 														bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+// 													(*Tunnel*)
+// 														tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 													(*Step 2_AboveLocation*)
+// 														tMove2Timeout:=T#0S, // Not used
+// 													(*Step 4_Location*)
+// 														tMove4Timeout:=T#0S, // Not used
+// 													(*Step 6_FrontLocation*)
+// 														tMove6Timeout:=T#0S, // Not used
+// 													(*Step 8_PositionTransferArm*)
+// 														tMove8Timeout:=T#0S, // Not used
+// 													);
+// 							END_IF
+// 				
+// 							IF fb_PickToolMagazine.bDone AND (NOT fb_PickToolMagazine.bError) THEN
+// 								fb_PickToolMagazine.bStart:=FALSE;
+// 								fb_ManipulatorArm.bStart:=TRUE;
+// 								GV_Cycle.iArmGripperLoad:=1;
+// 							ELSIF fb_PickToolMagazine.bError THEN
+// 								fb_PickToolMagazine.bStart:=FALSE;
+// 								GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 								GV_Cycle.bAnticipateUnloadDone:=FALSE;
+// 								GV_Cycle.bAnticipateLoadRequest:=FALSE;
+// 								GV_Cycle.iToolToLoadLocationAbs:=0;
+// 								GV_Cycle.iToolToLoadLocationRel:=0;
+// 								GV_Cycle.udiErrorID:=32;
+// 								(*Log*)
+// 									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 							END_IF
+// 	
+// 							IF fb_ManipulatorArm.bBusy THEN
+// 								fb_ManipulatorArm.bStart:=FALSE;
+// 							END_IF
+// 							
+// 							IF (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+// 								fb_ManipulatorArm( // Call Fb_Action
+// 													(*Manipulator*)
+// 														bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+// 													(*Arm*)
+// 														iGripperArmNumber:=GV_Cycle.iArmGripperLoad,
+// 														bCheckSensorArmGripper1:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper1,
+// 														bCheckSensorArmGripper2:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper2,
+// 													(*Gripper*)
+// 														tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+// 														bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+// 														tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+// 														bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+// 													(*Tunnel*)
+// 														tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 													(*Step 2_ManipulatorAboveTransfer*)
+// 														tMove2Timeout:=T#0S, // Not used
+// 													(*Step 3_ArmHome*)
+// 														tMove3Timeout:=T#0S, // Not used
+// 													(*Step 4_ManipulatorTransfer*)
+// 														tMove4Timeout:=T#0S, // Not used
+// 													(*Step 5_ArmTransfer*)
+// 														tMove5Timeout:=T#0S, // Not used
+// 													(*Step 7_ManipulatorAboveTransfer*)
+// 														tMove7Timeout:=T#0S, // Not used
+// 												 );
+// 							END_IF
+// 					
+// 							IF fb_ManipulatorArm.bDone AND (NOT fb_ManipulatorArm.bError) THEN
+// 								fb_ManipulatorArm.bStart:=FALSE;
+// 								GV_Cycle.iArmGripperLoad:=0;
+// 								//IF GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory>0 AND GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation THEN
+// 									GV_Cycle.bAnticipateLoadDone:=TRUE;
+// 								//ELSE
+// 								//	GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 								//END_IF
+// 								GV_Cycle.bAnticipateUnloadDone:=FALSE;
+// 								GV_Cycle.bAnticipateLoadRequest:=FALSE;
+// 								GV_Cycle.iToolToLoadLocationAbs:=0;
+// 								GV_Cycle.iToolToLoadLocationRel:=0;
+// 							ELSIF fb_ManipulatorArm.bError THEN
+// 								fb_ManipulatorArm.bStart:=FALSE;
+// 								GV_Cycle.iArmGripperLoad:=0;
+// 								GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 								GV_Cycle.bAnticipateUnloadDone:=FALSE;
+// 								GV_Cycle.bAnticipateLoadRequest:=FALSE;
+// 								GV_Cycle.iToolToLoadLocationAbs:=0;
+// 								GV_Cycle.iToolToLoadLocationRel:=0;
+// 								GV_Cycle.udiErrorID:=32;
+// 								(*Log*)
+// 									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 							END_IF
+// 								
+// 						END_IF
+// 						
+// 					(* Anticipation - Place Tool *)
+// 						(*Place Tool Magazine*)
+// 							IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+// 							GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+// 							GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Cycle.bAnticipateLoadRequest) AND (*(NOT GV_Cycle.bAnticipateUnloadDone) AND*) (NOT GV_Cycle.bAnticipateUnloadRequest) AND
+// 							(NOT fb_PlaceToolMagazine.bStart) AND (NOT fb_PlaceToolMagazine.bInit) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) AND (NOT fb_ArmManipulator.bDone) THEN
+// 							
+// 								IF GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].iRelLocationNumber<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bToolPresence) AND
+// 								GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bEnable AND GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bUsed AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bForbiden) THEN
+// 									GV_Cycle.iToolToUnLoadLocationAbs:=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory;
+// 								END_IF
+// 								
+// 								IF GV_Cycle.iToolToUnLoadLocationAbs=0 THEN
+// 									GV_Cycle.udiErrorID:=34;
+// 									(*Log*)
+// 										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 									GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 								ELSE
+// 									GV_Cycle.bAnticipateUnloadRequest:=TRUE;
+// 									GV_Cycle.iToolToUnloadLocationRel:=GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory;
+// 								END_IF
+// 								
+// 							END_IF
+// 		
+// 							IF (NOT GV_Cycle.bAnticipateLoadRequest) AND GV_Cycle.bAnticipateUnloadRequest AND GV_Cycle.iToolToUnloadLocationAbs>0 THEN
+// 						
+// 								IF (NOT fb_PlaceToolMagazine.bStart) AND (NOT fb_PlaceToolMagazine.bInit) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+// 									fb_PickToolMagazine.bStart:=FALSE;
+// 									fb_ManipulatorArm.bStart:=FALSE;
+// 									fb_PlaceToolMagazine.bStart:=TRUE;
+// 									fb_ArmManipulator.bStart:=FALSE;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 								END_IF
+// 
+// 								IF fb_PlaceToolMagazine.bBusy THEN
+// 									fb_PlaceToolMagazine.bStart:=FALSE;
+// 								END_IF
+// 								
+// 								IF (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) THEN
+// 									fb_PlaceToolMagazine( // Call Fb_Action
+// 														(*ToolLocation*)
+// 															stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToUnloadLocationAbs],
+// 															lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+// 														(*Manipulator*)
+// 															bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+// 														(*Gripper*)
+// 															tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+// 															bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+// 															tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+// 															bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+// 														(*Tunnel*)
+// 															tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 														(*Breakage*)
+// 															tBreakageTimeout:=GV_HMI.stManipulatorBreakage.tTimeout,
+// 															lrBreakageZOffsetSensor:=GV_HMI.stManipulatorBreakage.lrOffsetSensor,
+// 															lrBreakageToleranceLength:=GV_HMI.stManipulatorBreakage.lrToleranceLength,
+// 															lrBreakageVelocity:=GV_HMI.stManipulatorBreakage.lrMeasureVelocity,
+// 														(*Step 4_FrontLocation*)
+// 															tMove4Timeout:=T#0S, // Not used
+// 														(*Step 6_AboveLocation*)
+// 															tMove6Timeout:=T#0S, // Not used
+// 														(*Step 8_FrontLocation*)
+// 															tMove8Timeout:=T#0S, // Not used
+// 														);
+// 								END_IF	
+// 								
+// 								IF fb_PlaceToolMagazine.bDone AND (NOT fb_PlaceToolMagazine.bError) THEN
+// 									fb_PlaceToolMagazine.bStart:=FALSE;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadDone:=TRUE;
+// 									GV_Cycle.bAnticipateUnloadRequest:=FALSE;
+// 									GV_Cycle.iToolToUnloadLocationAbs:=0;
+// 									GV_Cycle.iToolToUnloadLocationRel:=0;
+// 								ELSIF fb_PlaceToolMagazine.bError THEN
+// 									fb_PlaceToolMagazine.bStart:=FALSE;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadRequest:=FALSE;
+// 									GV_Cycle.iToolToUnloadLocationAbs:=0;
+// 									GV_Cycle.iToolToUnloadLocationRel:=0;
+// 									GV_Cycle.udiErrorID:=35;
+// 									(*Log*)
+// 										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 									GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 								END_IF
+// 								
+// 							END_IF
+// 
+// 						(*Arm to Manipulator*) // Always in Arm.Gripper[1]
+// 							IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+// 							GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+// 							(NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) AND GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory AND GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Cycle.bAnticipateLoadRequest) AND (*(NOT GV_Cycle.bAnticipateUnloadDone) AND*) (NOT GV_Cycle.bAnticipateUnloadRequest) AND
+// 							(NOT fb_ArmManipulator.bStart) AND (NOT fb_ArmManipulator.bInit) AND (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) THEN
+// 							
+// 								IF GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].iRelLocationNumber<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bToolPresence) AND
+// 								GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bEnable AND GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bUsed AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bForbiden) THEN
+// 									//GV_Cycle.iToolToUnLoadLocationAbs:=GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory;
+// 									GV_Cycle.bAnticipateUnloadRequest:=TRUE;
+// 								END_IF
+// 								
+// 								//IF (*GV_Cycle.iToolToUnLoadLocationAbs=0*) THEN
+// 								//	GV_Cycle.udiErrorID:=36;
+// 								//	(*Log*)
+// 								//		PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 								//		PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 								//	GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 								//ELSE
+// 								//	GV_Cycle.bAnticipateUnloadRequest:=TRUE;
+// 								//	GV_Cycle.iToolToUnloadLocationRel:=GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory;
+// 								//END_IF
+// 								
+// 							END_IF
+// 							
+// 							IF (NOT GV_Cycle.bAnticipateLoadRequest) AND (GV_Cycle.bAnticipateUnloadRequest OR fb_ManipulatorArm.bDone) THEN
+// 								
+// 								IF (*GV_Cycle.iToolToUnloadLocationAbs>0 AND*) (NOT fb_ArmManipulator.bStart) AND (NOT fb_ArmManipulator.bInit) AND (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) THEN
+// 									fb_PickToolMagazine.bStart:=FALSE;
+// 									fb_ManipulatorArm.bStart:=FALSE;
+// 									fb_PlaceToolMagazine.bStart:=FALSE;
+// 									fb_ArmManipulator.bStart:=TRUE;
+// 									GV_Cycle.iArmGripperUnload:=1;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 								END_IF
+// 								
+// 								IF fb_ArmManipulator.bBusy THEN
+// 									fb_ArmManipulator.bStart:=FALSE;
+// 								END_IF
+// 
+// 								IF (*GV_Cycle.iToolToUnloadLocationAbs>0 AND*) (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) THEN
+// 									fb_ArmManipulator( // Call Fb_Action
+// 														(*Manipulator*)
+// 															bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+// 														(*Arm*)
+// 															iGripperArmNumber:=GV_Cycle.iArmGripperUnload,
+// 															bCheckSensorArmGripper1:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper1,
+// 															bCheckSensorArmGripper2:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper2,
+// 														(*Gripper*)
+// 															tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+// 															bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+// 															tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+// 															bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+// 														(*Tunnel*)
+// 															tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+// 														(*Step 2_ManipulatorAboveTransfer*)
+// 															tMove2Timeout:=T#0S, // Not used
+// 														(*Step 3_ArmTransfer*)
+// 															tMove3Timeout:=T#0S, // Not used
+// 														(*Step 5_ManipulatorTransfer*)
+// 															tMove5Timeout:=T#0S, // Not used
+// 														(*Step 7_ArmHome*)
+// 															tMove7Timeout:=T#0S, // Not used
+// 														(*Step 8_ManipulatorAboveTransfer*)
+// 															tMove8Timeout:=T#0S, // Not used
+// 													);
+// 								END_IF
+// 							
+// 								IF fb_ArmManipulator.bDone AND (NOT fb_ArmManipulator.bError) THEN
+// 									fb_ArmManipulator.bStart:=FALSE;
+// 									GV_Cycle.iArmGripperUnload:=0;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadDone:=TRUE;
+// 									GV_Cycle.bAnticipateUnloadRequest:=FALSE;
+// 									//GV_Cycle.iToolToUnloadLocationAbs:=0;
+// 									//GV_Cycle.iToolToUnloadLocationRel:=0;
+// 								ELSIF fb_ArmManipulator.bError THEN
+// 									fb_ArmManipulator.bStart:=FALSE;
+// 									GV_Cycle.iArmGripperUnload:=0;
+// 									GV_Cycle.bAnticipateLoadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadDone:=FALSE;
+// 									GV_Cycle.bAnticipateUnloadRequest:=FALSE;
+// 									//GV_Cycle.iToolToUnloadLocationAbs:=0;
+// 									//GV_Cycle.iToolToUnloadLocationRel:=0;
+// 									GV_Cycle.udiErrorID:=75;
+// 									(*Log*)
+// 										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+// 										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+// 									GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+// 								END_IF
+// 								
+// 							END_IF
+// 							
+
+				(***** PREPARATION/ANTICIPATION *****)
+				
+					(* Anticipation - Done *)
+						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+						GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+						(NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) AND GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory AND GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory) AND 
+						(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND (NOT GV_Cycle.bAnticipateLoadDone) AND
+						(NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_ArmManipulator.bBusy)AND (NOT fb_PlaceToolMagazine.bBusy) THEN
+							GV_Cycle.bAnticipateLoadDone:=TRUE;
+						END_IF
+						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+						((NOT GV_CNC.stFanucData.stCncMagazine.biToolAnticipation) OR GV_CNC.stFanucData.iToolToLoadLocation=0 OR (GV_CNC.stFanucData.iToolToLoadType<>1 AND GV_CNC.stFanucData.iToolToLoadType<>2)) THEN
+							GV_Cycle.bAnticipateLoadDone:=FALSE;
+						END_IF
+					
+					(* Anticipation - Pick -> 1 fb_PickToolMagazine *)
+						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+						GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+						(NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) AND (NOT GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory) AND (NOT GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory) AND
+						(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND (NOT GV_Cycle.bAnticipateLoadDone) AND
+						(NOT fb_PickToolMagazine.bStart) AND (NOT fb_PickToolMagazine.bInit) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) (*AND (NOT fb_ManipulatorArm.bDone)*) THEN
+					
+							FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+								IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber=GV_CNC.stFanucData.iToolToLoadLocation AND GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence AND
+								GV_Tool_Magazine.aLocation[iLocationLoop].bEnable AND GV_Tool_Magazine.aLocation[iLocationLoop].bUsed AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden) AND
+								GV_Tool_Magazine.aLocation[iLocationLoop].eToolType=GV_CNC.stFanucData.iToolToLoadType THEN
+									GV_Cycle.iToolToLoadLocationAbs:=iLocationLoop;
+									EXIT;
+								END_IF
+							END_FOR
+							
+							IF GV_Cycle.iToolToLoadLocationAbs=0 THEN
+								GV_Cycle.udiErrorID:=30;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							ELSE
+								GV_Cycle.bAnticipateLoadRequest1:=TRUE;
+								GV_Cycle.iToolToLoadLocationRel:=GV_CNC.stFanucData.iToolToLoadLocation;
+							END_IF
+							
+						END_IF
+
+						IF (GV_Cycle.bAnticipateLoadRequest1 (*OR fb_PickToolMagazine.bDone*)) AND GV_Cycle.iToolToLoadLocationAbs>0 THEN
+					
+							IF (NOT fb_PickToolMagazine.bStart) AND (NOT fb_PickToolMagazine.bInit) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+								fb_PickToolMagazine.bStart:=TRUE;
+								fb_ManipulatorArm.bStart:=FALSE;
+								fb_PlaceToolMagazine.bStart:=FALSE;
+								fb_ArmManipulator.bStart:=FALSE;
+								GV_Cycle.bAnticipateLoadDone:=FALSE;
+							END_IF
+	
+							IF fb_PickToolMagazine.bBusy THEN
+								fb_PickToolMagazine.bStart:=FALSE;
+							END_IF
+							
+							IF (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+								fb_PickToolMagazine( // Call Fb_Action
+													(*ToolLocation*)
+														stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToLoadLocationAbs],
+														lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+													(*Manipulator*)
+														bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+													(*Gripper*)
+														tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+														bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+														tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+														bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+													(*Tunnel*)
+														tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+													(*Step 2_AboveLocation*)
+														tMove2Timeout:=T#0S, // Not used
+													(*Step 4_Location*)
+														tMove4Timeout:=T#0S, // Not used
+													(*Step 6_FrontLocation*)
+														tMove6Timeout:=T#0S, // Not used
+													(*Step 8_PositionTransferArm*)
+														tMove8Timeout:=T#0S, // Not used
+													);
+							END_IF
+				
+							IF fb_PickToolMagazine.bDone AND (NOT fb_PickToolMagazine.bError) THEN
+								fb_PickToolMagazine.bStart:=FALSE;
+								GV_Cycle.bAnticipateLoadRequest1:=FALSE;
+								GV_Cycle.iToolToLoadLocationAbs:=0;
+								GV_Cycle.iToolToLoadLocationRel:=0;
+							ELSIF fb_PickToolMagazine.bError THEN
+								fb_PickToolMagazine.bStart:=FALSE;
+								GV_Cycle.bAnticipateLoadRequest1:=FALSE;
+								GV_Cycle.iToolToLoadLocationAbs:=0;
+								GV_Cycle.iToolToLoadLocationRel:=0;
+								GV_Cycle.udiErrorID:=31;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							END_IF
+
+						END_IF
+					
+					(* Anticipation - Pick -> 2 fb_ManipulatorArm *)
+						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+						GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+						GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory) AND (NOT GV_Tool_Magazine.stArm.aGripper[2].bToolPresenceMemory) AND
+						(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND (NOT GV_Cycle.bAnticipateLoadDone) AND
+						(NOT fb_ManipulatorArm.bStart) AND (NOT fb_ManipulatorArm.bInit) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PickToolMagazine.bBusy) (*AND (NOT fb_PickToolMagazine.bDone)*) THEN
+					
+							IF GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].iRelLocationNumber=GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bToolPresence) AND
+							GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bEnable AND GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bUsed AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bForbiden) THEN
+								GV_Cycle.bAnticipateLoadRequest2:=TRUE;
+								//GV_Cycle.iToolToLoadLocationAbs:=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory;
+							END_IF
+								
+							//IF GV_Cycle.iToolToLoadLocationAbs=0 THEN
+							//	GV_Cycle.udiErrorID:=32;
+							//	(*Log*)
+							//		PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+							//		PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+							//	GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							//ELSE
+							//	GV_Cycle.bAnticipateLoadRequest:=TRUE;
+							//	GV_Cycle.iToolToLoadLocationRel:=GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory;
+							//END_IF
+							
+						END_IF
+					
+						IF (GV_Cycle.bAnticipateLoadRequest2 (*OR fb_ManipulatorArm.bDone*)) THEN
+					
+							IF (NOT fb_ManipulatorArm.bStart) AND (NOT fb_ManipulatorArm.bInit) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+								fb_PickToolMagazine.bStart:=FALSE;
+								fb_ManipulatorArm.bStart:=TRUE;
+								fb_PlaceToolMagazine.bStart:=FALSE;
+								fb_ArmManipulator.bStart:=FALSE;
+								GV_Cycle.bAnticipateLoadDone:=FALSE;
+								GV_Cycle.iArmGripperLoad:=1;
+							END_IF
+					
+							IF fb_ManipulatorArm.bBusy THEN
+								fb_ManipulatorArm.bStart:=FALSE;
+							END_IF
+
+							IF (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+								fb_ManipulatorArm( // Call Fb_Action
+													(*Manipulator*)
+														bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+													(*Arm*)
+														iGripperArmNumber:=GV_Cycle.iArmGripperLoad,
+														bCheckSensorArmGripper1:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper1,
+														bCheckSensorArmGripper2:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper2,
+													(*Gripper*)
+														tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+														bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+														tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+														bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+													(*Tunnel*)
+														tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+													(*Step 2_ManipulatorAboveTransfer*)
+														tMove2Timeout:=T#0S, // Not used
+													(*Step 3_ArmHome*)
+														tMove3Timeout:=T#0S, // Not used
+													(*Step 4_ManipulatorTransfer*)
+														tMove4Timeout:=T#0S, // Not used
+													(*Step 5_ArmTransfer*)
+														tMove5Timeout:=T#0S, // Not used
+													(*Step 7_ManipulatorAboveTransfer*)
+														tMove7Timeout:=T#0S, // Not used
+												 );
+							END_IF
+					
+							IF fb_ManipulatorArm.bDone AND (NOT fb_ManipulatorArm.bError) THEN
+								fb_ManipulatorArm.bStart:=FALSE;
+								GV_Cycle.iArmGripperLoad:=0;
+								GV_Cycle.bAnticipateLoadRequest2:=FALSE;
+							ELSIF fb_ManipulatorArm.bError THEN
+								fb_ManipulatorArm.bStart:=FALSE;
+								GV_Cycle.iArmGripperLoad:=0;
+								GV_Cycle.bAnticipateLoadDone:=FALSE;
+								GV_Cycle.bAnticipateLoadRequest2:=FALSE;
+								GV_Cycle.udiErrorID:=33;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							END_IF
+								
+						END_IF
+
+					(* Anticipation - Place -> 3 fb_ArmManipulator *) // Always in Arm.Gripper[1]					
+						IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+						GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+						(NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) AND GV_Tool_Magazine.stArm.aGripper[1].bToolPresenceMemory AND GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory<>GV_CNC.stFanucData.iToolToLoadLocation AND
+						(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND (NOT GV_Cycle.bAnticipateLoadDone) AND
+						(NOT fb_ArmManipulator.bStart) AND (NOT fb_ArmManipulator.bInit) AND (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) (*AND (NOT fb_PlaceToolMagazine.bDone)*) THEN
+						
+							IF GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].iRelLocationNumber<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bToolPresence) AND
+							GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bEnable AND GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bUsed AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory].bForbiden) THEN
+								GV_Cycle.bAnticipateUnloadRequest3:=TRUE;
+								//GV_Cycle.iToolToUnLoadLocationAbs:=GV_Tool_Magazine.stArm.aGripper[1].iAbsLocationNumberMemory;
+							END_IF
+							
+							//IF (*GV_Cycle.iToolToUnLoadLocationAbs=0*) THEN
+							//	GV_Cycle.udiErrorID:=34;
+							//	(*Log*)
+							//		PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+							//		PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+							//	GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							//ELSE
+							//	GV_Cycle.bAnticipateUnloadRequest:=TRUE;
+							//	GV_Cycle.iToolToUnloadLocationRel:=GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory;
+							//END_IF
+							
+						END_IF
+						
+						IF (GV_Cycle.bAnticipateUnloadRequest3 (*OR fb_ArmManipulator.bDone*)) THEN
+							
+							IF (NOT fb_ArmManipulator.bStart) AND (NOT fb_ArmManipulator.bInit) AND (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) THEN
+								fb_PickToolMagazine.bStart:=FALSE;
+								fb_ManipulatorArm.bStart:=FALSE;
+								fb_PlaceToolMagazine.bStart:=FALSE;
+								fb_ArmManipulator.bStart:=TRUE;
+								GV_Cycle.iArmGripperUnload:=1;
+								GV_Cycle.bAnticipateLoadDone:=FALSE;
+							END_IF
+							
+							IF fb_ArmManipulator.bBusy THEN
+								fb_ArmManipulator.bStart:=FALSE;
+							END_IF
+
+							IF (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) THEN
+								fb_ArmManipulator( // Call Fb_Action
+													(*Manipulator*)
+														bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+													(*Arm*)
+														iGripperArmNumber:=GV_Cycle.iArmGripperUnload,
+														bCheckSensorArmGripper1:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper1,
+														bCheckSensorArmGripper2:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper2,
+													(*Gripper*)
+														tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+														bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+														tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+														bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+													(*Tunnel*)
+														tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+													(*Step 2_ManipulatorAboveTransfer*)
+														tMove2Timeout:=T#0S, // Not used
+													(*Step 3_ArmTransfer*)
+														tMove3Timeout:=T#0S, // Not used
+													(*Step 5_ManipulatorTransfer*)
+														tMove5Timeout:=T#0S, // Not used
+													(*Step 7_ArmHome*)
+														tMove7Timeout:=T#0S, // Not used
+													(*Step 8_ManipulatorAboveTransfer*)
+														tMove8Timeout:=T#0S, // Not used
+												);
+							END_IF
+						
+							IF fb_ArmManipulator.bDone AND (NOT fb_ArmManipulator.bError) THEN
+								fb_ArmManipulator.bStart:=FALSE;
+								GV_Cycle.iArmGripperUnload:=0;
+								GV_Cycle.bAnticipateUnloadRequest3:=FALSE;
+								//GV_Cycle.iToolToUnloadLocationAbs:=0;
+								//GV_Cycle.iToolToUnloadLocationRel:=0;
+							ELSIF fb_ArmManipulator.bError THEN
+								fb_ArmManipulator.bStart:=FALSE;
+								GV_Cycle.iArmGripperUnload:=0;
+								GV_Cycle.bAnticipateUnloadRequest3:=FALSE;
+								//GV_Cycle.iToolToUnloadLocationAbs:=0;
+								//GV_Cycle.iToolToUnloadLocationRel:=0;
+								GV_Cycle.udiErrorID:=35;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							END_IF
+							
+						END_IF
+					
+					
+					(* Anticipation - Place -> 4 fb_PlaceToolMagazine *)	
+							IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND
+							GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND 
+							GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory>0 AND GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory<>GV_CNC.stFanucData.iToolToLoadLocation AND
+						(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND (NOT GV_Cycle.bAnticipateLoadDone) AND
+							(NOT fb_PlaceToolMagazine.bStart) AND (NOT fb_PlaceToolMagazine.bInit) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) (*AND (NOT fb_ArmManipulator.bDone)*) THEN
+							
+								IF GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].iRelLocationNumber<>GV_CNC.stFanucData.iToolToLoadLocation AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bToolPresence) AND
+								GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bEnable AND GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bUsed AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory].bForbiden) THEN
+									GV_Cycle.iToolToUnLoadLocationAbs:=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory;
+								END_IF
+								
+								IF GV_Cycle.iToolToUnLoadLocationAbs=0 THEN
+									GV_Cycle.udiErrorID:=36;
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+									GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+								ELSE
+									GV_Cycle.bAnticipateUnloadRequest4:=TRUE;
+									GV_Cycle.iToolToUnloadLocationRel:=GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory;
+								END_IF
+								
+							END_IF
+		
+							IF (GV_Cycle.bAnticipateUnloadRequest4 (*OR fb_PlaceToolMagazine.bDone*)) AND GV_Cycle.iToolToUnloadLocationAbs>0 THEN
+						
+								IF (NOT fb_PlaceToolMagazine.bStart) AND (NOT fb_PlaceToolMagazine.bInit) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_ArmManipulator.bBusy) THEN
+									fb_PickToolMagazine.bStart:=FALSE;
+									fb_ManipulatorArm.bStart:=FALSE;
+									fb_PlaceToolMagazine.bStart:=TRUE;
+									fb_ArmManipulator.bStart:=FALSE;
+									GV_Cycle.bAnticipateLoadDone:=FALSE;
+								END_IF
+
+								IF fb_PlaceToolMagazine.bBusy THEN
+									fb_PlaceToolMagazine.bStart:=FALSE;
+								END_IF
+								
+								IF (NOT fb_ArmManipulator.bBusy) AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) THEN
+									fb_PlaceToolMagazine( // Call Fb_Action
+														(*ToolLocation*)
+															stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToUnloadLocationAbs],
+															lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+														(*Manipulator*)
+															bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+														(*Gripper*)
+															tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+															bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+															tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+															bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+														(*Tunnel*)
+															tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+														(*Breakage*)
+															tBreakageTimeout:=GV_HMI.stManipulatorBreakage.tTimeout,
+															lrBreakageZOffsetSensor:=GV_HMI.stManipulatorBreakage.lrOffsetSensor,
+															lrBreakageToleranceLength:=GV_HMI.stManipulatorBreakage.lrToleranceLength,
+															lrBreakageVelocity:=GV_HMI.stManipulatorBreakage.lrMeasureVelocity,
+														(*Step 4_FrontLocation*)
+															tMove4Timeout:=T#0S, // Not used
+														(*Step 6_AboveLocation*)
+															tMove6Timeout:=T#0S, // Not used
+														(*Step 8_FrontLocation*)
+															tMove8Timeout:=T#0S, // Not used
+														);
+								END_IF
+													
+								IF fb_PlaceToolMagazine.bDone AND (NOT fb_PlaceToolMagazine.bError) THEN
+									fb_PlaceToolMagazine.bStart:=FALSE;
+									GV_Cycle.bAnticipateUnloadRequest4:=FALSE;
+									GV_Cycle.iToolToUnloadLocationAbs:=0;
+									GV_Cycle.iToolToUnloadLocationRel:=0;
+								ELSIF fb_PlaceToolMagazine.bError THEN
+									fb_PlaceToolMagazine.bStart:=FALSE;
+									GV_Cycle.bAnticipateUnloadRequest4:=FALSE;
+									GV_Cycle.iToolToUnloadLocationAbs:=0;
+									GV_Cycle.iToolToUnloadLocationRel:=0;
+									GV_Cycle.udiErrorID:=37;
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+									GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+								END_IF
+								
+							END_IF
+
+				(***** CYCLE *****)
+
+				(* Check Location To Load : from CNC *)
+					IF (GV_CNC.stFanucData.stCncMagazine.biLoadRequest OR GV_CNC.stFanucData.stCncMagazine.biUnloadRequest OR GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND 
+					(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND
+						GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) THEN
+					
+						GV_Cycle.bToolToLoadLocationCheck:=FALSE;
+					
+						FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+							IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber=GV_CNC.stFanucData.iToolToLoadLocation AND (GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence OR ((NOT GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence) AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation)) AND
+								GV_Tool_Magazine.aLocation[iLocationLoop].bEnable AND GV_Tool_Magazine.aLocation[iLocationLoop].bUsed AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden) AND
+								GV_Tool_Magazine.aLocation[iLocationLoop].eToolType=GV_CNC.stFanucData.iToolToLoadType THEN
+								GV_Cycle.bToolToLoadLocationCheck:=TRUE;
+								GV_Cycle.iToolToLoadLocationAbs:=iLocationLoop;
+								EXIT;
+							END_IF
+						END_FOR
+						
+						IF (NOT GV_Cycle.bToolToLoadLocationCheck) THEN
+							GV_Cycle.iToolToLoadLocationAbs:=0;
+								GV_Cycle.udiErrorID:=38;
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+							GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+						END_IF
+					
+					//ELSE
+						//GV_Cycle.bToolToLoadLocationCheck:=FALSE;
+						//GV_Cycle.iToolToLoadLocationAbs:=0;
+					END_IF
+					
+				(* Check Location Spindle : from CNC *) // ON compare pas au numéro mémoire car si reset mémoire mais quand même en broche alors doit pouvoir décharger malgré la mémoire vide
+					IF (GV_CNC.stFanucData.stCncMagazine.biLoadRequest OR GV_CNC.stFanucData.stCncMagazine.biUnloadRequest OR GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND
+					(NOT GV_Cycle.bAnticipateLoadRequest1) AND (NOT GV_Cycle.bAnticipateLoadRequest2) AND (NOT GV_Cycle.bAnticipateUnloadRequest3) AND (NOT GV_Cycle.bAnticipateUnloadRequest4) AND
+					GV_CNC.stFanucData.iSpindleToolLocation>0 AND (GV_CNC.stFanucData.iSpindleToolType=1 OR GV_CNC.stFanucData.iSpindleToolType=2) THEN
+					
+						GV_Cycle.bSpindleToolLocationCheck:=FALSE;
+					
+						FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+							IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber=GV_CNC.stFanucData.iSpindleToolLocation AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence) AND
+							GV_Tool_Magazine.aLocation[iLocationLoop].bEnable AND GV_Tool_Magazine.aLocation[iLocationLoop].bUsed AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bBlocked) AND (NOT GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden) AND
+							GV_Tool_Magazine.aLocation[iLocationLoop].eToolType=GV_CNC.stFanucData.iSpindleToolType THEN
+								GV_Cycle.bSpindleToolLocationCheck:=TRUE;
+								//GV_Cycle.iToolToUnloadLocationAbs:=iLocationLoop;
+								EXIT;
+							END_IF
+						END_FOR
+						
+						IF (NOT GV_Cycle.bSpindleToolLocationCheck) THEN
+									GV_Cycle.udiErrorID:=39;
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 3_Preparation=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							END_IF
+					
+					ELSE
+						GV_Cycle.bSpindleToolLocationCheck:=FALSE;
+					END_IF
+					
+				(* Cycle type *)				
+						IF GV_Cycle.eCycleType=ENUM_Cycle_Type.None AND (NOT fb_PickToolMagazine.bBusy) AND (NOT fb_ManipulatorArm.bBusy) AND (NOT fb_PlaceToolMagazine.bBusy) AND (NOT fb_ArmManipulator.bBusy) AND 
+						((NOT GV_CNC.stFanucData.stCncMagazine.biToolAnticipation) OR (GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation AND GV_Cycle.bAnticipateLoadDone)) THEN
+						
+							(*Load only : small or big tool (A100=small / A200=big)*)
+								IF GV_CNC.stFanucData.stCncMagazine.biLoadRequest AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND
+								GV_CNC.stFanucData.iToolToLoadLocation>0 AND (GV_CNC.stFanucData.iToolToLoadType=1 OR GV_CNC.stFanucData.iToolToLoadType=2) AND GV_CNC.stFanucData.iSpindleToolLocation=0 AND GV_CNC.stFanucData.iSpindleToolType=0 THEN
+									IF GV_Cycle.bToolToLoadLocationCheck AND GV_Cycle.iToolToLoadLocationAbs>0 THEN
+										GV_Cycle.eCycleType:=ENUM_Cycle_Type.LoadSmallBig;
+										GV_Cycle.iToolToLoadLocationRel:=GV_CNC.stFanucData.iToolToLoadLocation;
+										GV_Cycle.iArmGripperLoad:=1;
+										GV_Cycle.iArmGripperUnload:=0;
+										GV_Cycle.bTransferArmToCnc:=TRUE;
+										GV_Cycle.iGripperArmToCncNumber:=1;
+										GV_Cycle.bTransferCncToArm:=FALSE;
+										GV_Cycle.iGripperCncToArmNumber:=0;
+									END_IF
+								END_IF
+						
+							(*Unload only : small tool (B100=small)*)
+								IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND GV_CNC.stFanucData.stCncMagazine.biUnloadRequest AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND
+								GV_CNC.stFanucData.iToolToLoadLocation=0 AND GV_CNC.stFanucData.iToolToLoadType=0 AND GV_CNC.stFanucData.iSpindleToolLocation>0 AND GV_CNC.stFanucData.iSpindleToolType=1 THEN
+									IF GV_Cycle.bSpindleToolLocationCheck THEN
+										GV_Cycle.eCycleType:=ENUM_Cycle_Type.UnloadSmall;
+										GV_Cycle.iToolToLoadLocationRel:=GV_CNC.stFanucData.iToolToLoadLocation;
+										GV_Cycle.iArmGripperLoad:=0;
+										GV_Cycle.iArmGripperUnload:=1;
+										GV_Cycle.bTransferArmToCnc:=FALSE;
+										GV_Cycle.iGripperArmToCncNumber:=0;
+										GV_Cycle.bTransferCncToArm:=TRUE;
+										GV_Cycle.iGripperCncToArmNumber:=1;
+									END_IF
+								END_IF
+								
+							(*Unload only : big tool (B200=big)*)
+								IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND GV_CNC.stFanucData.stCncMagazine.biUnloadRequest AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND
+								GV_CNC.stFanucData.iToolToLoadLocation=0 AND GV_CNC.stFanucData.iToolToLoadType=0 AND GV_CNC.stFanucData.iSpindleToolLocation>0 AND GV_CNC.stFanucData.iSpindleToolType=2 THEN
+									IF GV_Cycle.bSpindleToolLocationCheck THEN
+										GV_Cycle.eCycleType:=ENUM_Cycle_Type.UnloadBig;
+										GV_Cycle.iSpindleToolLocation:=GV_CNC.stFanucData.iSpindleToolLocation;
+										GV_Cycle.iArmGripperLoad:=0;
+										GV_Cycle.iArmGripperUnload:=1;
+										GV_Cycle.bTransferArmToCnc:=FALSE;
+										GV_Cycle.iGripperArmToCncNumber:=0;
+										GV_Cycle.bTransferCncToArm:=TRUE;
+										GV_Cycle.iGripperCncToArmNumber:=1;
+									END_IF
+								END_IF
+	
+							(*Load : small tool / Unload : small tool (C100=small/small)*)
+								IF (NOT GV_CNC.stFanucData.stCncMagazine.biLoadRequest) AND (NOT GV_CNC.stFanucData.stCncMagazine.biUnloadRequest) AND GV_CNC.stFanucData.stCncMagazine.biLoadUnloadRequest AND (NOT GV_CNC.stFanucData.stCncMagazine.biLoadUnloadEnd) AND
+								GV_CNC.stFanucData.iToolToLoadLocation>0 AND GV_CNC.stFanucData.iToolToLoadType=1 AND GV_CNC.stFanucData.iSpindleToolLocation>0 AND GV_CNC.stFanucData.iSpindleToolType=1 THEN
+									IF GV_Cycle.bToolToLoadLocationCheck AND GV_Cycle.iToolToLoadLocationAbs>0 AND GV_Cycle.bSpindleToolLocationCheck THEN
+										GV_Cycle.eCycleType:=ENUM_Cycle_Type.LoadSmallUnloadSmall;
+										GV_Cycle.iToolToLoadLocationRel:=GV_CNC.stFanucData.iToolToLoadLocation;
+										GV_Cycle.iSpindleToolLocation:=GV_CNC.stFanucData.iSpindleToolLocation;
+										GV_Cycle.iArmGripperLoad:=1;
+										GV_Cycle.iArmGripperUnload:=2;
+										GV_Cycle.bTransferArmToCnc:=TRUE;
+										GV_Cycle.iGripperArmToCncNumber:=1;
+										GV_Cycle.bTransferCncToArm:=TRUE;
+										GV_Cycle.iGripperCncToArmNumber:=2;
+									END_IF
+								END_IF
+	
+						END_IF
+
+				(* Preparation Done *)
+					IF GV_Cycle.bStartStop AND ((GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_Cycle.bAnticipateLoadDone AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory>0 AND GV_Tool_Magazine.stArm.aGripper[1].iRelLocationNumberMemory=GV_CNC.stFanucData.iToolToLoadLocation) OR (NOT GV_CNC.stFanucData.stCncMagazine.biToolAnticipation)) AND 
+						GV_Cycle.eCycleType<>ENUM_Cycle_Type.None THEN
+						GV_Cycle.bAnticipateLoadDone:=FALSE;
+						bPreparationDone:=TRUE;
+					END_IF
+				(* Next Step*)
+					IF bPreparationDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.BuildSequence; // Go to Step BuildSequence
+					END_IF
+
+			ENUM_Cycle_Step.BuildSequence: // Step BuildSequence = 4
+				bBuildSequenceDone:=FALSE;
+				(* Sequence Build *)
+					IF GV_Cycle.eCycleType=ENUM_Cycle_Type.LoadSmallBig THEN
+						////GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						////GV_Cycle.aSequence[2]:=ENUM_Cycle_Action.PickToolMagazine;
+						////GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.ManipulatorToArm;
+						//GV_Cycle.aSequence[4]:=ENUM_Cycle_Action.ArmCNC;
+						GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.ArmCNC;
+						bBuildSequenceDone:=TRUE;
+					ELSIF GV_Cycle.eCycleType=ENUM_Cycle_Type.UnloadSmall THEN
+						GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.ArmCNC;
+						GV_Cycle.aSequence[2]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.ArmToManipulator;
+						//GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						bBuildSequenceDone:=TRUE;
+					ELSIF GV_Cycle.eCycleType=ENUM_Cycle_Type.UnloadBig THEN
+						GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.ArmCNC;
+						GV_Cycle.aSequence[2]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.ArmToManipulator;
+						//GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						bBuildSequenceDone:=TRUE;
+					ELSIF GV_Cycle.eCycleType=ENUM_Cycle_Type.LoadSmallUnloadSmall THEN
+						////GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						////GV_Cycle.aSequence[2]:=ENUM_Cycle_Action.PickToolMagazine;
+						////GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.ManipulatorToArm;
+						//GV_Cycle.aSequence[4]:=ENUM_Cycle_Action.ArmCNC;
+						//GV_Cycle.aSequence[5]:=ENUM_Cycle_Action.ArmToManipulator;
+						//GV_Cycle.aSequence[6]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						GV_Cycle.aSequence[1]:=ENUM_Cycle_Action.ArmCNC;
+						GV_Cycle.aSequence[2]:=ENUM_Cycle_Action.ArmToManipulator;
+						//GV_Cycle.aSequence[3]:=ENUM_Cycle_Action.PlaceToolMagazine;
+						bBuildSequenceDone:=TRUE;
+					ELSE
+						bBuildSequenceDone:=FALSE;
+						(* Init Sequence *)
+							FOR iSequenceLoop:=1 TO GV_Cycle.iMaxActions BY 1 DO
+								GV_Cycle.aSequence[iSequenceLoop]:=ENUM_Cycle_Action.None;
+							END_FOR
+						GV_Cycle.udiErrorID:=41;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 4_BuildSequence=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+					END_IF
+					
+				(* Next Step *)	
+					IF bBuildSequenceDone THEN
+						GV_Cycle.iSeqLength:=0;
+						GV_Cycle.iSeqIndex:=1;
+						GV_Cycle.bActionRunning:=FALSE;
+						FOR iSequenceLoop:=1 TO GV_Cycle.iMaxActions BY 1 DO
+							IF GV_Cycle.aSequence[iSequenceLoop]<>ENUM_Cycle_Action.None THEN
+								GV_Cycle.iSeqLength:=GV_Cycle.iSeqLength+1; // Number of Actions inthe Sequence
+							END_IF
+						END_FOR
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.ExecuteSequence; // Go to Step ExecuteSequence
+					END_IF
+		
+			ENUM_Cycle_Step.ExecuteSequence: // Step ExecuteSequence = 5
+				(* Sequence Execution *)
+					IF (GV_Cycle.iSeqIndex>0) AND (GV_Cycle.iSeqIndex<=GV_Cycle.iSeqLength) THEN // If Action to Execute
+						(*Start Action in progress*)
+							CASE GV_Cycle.aSequence[GV_Cycle.iSeqIndex] OF
+										
+								ENUM_Cycle_Action.PickToolMagazine:
+								
+									IF GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory=GV_Cycle.iToolToLoadLocationAbs AND (NOT fb_PickToolMagazine.bStart) AND (NOT fb_PickToolMagazine.bBusy) THEN
+										GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1;
+									ELSE
+										
+										IF GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory<>GV_Cycle.iToolToLoadLocationAbs AND (NOT fb_PickToolMagazine.bStart) AND (NOT fb_PickToolMagazine.bBusy) THEN
+											GV_Cycle.udiErrorID:=51;
+											(*Log*)
+												PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 5_ExecuteSequence=Error');
+												PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+											GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+										ELSE
+										
+										IF (NOT fb_PickToolMagazine.bInit) AND (NOT GV_Cycle.bActionRunning) THEN // Start if not already running
+											fb_PickToolMagazine.bStart:=TRUE;
+											GV_Cycle.bActionRunning:=TRUE;
+										END_IF
+										
+										IF fb_PickToolMagazine.bBusy THEN
+											fb_PickToolMagazine.bStart:=FALSE;
+										END_IF
+										
+										fb_PickToolMagazine( // Call Fb_Action
+															(*ToolLocation*)
+																stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToLoadLocationAbs],
+																lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+															(*Manipulator*)
+																bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+															(*Gripper*)
+																tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+																bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+																tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+																bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+															(*Tunnel*)
+																tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+															(*Step 2_AboveLocation*)
+																tMove2Timeout:=T#0S, // Not used
+															(*Step 4_Location*)
+																tMove4Timeout:=T#0S, // Not used
+															(*Step 6_FrontLocation*)
+																tMove6Timeout:=T#0S, // Not used
+															(*Step 8_PositionTransferArm*)
+																tMove8Timeout:=T#0S, // Not used
+															);
+										IF fb_PickToolMagazine.bDone AND (NOT fb_PickToolMagazine.bError) THEN // Done
+											fb_PickToolMagazine.bStart:=FALSE;
+											GV_Cycle.bActionRunning:=FALSE;
+											GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1; 
+										ELSIF fb_PickToolMagazine.bError THEN // Error
+											fb_PickToolMagazine.bStart:=FALSE;
+											GV_Cycle.bActionRunning:=FALSE;
+											GV_Cycle.udiErrorID:=1000+fb_PickToolMagazine.udiErrorID;
+											GV_Cycle.bActionError:=TRUE;
+											END_IF
+											
+										END_IF
+										
+									END_IF
+									
+								ENUM_Cycle_Action.ManipulatorToArm:
+								
+									IF (NOT fb_ManipulatorArm.bInit) AND (NOT GV_Cycle.bActionRunning) THEN // Start if not already running
+										fb_ManipulatorArm.bStart:=TRUE;
+										GV_Cycle.bActionRunning:=TRUE;
+									END_IF
+									
+									IF fb_ManipulatorArm.bBusy THEN
+										fb_ManipulatorArm.bStart:=FALSE;
+									END_IF
+									
+									fb_ManipulatorArm( // Call Fb_Action
+														(*Manipulator*)
+															bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+														(*Arm*)
+															iGripperArmNumber:=GV_Cycle.iArmGripperLoad,
+															bCheckSensorArmGripper1:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper1,
+															bCheckSensorArmGripper2:=GV_HMI.stTransferManipulatorToArm.bCheckSensorArmGripper2,
+														(*Gripper*)
+															tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+															bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+															tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+															bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+														(*Tunnel*)
+															tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+														(*Step 2_ManipulatorAboveTransfer*)
+															tMove2Timeout:=T#0S, // Not used
+														(*Step 3_ArmHome*)
+															tMove3Timeout:=T#0S, // Not used
+														(*Step 4_ManipulatorTransfer*)
+															tMove4Timeout:=T#0S, // Not used
+														(*Step 5_ArmTransfer*)
+															tMove5Timeout:=T#0S, // Not used
+														(*Step 7_ManipulatorAboveTransfer*)
+															tMove7Timeout:=T#0S, // Not used
+													 );
+									IF fb_ManipulatorArm.bDone AND (NOT fb_ManipulatorArm.bError) THEN // Done 
+										fb_ManipulatorArm.bStart:=FALSE; 
+										GV_Cycle.bActionRunning:=FALSE;
+										GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1; 
+									ELSIF fb_ManipulatorArm.bError THEN // Error
+										fb_ManipulatorArm.bStart:=FALSE; 
+										GV_Cycle.bActionRunning:=FALSE;
+										GV_Cycle.udiErrorID:=2000+fb_ManipulatorArm.udiErrorID;
+										GV_Cycle.bActionError:=TRUE;
+									END_IF
+									
+								ENUM_Cycle_Action.ArmCNC:
+								
+									IF (NOT fb_ArmCNC.bInit) AND (NOT GV_Cycle.bActionRunning) THEN // Start if not already running	
+										fb_ArmCNC.bStart:=TRUE;
+										GV_Cycle.bActionRunning:=TRUE;
+									END_IF
+									
+									IF fb_ArmCNC.bBusy THEN
+										fb_ArmCNC.bStart:=FALSE;
+									END_IF
+									
+									fb_ArmCNC( // Call Fb_Action
+												(*TransferArmCnc*)
+													bTransferArmToCnc:=GV_Cycle.bTransferArmToCnc,
+													iGripperArmToCncNumber:=GV_Cycle.iGripperArmToCncNumber,
+												(*TransferCncArm*)
+													bTransferCncToArm:=GV_Cycle.bTransferCncToArm,
+													iGripperCncToArmNumber:=GV_Cycle.iGripperCncToArmNumber,
+												(*Arm*)
+													bCheckSensorArmGripper1:=GV_HMI.stTransferArmCnc.bCheckSensorArmGripper1,
+													bCheckSensorArmGripper2:=GV_HMI.stTransferArmCnc.bCheckSensorArmGripper2,
+												(*Step 1_OpenDoor*)
+													tMove1Timeout:=T#0S, // Not used
+												(*Step 2_ArmInCNC*)
+													tMove2Timeout:=T#0S, // Not used
+												(*Step 3_WaitTransfer*)
+													tMove3Timeout:=T#0S, // Not used
+												(*Step 4_ArmHome*)
+													tMove4Timeout:=T#0S, // Not used
+												(*Step 5_CloseDoor*)
+													tMove5Timeout:=T#0S, // Not used
+											 );
+									IF fb_ArmCNC.bDone AND (NOT fb_ArmCNC.bError) THEN // Done 
+										fb_ArmCNC.bStart:=FALSE;
+										GV_Cycle.bActionRunning:=FALSE; 
+										GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1; 
+									ELSIF fb_ArmCNC.bError THEN // Error
+										fb_ArmCNC.bStart:=FALSE;
+										GV_Cycle.bActionRunning:=FALSE; 
+										GV_Cycle.udiErrorID:=3000+fb_ArmCNC.udiErrorID;
+										GV_Cycle.bActionError:=TRUE;
+									END_IF
+									
+								ENUM_Cycle_Action.ArmToManipulator:
+								
+									IF (NOT fb_ArmManipulator.bInit) AND (NOT GV_Cycle.bActionRunning) THEN// Start if not already running	
+										fb_ArmManipulator.bStart:=TRUE;
+										GV_Cycle.bActionRunning:=TRUE;
+									END_IF
+									
+									IF fb_ArmManipulator.bBusy THEN
+										fb_ArmManipulator.bStart:=FALSE;
+									END_IF
+									
+									fb_ArmManipulator( // Call Fb_Action
+														(*Manipulator*)
+															bCheckSensorManipulatorGripper:=GV_HMI.stTransferManipulatorToArm.bCheckSensorManipulatorGripper,
+														(*Arm*)
+															iGripperArmNumber:=GV_Cycle.iArmGripperUnload,
+															bCheckSensorArmGripper1:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper1,
+															bCheckSensorArmGripper2:=GV_HMI.stTransferArmToManipulator.bCheckSensorArmGripper2,
+														(*Gripper*)
+															tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+															bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+															tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+															bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+														(*Tunnel*)
+															tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+														(*Step 2_ManipulatorAboveTransfer*)
+															tMove2Timeout:=T#0S, // Not used
+														(*Step 3_ArmTransfer*)
+															tMove3Timeout:=T#0S, // Not used
+														(*Step 5_ManipulatorTransfer*)
+															tMove5Timeout:=T#0S, // Not used
+														(*Step 7_ArmHome*)
+															tMove7Timeout:=T#0S, // Not used
+														(*Step 8_ManipulatorAboveTransfer*)
+															tMove8Timeout:=T#0S, // Not used
+													);
+									IF fb_ArmManipulator.bDone AND (NOT fb_ArmManipulator.bError) THEN // Done 
+										fb_ArmManipulator.bStart:=FALSE; 
+										GV_Cycle.bActionRunning:=FALSE;
+										GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1; 
+									ELSIF fb_ArmManipulator.bError THEN // Error
+										fb_ArmManipulator.bStart:=FALSE; 
+										GV_Cycle.bActionRunning:=FALSE;
+										GV_Cycle.udiErrorID:=4000+fb_ArmManipulator.udiErrorID;
+										GV_Cycle.bActionError:=TRUE;
+									END_IF
+									
+								ENUM_Cycle_Action.PlaceToolMagazine:
+								
+									IF GV_Cycle.iToolToUnloadLocationAbs=0 AND GV_Tool_Magazine.stManipulator.bToolPresenceMemory AND GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory<>GV_Cycle.iToolToLoadLocationAbs AND (NOT fb_PlaceToolMagazine.bStart) AND (NOT fb_PlaceToolMagazine.bInit) AND (NOT fb_PlaceToolMagazine.bBusy) THEN
+										GV_Cycle.iToolToUnloadLocationAbs:=GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory;
+									END_IF
+
+									IF GV_Cycle.iToolToUnloadLocationAbs>0 THEN	
+										//ICI -> Vérifier que emplacement disponible ? mémoire emplacement ou faire la vérif, avec outil en pince possible ?
+
+										IF (NOT fb_PlaceToolMagazine.bInit) AND (NOT GV_Cycle.bActionRunning) THEN // Start if not already running		
+											fb_PlaceToolMagazine.bStart:=TRUE;
+											GV_Cycle.bActionRunning:=TRUE;
+										END_IF
+										
+										IF fb_PlaceToolMagazine.bBusy THEN
+											fb_PlaceToolMagazine.bStart:=FALSE;
+										END_IF
+										
+										fb_PlaceToolMagazine( // Call Fb_Action
+															(*ToolLocation*)
+																stToolLocation:=GV_Tool_Magazine.aLocation[GV_Cycle.iToolToUnloadLocationAbs],
+																lrZToolOffset:=GV_Tool_Magazine.lrZOffsetAboveLocation,//17.5,
+															(*Manipulator*)
+																bCheckSensorManipulatorGripper:=GV_HMI.stPickToolMagazine.bCheckSensorManipulatorGripper,
+															(*Gripper*)
+																tMouvementGripperOpen:=GV_HMI.stManipulatorGripper.tMouvementOpen,
+																bCheckSensorGripperOpen:=GV_HMI.stManipulatorGripper.bCheckSensorOpen,
+																tMouvementGripperClose:=GV_HMI.stManipulatorGripper.tMouvementClose,
+																bCheckSensorGripperClose:=GV_HMI.stManipulatorGripper.bCheckSensorClose,
+															(*Tunnel*)
+																tTunnelTimeout:=GV_HMI.stManipulatorTunnel.tTimeout,
+															(*Breakage*)
+																tBreakageTimeout:=GV_HMI.stManipulatorBreakage.tTimeout,
+																lrBreakageZOffsetSensor:=GV_HMI.stManipulatorBreakage.lrOffsetSensor,
+																lrBreakageToleranceLength:=GV_HMI.stManipulatorBreakage.lrToleranceLength,
+																lrBreakageVelocity:=GV_HMI.stManipulatorBreakage.lrMeasureVelocity,
+															(*Step 4_FrontLocation*)
+																tMove4Timeout:=T#0S, // Not used
+															(*Step 6_AboveLocation*)
+																tMove6Timeout:=T#0S, // Not used
+															(*Step 8_FrontLocation*)
+																tMove8Timeout:=T#0S, // Not used
+															);
+										IF fb_PlaceToolMagazine.bDone AND (NOT fb_PlaceToolMagazine.bError) THEN // Done 
+											fb_PlaceToolMagazine.bStart:=FALSE; 
+											GV_Cycle.bActionRunning:=FALSE;
+											GV_Cycle.iToolToUnloadLocationAbs:=0;
+											GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1; 
+										ELSIF fb_PlaceToolMagazine.bError THEN // Error
+											GV_Cycle.udiErrorID:=5000+fb_PlaceToolMagazine.udiErrorID;
+											GV_Cycle.bActionError:=TRUE;
+										END_IF
+										
+									ELSE
+										GV_Cycle.iSeqIndex:=GV_Cycle.iSeqIndex+1;
+									END_IF
+	
+							END_CASE
+							
+						(* Action Error *)
+							IF GV_Cycle.bActionError THEN // Action in Error
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('Cycle Step : 5_ExecuteSequence=Error');
+									PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('Cycle Step : ErrorID=',UDINT_TO_STRING(GV_Cycle.udiErrorID)));
+								GV_Cycle.eCycleStep:=ENUM_Cycle_Step.Error; // Go to Step Error
+							END_IF		
+				
+					ELSE
+						bExecuteSequenceDone:=TRUE;
+					END_IF
+					
+				(* Next Step *)	
+					IF bExecuteSequenceDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.End; // Go to Step End
+					END_IF
+				
+			ENUM_Cycle_Step.End: // Step End = 7
+				bEndDone:=FALSE;
+				GV_Cycle.iToolToUnloadLocationAbs:=0;
+				(* End *)
+					// ...
+					IF ((GV_Cycle.bStartStop AND GV_Axes.bAxisAllNotMoving)
+					OR ((NOT GV_Cycle.bStartStop) AND GV_Axes.stAxisX.bHaltDone AND GV_Axes.stAxisY.bHaltDone AND GV_Axes.stAxisZ.bHaltDone AND GV_Axes.stAxisArm.bHaltDone AND GV_Axes.bAxisAllNotMoving)) THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+						bEndDone:=TRUE;
+					END_IF
+
+					//IF ((NOT GV_Cycle.bStartStop) AND GV_Axes.stAxisX.bStopDone AND GV_Axes.stAxisY.bStopDone AND GV_Axes.stAxisZ.bStopDone AND GV_Axes.stAxisArm.bStopDone AND GV_Axes.bAxisAllNotMoving) THEN
+					//	bEndDone:=TRUE;
+					//END_IF
+					
+				(* Next Step *)	
+					IF bEndDone THEN
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.InitData; // Go to Step InitData
+					END_IF
+	
+			ENUM_Cycle_Step.Error: // Step Error = 9
+				bErrorDone:=FALSE;
+				GV_Cycle.iToolToUnloadLocationAbs:=0;
+				(* Error *)
+					// ...
+					GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+					GV_Axes.stAxisArm.bAutoCmdAbs:=FALSE;
+					
+					GV_Cycle.bStartStop:=FALSE;
+					GV_Cycle.bInitCycleDone:=FALSE;
+					
+					IF GV_Cycle.bResetError THEN
+						bErrorDone:=TRUE;
+					END_IF
+				(* Next Step *)	
+					IF bErrorDone THEN
+						GV_Cycle.bActionRunning:=FALSE;
+						GV_Cycle.bActionError:=FALSE;
+						GV_Cycle.udiErrorID:=0;
+						GV_Cycle.eCycleStep:=ENUM_Cycle_Step.InitData;
+					END_IF
+			
+		END_CASE
+		
+	END_IF
+
+(** CYCLE IN PROGRESS **)
+GV_Cycle.bCycleInProgress:=GV_Cycle.eCycleStep<>ENUM_Cycle_Step.InitAll AND GV_Cycle.eCycleStep<>ENUM_Cycle_Step.InitData;
+
+(** LOG CYCLE STEP **)
+	(* Text CycleStep *)
+		CASE GV_Cycle.eCycleStep OF
+				ENUM_Cycle_Step.InitAll:           	sTxtCycleStep:='0_InitAll';
+				ENUM_Cycle_Step.InitData:           sTxtCycleStep:='0_InitData';
+				ENUM_Cycle_Step.Ready:          	sTxtCycleStep:='2_Ready';
+				ENUM_Cycle_Step.Preparation:        sTxtCycleStep:='3_Preparation';
+				ENUM_Cycle_Step.BuildSequence:  	sTxtCycleStep:='4_BuildSequence';
+				ENUM_Cycle_Step.ExecuteSequence:	sTxtCycleStep:='5_ExecuteSequence';
+				ENUM_Cycle_Step.End:            	sTxtCycleStep:='7_End';
+				ENUM_Cycle_Step.Abort:          	sTxtCycleStep:='8_Abort';
+				ENUM_Cycle_Step.Error:         		sTxtCycleStep:='9_Error';
+		END_CASE
+	(* Text CyclePrevStep *)
+		CASE GV_Cycle.eCyclePrevStep OF
+				ENUM_Cycle_Step.InitAll:           	sTxtCycleStep:='0_InitAll';
+				ENUM_Cycle_Step.InitData:           sTxtCycleStep:='0_InitData';
+				ENUM_Cycle_Step.Ready:          	sTxtCycleStep:='2_Ready';
+				ENUM_Cycle_Step.Preparation:        sTxtCycleStep:='3_Preparation';
+				ENUM_Cycle_Step.BuildSequence:  	sTxtCycleStep:='4_BuildSequence';
+				ENUM_Cycle_Step.ExecuteSequence:	sTxtCycleStep:='5_ExecuteSequence';
+				ENUM_Cycle_Step.End:            	sTxtCycleStep:='7_End';
+				ENUM_Cycle_Step.Abort:          	sTxtCycleStep:='8_Abort';
+				ENUM_Cycle_Step.Error:         		sTxtCycleStep:='9_Error';
+		END_CASE
+	(* Log *)
+		sTextLog:=(CONCAT('Cycle Step ',CONCAT(sTxtCyclePrevStep,CONCAT('-> ',sTxtCycleStep))));	
+		IF GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.eCycleStep<>GV_Cycle.eCyclePrevStep THEN
+			PRG_Log_WM.fbLogWM.M_Write_Log(sTextLog);
+			GV_Cycle.eCyclePrevStep:=GV_Cycle.eCycleStep; // Previous Step := Step in progress
+		END_IF
+		]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

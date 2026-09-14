@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="teCTCConfigStep" Id="{d9813538-fee4-4b59-b295-d058407147ce}">
+    <Declaration><![CDATA[TYPE teCTCConfigStep :
+(
+	CTC_CONFIG_IDLE,
+	CTC_CONFIG_READ_START,
+	CTC_CONFIG_READ_WAIT,
+	CTC_CONFIG_READ_FINISH,
+	CTC_CONFIG_WRITE_PREPARE,
+	CTC_CONFIG_WRITE_START,
+	CTC_CONFIG_WRITE_WAIT
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

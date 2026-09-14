@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_FirstCycle" Id="{513f60f3-b22a-4693-8b77-a290816fba9b}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_FirstCycle
+VAR
+	(** PROCESS INT **)	
+		iCyltronicLoop : INT := 0 ; // INT use in a FOR Loop
+
+	(** FB **)
+		fbInitCallEvents : FB_Init_Call_Events ;
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+		fbInitEvents : FB_Init_Events ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_FirstCycle
+//
+//					remier cycle de la tache, au démarrage 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** EVENTS **)
+	GV_Events.iEventGroupNumberAssignement:=1;
+	fbInitCallEvents();
+	(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+	fbEventGroupAssignement(iEventGroup:=GV_Events.iEventGroupGeneralEvent);
+	GV_Events.aEventGroup[GV_Events.iEventGroupGeneralEvent].aAlarm[1].fbAlarm.CreateEx(TC_Events.GeneralAlarms.Alarm1,TRUE,0);
+	GV_Events.aEventGroup[GV_Events.iEventGroupGeneralEvent].aMessage[1].fbMessage.CreateEx(TC_Events.GeneralMessages.Message1,0);	
+	fbInitEvents(iEventGroup:=GV_Events.iEventGroupGeneralEvent, strEventType:='ALARM', strEventGuid:='963882C1-2C98-4B90-9EFB-050B815D31E2', tcEventSeverity:=2);
+	fbInitEvents(iEventGroup:=GV_Events.iEventGroupGeneralEvent, strEventType:='MESSAGE', strEventGuid:='ECFF4D07-F645-4DBC-B9C5-008EA26E1564', tcEventSeverity:=0);
+
+(** FAN **)
+	(* Start *)
+		GV_Fans.aId[1].bStart:=TRUE;
+
+(** CYCLE **)
+		//GV_Cycle.bInitSet:=TRUE;
+	(* Init Request *)
+		GV_Cycle.bInitRequest:=TRUE;
+		GV_Cycle.bInitCycleDone:=FALSE;
+
+(** TOOL MAGAZINE **)
+	(* Check Request *)
+		GV_Tool_Magazine.bFirstCycleCheckMagazine:=TRUE;
+
+(** START/STOP **)
+	GV_Cycle.bStartStop:=FALSE;
+
+(** CYLRONIC **)
+	FOR iCyltronicLoop:=1 TO GV_Cyltronic.iMaxCyltronic BY 1 DO
+		GV_Cyltronic.aId[iCyltronicLoop].bWorkPositionDone:=FALSE;
+		GV_Cyltronic.aId[iCyltronicLoop].bRestPositionDone:=FALSE;
+	END_FOR
+
+(** BACKUP **)
+	GV_General.iExportAlarmsStatus:=0;
+	GV_General.iExportMessagesStatus:=0;	
+
+(** REBOOT **)
+	GV_General.bRebootRequest:=FALSE;
+
+(** SHUTDOWN **)
+	GV_General.bShutdownRequest:=FALSE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

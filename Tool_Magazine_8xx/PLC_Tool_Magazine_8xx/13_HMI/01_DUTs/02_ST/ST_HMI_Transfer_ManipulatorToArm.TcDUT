@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Transfer_ManipulatorToArm" Id="{7f7c043c-a191-4bb1-b41c-69624f4a25ef}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  		ST_HMI_Transfer_ManipulatorToArm
+//
+//						Structure HMI transfert manipulateur vers bras		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.02.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Transfer_ManipulatorToArm :
+STRUCT
+
+	(** SETUP FLAG **)
+		(*Manipulator*)
+			bCheckSensorManipulatorGripper : BOOL ; // Check the sensor of the manipulator gripper
+		(*Arm*)
+			bCheckSensorArmGripper1 : BOOL ; // Check the sensor of the arm gripper 1
+			bCheckSensorArmGripper2 : BOOL ; // Check the sensor of the arm gripper 2
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

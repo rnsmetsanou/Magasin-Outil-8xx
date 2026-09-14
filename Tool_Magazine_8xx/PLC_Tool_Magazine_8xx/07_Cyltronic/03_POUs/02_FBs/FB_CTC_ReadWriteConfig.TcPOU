@@ -1,0 +1,285 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CTC_ReadWriteConfig" Id="{9e9c5f8c-e3f2-4116-a2be-b2dd87b96ed3}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CTC_ReadWriteConfig
+VAR_INPUT
+	AmsNetid 	:T_AmsNetid;
+	IolPort		:E_IolPort;
+	Read 		:BOOL;
+	Write 		:BOOL;
+END_VAR
+VAR_OUTPUT
+	Busy 		:BOOL;
+	Done 		:BOOL;
+	AtLeastOneParameterFailed :BOOL;
+END_VAR
+VAR_IN_OUT
+	pstConfiguration :tstCTCConfiguration;	
+END_VAR
+
+VAR
+	FB_IolRead_0 		:FB_IolRead;
+	FB_IolWrite_0 		:FB_IolWrite;
+	bInit 				:BOOL := FALSE;
+	eStep 				:teCTCConfigStep;
+	aCTCConfigVariables :ARRAY[0..NUMBER_OF_PARAMETERS] OF tstCTCConfigVariable;
+	R_TRIG_Read 		:R_TRIG;
+	R_TRIG_Write 		:R_TRIG;
+	unionContainer		:tuReal;
+	tonTimeout 			:TON;
+	iParameterIndex 	:USINT;
+	bufferArray			:ARRAY[0..3] OF BYTE;
+END_VAR
+VAR CONSTANT
+	NUMBER_OF_PARAMETERS	:USINT := 6; (*because its and index, its actuall the number of parameters - 1*)
+	CTC_DATATYPE_REAL		:USINT := 0;
+	CTC_DATATYPE_USINT		:USINT := 1;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+	FB_CTC_ReadWriteConfig V2.0
+	Cyltronic AG, June 2024
+
+	Function Block that reads and writes stConfiguration object used
+	in FB_CTC_PlcOpen
+
+	Intended as example function block for reading/writing acyclic data
+*)
+
+FB_IolRead_0.sNetId := AmsNetid;
+FB_IolRead_0.nIolPort := IolPort;
+
+FB_IolWrite_0.sNetId := AmsNetid;
+FB_IolWrite_0.nIolPort := IolPort;
+
+IF(bInit = FALSE)THEN
+	bInit := TRUE;	
+	
+	aCTCConfigVariables[0].Name := 'MaxSpeedFreePositioning';
+	aCTCConfigVariables[0].Index := 66;
+	aCTCConfigVariables[0].Subindex := 0;
+	aCTCConfigVariables[0].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[0].ValueIfReal := 0;
+	
+	aCTCConfigVariables[1].Name := 'MaxForceFreePositioning';
+	aCTCConfigVariables[1].Index := 84;
+	aCTCConfigVariables[1].Subindex := 0;
+	aCTCConfigVariables[1].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[1].ValueIfReal := 0;
+	
+	aCTCConfigVariables[2].Name := 'MaxAcceleration';
+	aCTCConfigVariables[2].Index := 68;
+	aCTCConfigVariables[2].Subindex := 0;
+	aCTCConfigVariables[2].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[2].ValueIfReal := 0;
+			
+	aCTCConfigVariables[3].Name := 'MaxDeceleration';
+	aCTCConfigVariables[3].Index := 69;
+	aCTCConfigVariables[3].Subindex := 0;
+	aCTCConfigVariables[3].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[3].ValueIfReal := 0;
+	
+	aCTCConfigVariables[4].Name := 'EndPositionIn';
+	aCTCConfigVariables[4].Index := 76;
+	aCTCConfigVariables[4].Subindex := 0;
+	aCTCConfigVariables[4].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[4].ValueIfReal := 0;
+	
+	aCTCConfigVariables[5].Name := 'EndPositionOut';
+	aCTCConfigVariables[5].Index := 75;
+	aCTCConfigVariables[5].Subindex := 0;
+	aCTCConfigVariables[5].DataType := CTC_DATATYPE_REAL;
+	aCTCConfigVariables[5].ValueIfReal := 0;
+	
+	aCTCConfigVariables[6].Name := 'HomeMode';
+	aCTCConfigVariables[6].Index := 261;
+	aCTCConfigVariables[6].Subindex := 0;
+	aCTCConfigVariables[6].DataType := CTC_DATATYPE_USINT;
+	aCTCConfigVariables[6].ValueIfUSINT := 0;
+	
+	Busy := FALSE;
+	Done := FALSE;
+	AtLeastOneParameterFailed := FALSE;
+	
+END_IF;
+
+CASE eStep OF
+	// ====================================================
+	// === P_IDLE =========================================
+	// ====================================================
+	CTC_CONFIG_IDLE:
+
+		FB_IolRead_0.bExecute := FALSE;
+		FB_IolWrite_0.bExecute := FALSE;
+		tonTimeout.IN := FALSE;
+	
+		R_TRIG_Read.CLK := Read;
+		R_TRIG_Write.CLK := Write;
+		
+		IF(R_TRIG_Read.Q)THEN
+			iParameterIndex := 0;
+			eStep := CTC_CONFIG_READ_START;
+		ELSIF(R_TRIG_Write.Q)THEN
+			iParameterIndex := 0;
+			eStep := CTC_CONFIG_WRITE_PREPARE;
+		END_IF
+			
+	// ======================================================================================================
+	// === CTC_CONFIG_READ_START ============================================================================
+	// ======================================================================================================
+	CTC_CONFIG_READ_START:
+			
+		Busy := TRUE;
+		Done := FALSE;
+		AtLeastOneParameterFailed := FALSE;
+			
+		FB_IolRead_0.pDSTBuf	:= ADR(bufferArray);
+		IF(aCTCConfigVariables[iParameterIndex].DataType = CTC_DATATYPE_REAL)THEN
+			FB_IolRead_0.cbBufLen	:= 4;
+		ELSIF(aCTCConfigVariables[iParameterIndex].DataType = CTC_DATATYPE_USINT)THEN
+			FB_IolRead_0.cbBufLen	:= 1;
+		END_IF
+		FB_IolRead_0.nIndex 	:= aCTCConfigVariables[iParameterIndex].Index;
+		FB_IolRead_0.nSubindex 	:= aCTCConfigVariables[iParameterIndex].Subindex;
+		FB_IolRead_0.bExecute	:= TRUE;
+				
+		tonTimeout.IN := FALSE;
+			
+		eStep := CTC_CONFIG_READ_WAIT;
+	
+	// ====================================================
+	// === CTC_CONFIG_READ_WAIT ===========================
+	// ====================================================
+	CTC_CONFIG_READ_WAIT:
+			
+		tonTimeout.IN := TRUE;
+
+		IF((FB_IolRead_0.bDone) OR tonTimeout.Q)THEN
+			AtLeastOneParameterFailed := AtLeastOneParameterFailed OR tonTimeout.Q;
+			FB_IolRead_0.bExecute := FALSE;
+				
+			// process data, depending on datatype
+			IF (aCTCConfigVariables[iParameterIndex].DataType = CTC_DATATYPE_REAL) THEN
+                unionContainer.aBytes[0] := bufferArray[3];
+				unionContainer.aBytes[1] := bufferArray[2];
+				unionContainer.aBytes[2] := bufferArray[1];
+				unionContainer.aBytes[3] := bufferArray[0];
+                aCTCConfigVariables[iParameterIndex].ValueIfReal := unionContainer.rReal;
+            ELSIF(aCTCConfigVariables[iParameterIndex].Datatype = CTC_DATATYPE_USINT)THEN
+                aCTCConfigVariables[iParameterIndex].ValueIfUSint := BYTE_TO_USINT(bufferArray[0]);
+            END_IF;
+				
+			// next parameter, or finished
+			iParameterIndex := iParameterIndex + 1;
+			IF(iParameterIndex <= NUMBER_OF_PARAMETERS)THEN
+				eStep := CTC_CONFIG_READ_START;
+			ELSE
+				eStep := CTC_CONFIG_READ_FINISH;
+			END_IF	
+		
+		END_IF
+			
+	// ====================================================
+	// === CTC_CONFIG_READ_FINISH =========================
+	// ====================================================
+	CTC_CONFIG_READ_FINISH:
+			
+		pstConfiguration.MaxSpeedFreePositioning := aCTCConfigVariables[0].ValueIfReal;
+		pstConfiguration.MaxForceFreePositioning := aCTCConfigVariables[1].ValueIfReal;
+		pstConfiguration.MaxAccDec := aCTCConfigVariables[2].ValueIfReal;
+		pstConfiguration.EndPositionIn := aCTCConfigVariables[4].ValueIfReal;
+		pstConfiguration.EndPositionOut := aCTCConfigVariables[5].ValueIfReal;
+		pstConfiguration.HomeMode := aCTCConfigVariables[6].ValueIfUSINT;
+		
+		Busy := FALSE;
+		Done := TRUE;
+		
+		eStep := CTC_CONFIG_IDLE;
+		
+	// ======================================================================================================
+	// === CTC_CONFIG_WRITE_PREPARE =========================================================================
+	// ======================================================================================================
+	CTC_CONFIG_WRITE_PREPARE:
+
+		Busy := TRUE;
+		Done := FALSE;
+		AtLeastOneParameterFailed := FALSE;
+		
+		aCTCConfigVariables[0].ValueIfReal 	:= pstConfiguration.MaxSpeedFreePositioning;
+		aCTCConfigVariables[1].ValueIfReal 	:= pstConfiguration.MaxForceFreePositioning;
+		aCTCConfigVariables[2].ValueIfReal 	:= pstConfiguration.MaxAccDec;
+		aCTCConfigVariables[3].ValueIfReal 	:= pstConfiguration.MaxAccDec;
+		aCTCConfigVariables[4].ValueIfReal 	:= pstConfiguration.EndPositionIn;
+		aCTCConfigVariables[5].ValueIfReal 	:= pstConfiguration.EndPositionOut;
+		aCTCConfigVariables[6].ValueIfUSINT := DINT_TO_USINT(pstConfiguration.HomeMode);
+			
+		FB_IolWrite_0.bExecute := FALSE;
+			
+		eStep := CTC_CONFIG_WRITE_START;
+			
+	// ====================================================
+	// === CTC_CONFIG_WRITE_START =========================
+	// ====================================================
+	CTC_CONFIG_WRITE_START:
+			
+		// process data, depending on datatype
+	
+		IF(aCTCConfigVariables[iParameterIndex].DataType = CTC_DATATYPE_REAL)THEN
+			unionContainer.rReal := aCTCConfigVariables[iParameterIndex].ValueIfReal;
+			bufferArray[0] := 	unionContainer.aBytes[3];
+			bufferArray[1] := 	unionContainer.aBytes[2];
+			bufferArray[2] := 	unionContainer.aBytes[1];
+			bufferArray[3] := 	unionContainer.aBytes[0];
+			FB_IolWrite_0.cbBufLen 	:= 4;
+		ELSIF(aCTCConfigVariables[iParameterIndex].DataType = CTC_DATATYPE_USINT)THEN
+			bufferArray[0] := aCTCConfigVariables[iParameterIndex].ValueIfUSINT;
+			FB_IolWrite_0.cbBufLen := 1;
+		END_IF
+			
+		FB_IolWrite_0.pSRCBuf	:= ADR(bufferArray);
+		FB_IolWrite_0.nIndex 	:= aCTCConfigVariables[iParameterIndex].Index;
+		FB_IolWrite_0.nSubindex := aCTCConfigVariables[iParameterIndex].Subindex;
+		FB_IolWrite_0.bExecute 	:= TRUE;
+		
+		tonTimeout.IN := FALSE;
+		
+		eStep := CTC_CONFIG_WRITE_WAIT;
+		
+	// ====================================================
+	// === CTC_CONFIG_WRITE_WAIT ==========================
+	// ====================================================
+	CTC_CONFIG_WRITE_WAIT:
+			
+		tonTimeout.IN := TRUE;
+	
+		IF((FB_IolWrite_0.bDone = TRUE) OR tonTimeout.Q)THEN
+			AtLeastOneParameterFailed := AtLeastOneParameterFailed OR tonTimeout.Q;
+			FB_IolWrite_0.bExecute := FALSE;
+			
+			iParameterIndex := iParameterIndex + 1;
+			IF(iParameterIndex <= NUMBER_OF_PARAMETERS)THEN
+				eStep := CTC_CONFIG_WRITE_START;
+			ELSE
+				Busy := FALSE;
+				Done := TRUE;
+				eStep := CTC_CONFIG_IDLE;
+			END_IF	
+			
+		END_IF
+		
+	ELSE
+		eStep := CTC_CONFIG_IDLE;
+			
+END_CASE;
+	
+//call FBs
+R_TRIG_Read();
+R_TRIG_Write();
+tonTimeout(PT := T#2S);
+FB_IolRead_0();
+FB_IolWrite_0();]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

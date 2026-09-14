@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Doors" Id="{1938b31a-5f74-47f2-bc62-1eb1b33e1a68}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Doors
+//
+//								Variables porte(s) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+END_VAR
+
+VAR_GLOBAL
+	
+	(** ARRAY ST **)
+		aId	: ARRAY[1..iMaxDoors] OF ST_Door ; // Door Structure
+	
+	(** PROCESS FLAG **)
+		bDoorsCloseLock : BOOL := FALSE ; //Doors OK
+	
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT INT **)
+		iMaxDoors : INT := 1; // Max Doors
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

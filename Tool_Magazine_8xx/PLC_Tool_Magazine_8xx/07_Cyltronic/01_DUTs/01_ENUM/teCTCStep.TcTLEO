@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <EnumerationTextList Name="teCTCStep" Id="{c80fd44a-6701-4cb0-a437-92603f326e26}">
+    <Declaration><![CDATA[TYPE teCTCStep :
+(
+	FB_CTC_FUNCTIONBLOCK_DISABLED 	:= 0,
+	FB_CTC_CONNECTING 				:= 1,
+	FB_CTC_DISABLED 				:= 2,
+	FB_CTC_ENABLING					:= 21,
+	FB_CTC_DISABLING				:= 22,
+	FB_CTC_HOME 					:= 3,
+	FB_CTC_TEACH 					:= 4,
+	FB_CTC_READY 					:= 5,
+	FB_CTC_MOVE_OUT 				:= 6,
+	FB_CTC_MOVE_IN 					:= 7,
+	FB_CTC_MOVE_ABSOLUTE 			:= 8,	
+	FB_CTC_MOVE_CONTINUOUS 			:= 9,
+	FB_CTC_HALTING 					:= 10,
+	FB_CTC_ERROR 					:= 11,
+	FB_CTC_RESET 					:= 12
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"FB_CTC_FUNCTIONBLOCK_DISABLED"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_CONNECTING"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_DISABLED"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_ENABLING"</v>
+              <v n="TextDefault">"21"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_DISABLING"</v>
+              <v n="TextDefault">"22"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_HOME"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_TEACH"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_READY"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_MOVE_OUT"</v>
+              <v n="TextDefault">"6"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_MOVE_IN"</v>
+              <v n="TextDefault">"7"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_MOVE_ABSOLUTE"</v>
+              <v n="TextDefault">"8"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_MOVE_CONTINUOUS"</v>
+              <v n="TextDefault">"9"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_HALTING"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_ERROR"</v>
+              <v n="TextDefault">"11"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FB_CTC_RESET"</v>
+              <v n="TextDefault">"12"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{14936909-21df-4373-a4ac-bcbcb84c1562}</v>
+          <v n="GuidReInit">{1f40654e-3d49-4d16-98ae-cad70e04acd0}</v>
+          <v n="GuidExitX">{8ce459c9-e50c-478a-97dd-fe881f836f00}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

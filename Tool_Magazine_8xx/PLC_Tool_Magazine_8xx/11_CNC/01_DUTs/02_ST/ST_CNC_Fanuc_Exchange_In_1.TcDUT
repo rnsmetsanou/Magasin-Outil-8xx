@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Fanuc_Exchange_In_1" Id="{629242c3-fdff-40de-ab6d-69d149a44ffa}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Fanuc_Exchange_In
+//
+//								Structure Echange CNC_Fanuc->Magasin 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (In agreement with J.SPÄTIG)
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Fanuc_Exchange_In_1 : // 32 Bytes -> Start at X0.0 / End at X31.7 (X0.0+31.7)
+STRUCT
+	
+	(* Byte 0 *)
+		byi0 AT %I* : BYTE ; // Byte X0
+			biLife : BIT ; // Life bit -> X0.0
+			biToolAnticipation : BIT ; // Anticipation to prepare the next Tool -> X0.1
+			biAllowedOpenIntermediateDoor : BIT ; // Allowed to open the Intermediate Door 02 -> X0.2
+			biLoadUnloadRequest : BIT ; // Request to Load and Unload a Tool -> X0.3
+			biLoadRequest : BIT ; // Request to only Load a Tool -> X0.4
+			biUnloadRequest : BIT ; // Request to only Unload a Tool -> X0.5
+			biLoadUnloadEnd : BIT ; // End of the Request -> X0.6
+			biAllowedCloseIntermediateDoor : BIT ; // Allowed to close the Intermediate Door 07 -> X0.7
+
+	(* Byte 1 *)
+		byi1 AT %I* : BYTE ; // Byte X1
+			biInCycle : BIT ; // CNC in Cycle -> X1.0
+			biEvacuateArm : BIT ; // Request to evacuate the Changing Arm and close the Intermediate Door -> X1.1
+			biReserve12 : BIT ; // Reserve 12 -> X1.2
+				//biIntermediateDoorOpened : BIT ; // Intermediate magazine-cnc Door Opened -> X1.2
+			biReserve13 : BIT ; // Reserve 13 -> X1.3
+			biReserve14 : BIT ; // Reserve 14 -> X1.4
+			biReserve15 : BIT ; // Reserve 15 -> X1.5
+			biReserve16 : BIT ; // Reserve 16 -> X1.6
+			biDoorClosed : BIT ; // CNC Door closed (operator) -> X1.7
+
+	(* Byte 2 *)
+		byi2 AT %I* : BYTE ; // Byte X2
+			biEmergencyStop : BIT ; // Emergency Stop -> X2.0
+			biPower : BIT ; // Power -> X2.1
+			biAir : BIT ; // Air -> X2.2
+			biShutdown : BIT ; // Shutdown -> X2.3
+			biReserve24 : BIT ; // Reserve 24 -> X2.4
+			biReserve25 : BIT ; // Reserve 25 -> X2.5
+			biReserve26 : BIT ; // Reserve 26 -> X2.6
+			biReserve27 : BIT ; // Reserve 27 -> X2.7
+	
+	(* Byte 3 *)
+		byi3 AT %I* : BYTE ; // Byte X3
+			biReserve30 : BIT ; // Reserve 30 -> X3.0
+			biReserve31 : BIT ; // Reserve 31 -> X3.1
+			biReserve32 : BIT ; // Reserve 32 -> X3.2
+			biReserve33 : BIT ; // Reserve 33 -> X3.3
+			biReserve34 : BIT ; // Reserve 34 -> X3.4
+			biReserve35 : BIT ; // Reserve 35 -> X3.5
+			biReserve36 : BIT ; // Reserve 36 -> X3.6
+			biReserve37 : BIT ; // Reserve 37 -> X3.7
+
+	(* Byte 4 *)
+		byi4 AT %I* : BYTE ; // Byte X4
+			biReserve40 : BIT ; // Reserve 40 -> X4.0
+			biReserve41 : BIT ; // Reserve 41 -> X4.1
+			biReserve42 : BIT ; // Reserve 42 -> X4.2
+			biReserve43 : BIT ; // Reserve 43 -> X4.3
+			biReserve44 : BIT ; // Reserve 44 -> X4.4
+			biReserve45 : BIT ; // Reserve 45 -> X4.5
+			biReserve46 : BIT ; // Reserve 46 -> X4.6
+			biReserve47 : BIT ; // Reserve 47 -> X4.7
+
+	(* Byte 5 *)
+		byi5 AT %I* : BYTE ; // Byte X5
+			biReserve50 : BIT ; // Reserve 50 -> X5.0
+			biReserve51 : BIT ; // Reserve 51 -> X5.1
+			biReserve52 : BIT ; // Reserve 52 -> X5.2
+			biReserve53 : BIT ; // Reserve 53 -> X5.3
+			biReserve54 : BIT ; // Reserve 54 -> X5.4
+			biReserve55 : BIT ; // Reserve 55 -> X5.5
+			biReserve56 : BIT ; // Reserve 56 -> X5.6
+			biReserve57 : BIT ; // Reserve 57 -> X5.7
+
+	(* Byte 6 *)
+		byiSpindleToolType AT %I* : BYTE ; // Type of the Tool in CNC Spindle -> X6 (0=Unknow/1=Small/2=Big)
+	
+	(* Byte 7 *)
+		byiToolToLoadType AT %I* : BYTE ; // Type of the Tool to Load in CNC Spindle -> X7 (0=Unknow/1=Small/2=Big)
+	
+	(* Byte 8-9 *)
+		wiSpindleToolLocation AT %I* : WORD ; // Location of the Tool in CNC Spindle -> X8-9
+	
+	(* Byte 10-11 *)
+		wiToolToLoadLocation AT %I* : WORD ; // Location of the Tool to Load in CNC Spindle -> X10-11
+
+	(* Byte 12-13 *)
+		wiPT100ArmorStatus AT %I* : WORD ; // PT100 probe in the electrical armor -> X12-13
+	
+	(* Byte 14-15 *)
+		wiPT100ArmorValue AT %I* : WORD ; // PT100 probe in the electrical armor -> X14-15
+		
+	(* Byte 16 *)
+		byiResevrve16 AT %I* : BYTE ; // Byte Reserve 16 -> X16
+		
+	(* Byte 17 *)
+		byiResevrve17 AT %I* : BYTE ; // Byte Reserve 17 -> X17
+		
+	(* Byte 18 *)
+		byiResevrve18 AT %I* : BYTE ; // Byte Reserve 18 -> X18
+		
+	(* Byte 19 *)
+		byiResevrve19 AT %I* : BYTE ; // Byte Reserve 19 -> X19
+		
+	(* Byte 20 *)
+		byiResevrve20 AT %I* : BYTE ; // Byte Reserve 20 -> X20
+		
+	(* Byte 21 *)
+		byiResevrve21 AT %I* : BYTE ; // Byte Reserve 21 -> X21
+		
+	(* Byte 22 *)
+		byiResevrve22 AT %I* : BYTE ; // Byte Reserve 22 -> X22
+		
+	(* Byte 23 *)
+		byiResevrve23 AT %I* : BYTE ; // Byte Reserve 23 -> X23
+		
+	(* Byte 24 *)
+		byiResevrve24 AT %I* : BYTE ; // Byte Reserve 24 -> X24
+		
+	(* Byte 25 *)
+		byiResevrve25 AT %I* : BYTE ; // Byte Reserve 25 -> X20
+		
+	(* Byte 26 *)
+		byiResevrve26 AT %I* : BYTE ; // Byte Reserve 26 -> X26
+		
+	(* Byte 27 *)
+		byiResevrve27 AT %I* : BYTE ; // Byte Reserve 27 -> X27
+		
+	(* Byte 28 *)
+		byiResevrve28 AT %I* : BYTE ; // Byte Reserve 28 -> X28
+		
+	(* Byte 29 *)
+		byiResevrve29 AT %I* : BYTE ; // Byte Reserve 29 -> X29
+		
+	(* Byte 30 *)
+		byiResevrve30 AT %I* : BYTE ; // Byte Reserve 30 -> X30
+		
+	(* Byte 31 *)
+		byiResevrve31 AT %I* : BYTE ; // Byte Reserve 31 -> X31
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

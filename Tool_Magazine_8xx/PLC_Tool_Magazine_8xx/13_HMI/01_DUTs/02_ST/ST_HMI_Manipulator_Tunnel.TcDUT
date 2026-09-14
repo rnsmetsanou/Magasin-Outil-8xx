@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Manipulator_Tunnel" Id="{8ab0a72d-1082-4630-a67c-25e6a43f1e0a}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Manipulator_Tunnel
+//
+//				Structure datas pour le passage du tunnel du manipulateur 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 06.02.2026
+//Dernière modification : 06.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 06.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Manipulator_Tunnel :
+STRUCT
+	
+	(** SETUP TIME **)
+		tTimeout : TIME ; // Value of the timeout for travel the tunnel
+
+	(** SETUP INT **)
+		iTimeout : INT ; // Value of the timeout for travel the tunnel
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

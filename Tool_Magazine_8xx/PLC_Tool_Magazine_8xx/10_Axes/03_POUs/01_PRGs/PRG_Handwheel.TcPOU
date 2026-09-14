@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Handwheel" Id="{74b9ff88-c7c2-4fb9-a425-cc17b9b12dfa}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Handwheel
+VAR
+	(** INT **)
+		iHandwheelLoop : INT := 0 ; // INT use in a FOR Loop
+	
+	(** FB **)
+		//FbHandwheel : FB_Handwheel ;
+		FbHandwheel : FB_Handwheel_2 ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Handwheel
+//
+//				Gestion de la manivelle déportée pour mouvement des Axes     			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 19.01.2026
+//Dernière modification : 19.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** TOOL MAGAZINE HANDWHEEL **)
+	GV_Handwheel.aId[1].bPresence:=TRUE;
+	(* Enable *)
+		IF GV_HMI.rtHandwheelEnable.Q THEN
+			IF (NOT GV_Handwheel.aId[1].bEnable) THEN
+				GV_Handwheel.aId[1].bEnable:=TRUE;
+			ELSE
+				GV_Handwheel.aId[1].bEnable:=FALSE;
+			END_IF
+		END_IF
+	(* Axis selector *)
+		GV_Handwheel.aId[1].bAxisSelectorB0:=GV_IO.diHandwheelAxisSelectorB0;
+		GV_Handwheel.aId[1].bAxisSelectorB1:=GV_IO.diHandwheelAxisSelectorB1;
+		GV_Handwheel.aId[1].bAxisSelectorB2:=GV_IO.diHandwheelAxisSelectorB2;
+	(* Incremental selector *)
+		GV_Handwheel.aId[1].bIncrSelectorB0:=GV_IO.diHandwheelIncrSelectorB0;
+		GV_Handwheel.aId[1].bIncrSelectorB1:=GV_IO.diHandwheelIncrSelectorB1;
+		GV_Handwheel.aId[1].bIncrSelectorB2:=GV_IO.diHandwheelIncrSelectorB2;
+	(* Track *)
+		GV_Handwheel.aId[1].bTrackA:=GV_IO.diHandwheelTrackA;
+		GV_Handwheel.aId[1].bTrackB:=GV_IO.diHandwheelTrackB;
+	(* Counter *)
+		GV_Handwheel.aId[1].udiCounterValue:=GV_IO.udiHandwheelCounterValue;
+		GV_IO.udoHandwheelCounterValue:=GV_Handwheel.aId[1].udiCounterValueSet;
+		GV_Handwheel.aId[1].bCounterUnderflow:=GV_IO.biHandwheelCounterUnderflow;
+		GV_Handwheel.aId[1].bCounterOverflow:=GV_IO.biHandwheelCounterOverflow;
+		GV_Handwheel.aId[1].bSoftwareGateValid:=GV_IO.biSoftwareGateValid;
+		GV_Handwheel.aId[1].bSetCounterDone:=GV_IO.biHandwheelSetCounterDone;
+		GV_IO.boHandwheelSetCounter:=GV_Handwheel.aId[1].bSetCounter;
+		GV_IO.boSoftwareGateSet:=GV_Handwheel.aId[1].bSoftwareGateSet;
+	(* Button *)
+		GV_Handwheel.aId[1].bButtonPlus:=GV_IO.diHandwheelButtonPlus;
+		GV_Handwheel.aId[1].bButtonMinus:=GV_IO.diHandwheelButtonMinus;
+		GV_Handwheel.aId[1].bButtonFast:=GV_IO.diHandwheelButtonFast;
+	(* Power *)
+		IF GV_Handwheel.aId[1].bPower THEN
+			GV_IO.aoHandwheelPower:=GV_Handwheel.iPowerValue;
+		ELSE
+			GV_IO.aoHandwheelPower:=0;
+		END_IF
+		
+(** FB_Handwheel **)
+	FOR iHandwheelLoop:=1 TO GV_Handwheel.iMaxHandwheels BY 1 DO
+		FbHandwheel(iHandwheelNumber:=iHandwheelLoop,StHandwheel:=GV_Handwheel.aId[iHandwheelLoop]); // Handwheel function block
+	END_FOR
+
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

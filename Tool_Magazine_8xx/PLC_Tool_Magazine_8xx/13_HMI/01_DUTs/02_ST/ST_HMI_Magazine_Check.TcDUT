@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Magazine_Check" Id="{e84ce35d-0936-4d34-98cd-756520fd066f}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Magazine_Check
+//
+//						Structure datas pour le check du magasin			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 17.02.2026
+//Dernière modification : 17.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 17.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Magazine_Check :
+STRUCT
+
+	(** SETUP TIME **)
+		tTimeoutOne : TIME ; // Value of the timeout for the check One
+		tTimeoutFull : TIME ; // Value of the timeout for the check Full
+		
+	(** SETUP LREAL **)
+		lrToolDistance : LREAL ; // Theoretical distance in mm for tool presence
+		lrToolDistanceTolerance : LREAL ; // Tolerance in distance in mm for tool presence
+		
+	(** SETUP INT **)
+		iTimeoutOne : INT ; // Value of the timeout for the check One
+		iTimeoutFull : INT ; // Value of the timeout for the check Full
+		iCheckCycleType : INT ; // Type of the Check Magazine cycle
+		
+	(** SETUP FLAG **)
+		bCheckManipulatorLocation : BOOL ; // Check or not Manipulator Location when CheckMagazineOne
+		bCheckArmGripper1Location : BOOL ; // Check or not Arm Gripper 1 Location when CheckMagazineOne
+		bCheckArmGripper2Location : BOOL ; // Check or not Arm Gripper 2 Location when CheckMagazineOne
+		bCheckSpindleLocation : BOOL ; // Check or not Spindle Location when CheckMagazineOne
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

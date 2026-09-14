@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GV_Log" Id="{997693f3-055a-485c-b6bb-d3ebc9be3e80}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Log
+//
+//								Variables Log 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** ARRAY R_TRIG **)
+	aLogTrig : ARRAY [1..250] OF R_TRIG;	
+
+	(** ST **)
+	stLogWM : ST_Log_Data ; // WM Log
+	stLogCustom : ST_Log_Data ; // Custom Log
+	
+END_VAR
+
+VAR_GLOBAL
+	
+	(** ST **)
+	stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT INT **)
+	iMaxLog : INT := 100; // Max Log Line into buffer
+	iMaxLogFile : INT := 100; // Max Log file
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

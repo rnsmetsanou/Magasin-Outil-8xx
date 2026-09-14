@@ -1,0 +1,1251 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Axis" Id="{8f520867-b6f0-47e2-a641-1f59eda93ce4}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Axis
+VAR
+	(** FLAG **)
+		bAxisXWrite1 : BOOL ;
+			rtAxisXWrite1 : R_TRIG ;
+		bAxisXWrite2 : BOOL ;
+			rtAxisXWrite2 : R_TRIG ;
+		bAxisXWrite3 : BOOL ;
+			rtAxisXWrite3 : R_TRIG ;
+		bAxisXWrite4 : BOOL ;
+			rtAxisXWrite4 : R_TRIG ;
+		bAxisXWriteMax : BOOL ;
+		bAxisXWriteMin : BOOL ;
+
+		bAxisYWrite1 : BOOL ;
+			rtAxisYWrite1 : R_TRIG ;
+		bAxisYWrite2 : BOOL ;
+			rtAxisYWrite2 : R_TRIG ;
+		bAxisYWrite3 : BOOL ;
+			rtAxisYWrite3 : R_TRIG ;
+		bAxisYWrite4 : BOOL ;
+			rtAxisYWrite4 : R_TRIG ;
+		bAxisYWriteMax : BOOL ;
+		bAxisYWriteMin : BOOL ;
+
+		bAxisZWrite1 : BOOL ;
+			rtAxisZWrite1 : R_TRIG ;
+		bAxisZWrite2 : BOOL ;
+			rtAxisZWrite2 : R_TRIG ;
+		bAxisZWrite3 : BOOL ;
+			rtAxisZWrite3 : R_TRIG ;
+		bAxisZWrite4 : BOOL ;
+			rtAxisZWrite4 : R_TRIG ;
+		bAxisZWriteMax : BOOL ;
+		bAxisZWriteMin : BOOL ;
+
+		bAxisArmWrite1 : BOOL ;
+			rtAxisArmWrite1 : R_TRIG ;
+		bAxisArmWrite2 : BOOL ;
+			rtAxisArmWrite2 : R_TRIG ;
+		bAxisArmWrite3 : BOOL ;
+			rtAxisArmWrite3 : R_TRIG ;
+		bAxisArmWrite4 : BOOL ;
+			rtAxisArmWrite4 : R_TRIG ;
+		bAxisArmWriteMax : BOOL ;
+		bAxisArmWriteMin : BOOL ;
+
+	(** FB **)
+		fbAxisX : FB_Axis ; // FB for the Axis X
+		fbAxisY : FB_Axis ; // FB for the Axis Y
+		fbAxisZ : FB_Axis ; // FB for the Axis Z
+		fbAxisArm : FB_Axis ; // FB for the Axis Changing Arm
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+		
+		tonZBrake : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Axis
+//
+//								Gestion des Axes   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 29.01.2026
+//Dernière modification : 29.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 29.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** REQUEST HMI **)
+	(* Axis X *)
+		IF GV_HMI.stAxes.rtButtonChoiceAxisX.Q THEN
+			GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.X;
+		END_IF
+	(* Axis Y *)
+		IF GV_HMI.stAxes.rtButtonChoiceAxisY.Q THEN
+			GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.Y;
+		END_IF
+	(* Axis Z *)
+		IF GV_HMI.stAxes.rtButtonChoiceAxisZ.Q THEN
+			GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.Z;
+		END_IF
+	(* Axis Arm *)
+		IF GV_HMI.stAxes.rtButtonChoiceAxisArm.Q THEN
+			GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.Arm;
+		END_IF
+	(* None *)
+		CASE GV_Axes.eJogAxisSelect OF
+			
+			ENUM_Axis_Select.X :
+				IF GV_HMI.stAxes.rtButtonChoiceAxisX.Q THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+
+			ENUM_Axis_Select.Y :
+				IF GV_HMI.stAxes.rtButtonChoiceAxisY.Q THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Z :
+				IF GV_HMI.stAxes.rtButtonChoiceAxisZ.Q THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Arm :
+				IF GV_HMI.stAxes.rtButtonChoiceAxisArm.Q THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+
+		END_CASE
+		
+	(* Referencing X *)
+		IF GV_HMI.stAxes.rtButtonChoiceReferencingX.Q THEN
+			GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.X;
+		END_IF
+	(* Referencing Y *)
+		IF GV_HMI.stAxes.rtButtonChoiceReferencingY.Q THEN
+			GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.Y;
+		END_IF
+	(* Referencing Z *)
+		IF GV_HMI.stAxes.rtButtonChoiceReferencingZ.Q THEN
+			GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.Z;
+		END_IF
+	(* Referencing Arm *)
+		IF GV_HMI.stAxes.rtButtonChoiceReferencingArm.Q THEN
+			GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.Arm;
+		END_IF
+	(* None *)
+		CASE GV_Axes.eRefAxisSelect OF
+			
+			ENUM_Axis_Select.X :
+				IF GV_HMI.stAxes.rtButtonChoiceReferencingX.Q THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+
+			ENUM_Axis_Select.Y :
+				IF GV_HMI.stAxes.rtButtonChoiceReferencingY.Q THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Z :
+				IF GV_HMI.stAxes.rtButtonChoiceReferencingZ.Q THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Arm :
+				IF GV_HMI.stAxes.rtButtonChoiceReferencingArm.Q THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+				END_IF
+
+		END_CASE
+		
+(** AUTHORIZATION SELECT HMI **)
+	(* Axis X *)
+		GV_Axes.bAxisXAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Axis Y *)
+		GV_Axes.bAxisYAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Axis Z *)
+		GV_Axes.bAxisZAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Axis Arm *)
+		GV_Axes.bAxisArmAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.NotMoving;
+
+	(* Referencing X *)
+		GV_Axes.bReferencingXAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Referencing Y *)
+		GV_Axes.bReferencingYAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Referencing Z *)
+		GV_Axes.bReferencingZAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.NotMoving;
+	(* Referencing Arm *)
+		GV_Axes.bReferencingArmAllowed:=GV_General.bSafety AND GV_General.bPower AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.NotMoving;
+		
+(** AXIS SELECT HMI **)
+	(*Transition*)
+		IF GV_Axes.eJogAxisRequest<>GV_Axes.eJogAxisSelect THEN 
+			CASE GV_Axes.eJogAxisRequest OF
+				
+				ENUM_Axis_Select.None:
+					GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.None;
+					
+				ENUM_Axis_Select.X:
+					IF GV_Axes.bAxisXAllowed THEN
+						GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.X;
+					END_IF
+				
+				ENUM_Axis_Select.Y:
+					IF GV_Axes.bAxisYAllowed THEN
+						GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.Y;
+					END_IF
+					
+				ENUM_Axis_Select.Z:
+					IF GV_Axes.bAxisZAllowed THEN
+						GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.Z;
+					END_IF
+					
+				ENUM_Axis_Select.Arm:
+					IF GV_Axes.bAxisArmAllowed THEN
+						GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.Arm;
+					END_IF
+
+			END_CASE
+		END_IF
+	
+		IF GV_Axes.eRefAxisRequest<>GV_Axes.eRefAxisSelect THEN 
+			CASE GV_Axes.eRefAxisRequest OF
+
+				ENUM_Axis_Select.None:
+					GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.None;
+
+				ENUM_Axis_Select.X:
+					IF GV_Axes.bReferencingXAllowed THEN
+						GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.X;
+					END_IF
+				
+				ENUM_Axis_Select.Y:
+					IF GV_Axes.bReferencingYAllowed THEN
+						GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.Y;
+					END_IF
+					
+				ENUM_Axis_Select.Z:
+					IF GV_Axes.bReferencingZAllowed THEN
+						GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.Z;
+					END_IF
+					
+				ENUM_Axis_Select.Arm:
+					IF GV_Axes.bReferencingArmAllowed THEN
+						GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.Arm;
+					END_IF
+
+			END_CASE
+		END_IF
+	
+	(*InProgress*)
+		CASE GV_Axes.eJogAxisSelect OF
+		
+			ENUM_Axis_Select.X:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisX.bAlAxisFault THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+		
+			ENUM_Axis_Select.Y:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisY.bAlAxisFault THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Z:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisZ.bAlAxisFault OR tonZBrake.Q THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+			
+			ENUM_Axis_Select.Arm:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisArm.bAlAxisFault THEN
+					GV_Axes.eJogAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eJogAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+			
+		END_CASE
+
+		CASE GV_Axes.eRefAxisSelect OF
+		
+			ENUM_Axis_Select.X:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisX.bAlAxisFault THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+		
+			ENUM_Axis_Select.Y:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisY.bAlAxisFault THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+				
+			ENUM_Axis_Select.Z:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisZ.bAlAxisFault THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+			
+			ENUM_Axis_Select.Arm:
+				IF (NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR (NOT GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational) OR GV_Axes.stAxisArm.bAlAxisFault THEN
+					GV_Axes.eRefAxisRequest:=ENUM_Axis_Select.None;
+					GV_Axes.eRefAxisSelect:=ENUM_Axis_Select.None;
+				END_IF
+			
+		END_CASE
+
+(** VELOCITY **)
+	(*Velocity Axis X*)
+		CASE GV_OpMode.eOpMode OF
+			
+			ENUM_OpMode.NONE:
+				GV_Axes.lrVelocityAxisX:=0;
+			
+			ENUM_OpMode.AUTO:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX;
+				ELSE
+					GV_Axes.lrVelocityAxisX:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisX>GV_Axes.lrAutoMaxSpeedAxisX THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX;
+				END_IF
+				
+			ENUM_OpMode.MANU:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrJogMaxSpeedAxisX*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrJogMaxSpeedAxisX;
+				ELSE
+					GV_Axes.lrVelocityAxisX:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisX>GV_Axes.lrJogMaxSpeedAxisX THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrJogMaxSpeedAxisX;
+				END_IF
+				
+			ENUM_OpMode.INIT:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX;
+				ELSE
+					GV_Axes.lrVelocityAxisX:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisX>GV_Axes.lrAutoMaxSpeedAxisX THEN
+					GV_Axes.lrVelocityAxisX:=GV_Axes.lrAutoMaxSpeedAxisX;
+				END_IF
+				
+		END_CASE
+	(*Velocity Axis Y*)
+		CASE GV_OpMode.eOpMode OF
+			
+			ENUM_OpMode.NONE:
+				GV_Axes.lrVelocityAxisY:=0;
+			
+			ENUM_OpMode.AUTO:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY;
+				ELSE
+					GV_Axes.lrVelocityAxisY:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisY>GV_Axes.lrAutoMaxSpeedAxisY THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY;
+				END_IF
+				
+			ENUM_OpMode.MANU:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrJogMaxSpeedAxisY*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrJogMaxSpeedAxisY;
+				ELSE
+					GV_Axes.lrVelocityAxisY:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisY>GV_Axes.lrJogMaxSpeedAxisY THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrJogMaxSpeedAxisY;
+				END_IF
+				
+			ENUM_OpMode.INIT:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY;
+				ELSE
+					GV_Axes.lrVelocityAxisY:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisY>GV_Axes.lrAutoMaxSpeedAxisY THEN
+					GV_Axes.lrVelocityAxisY:=GV_Axes.lrAutoMaxSpeedAxisY;
+				END_IF
+				
+		END_CASE
+	(*Velocity Axis Z*)
+		CASE GV_OpMode.eOpMode OF
+			
+			ENUM_OpMode.NONE:
+				GV_Axes.lrVelocityAxisZ:=0;
+			
+			ENUM_OpMode.AUTO:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ;
+				ELSE
+					GV_Axes.lrVelocityAxisZ:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisZ>GV_Axes.lrAutoMaxSpeedAxisZ THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ;
+				END_IF
+				
+			ENUM_OpMode.MANU:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrJogMaxSpeedAxisZ*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrJogMaxSpeedAxisZ;
+				ELSE
+					GV_Axes.lrVelocityAxisZ:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisZ>GV_Axes.lrJogMaxSpeedAxisZ THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrJogMaxSpeedAxisZ;
+				END_IF
+				
+			ENUM_OpMode.INIT:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ;
+				ELSE
+					GV_Axes.lrVelocityAxisZ:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisZ>GV_Axes.lrAutoMaxSpeedAxisZ THEN
+					GV_Axes.lrVelocityAxisZ:=GV_Axes.lrAutoMaxSpeedAxisZ;
+				END_IF
+				
+		END_CASE
+	(*Velocity Axis Arm*)
+		CASE GV_OpMode.eOpMode OF
+			
+			ENUM_OpMode.NONE:
+				GV_Axes.lrVelocityAxisArm:=0;
+			
+			ENUM_OpMode.AUTO:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm;
+				ELSE
+					GV_Axes.lrVelocityAxisArm:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisArm>GV_Axes.lrAutoMaxSpeedAxisArm THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm;
+				END_IF
+				
+			ENUM_OpMode.MANU:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrJogMaxSpeedAxisArm*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrJogMaxSpeedAxisArm;
+				ELSE
+					GV_Axes.lrVelocityAxisArm:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisArm>GV_Axes.lrJogMaxSpeedAxisArm THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrJogMaxSpeedAxisArm;
+				END_IF
+				
+			ENUM_OpMode.INIT:
+				IF GV_HMI.stAxes.lrVelocityPourcent>0 AND GV_HMI.stAxes.lrVelocityPourcent<=100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm*(GV_HMI.stAxes.lrVelocityPourcent/100);
+				ELSIF GV_HMI.stAxes.lrVelocityPourcent>100 THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm;
+				ELSE
+					GV_Axes.lrVelocityAxisArm:=0;
+				END_IF
+				IF GV_Axes.lrVelocityAxisArm>GV_Axes.lrAutoMaxSpeedAxisArm THEN
+					GV_Axes.lrVelocityAxisArm:=GV_Axes.lrAutoMaxSpeedAxisArm;
+				END_IF
+				
+		END_CASE
+
+(** AXIS X **)
+	(* Setup *)
+		GV_Axes.stAxisX.bPresence:=TRUE; // Axis Presence
+		fbEventGroupAssignement(iEventGroup:=GV_Axes.stAxisX.iEventGroup);
+		GV_Axes.stAxisX.strIdHMI:='X'; // String for events on HMI
+		GV_Axes.stAxisX.iIdHMI:=UDINT_TO_INT(GV_Axes.stAxisX.stDriveAx8206.AxisRef.NcToPlc.AxisId); // Number for events on HMI
+		(*Power*)
+			IF ((GV_General.bSafety AND GV_General.bPower AND (NOT GV_Axes.stAxisX.bAlAxisFault)) OR (GV_Axes.stAxisX.bPowerEnable AND ((GV_Axes.stAxisX.bStopExecute AND (NOT GV_Axes.stAxisX.bStopDone))) OR ((GV_Axes.stAxisX.bHaltExecute AND (NOT GV_Axes.stAxisX.bHaltDone))))) AND (NOT GV_General.bRebootRequest) AND (NOT GV_General.bShutdownRequest) THEN
+				GV_Axes.stAxisX.bPowerEnable:=TRUE;
+			ELSE
+				GV_Axes.stAxisX.bPowerEnable:=FALSE;
+			END_IF
+		(*Stop*)
+			GV_Axes.stAxisX.bStopExecute:=(NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR GV_General.bRebootRequest OR GV_General.bShutdownRequest (*OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))*); // Have to stop
+		(*Halt*)
+			GV_Axes.stAxisX.bHaltExecute:=(GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to halt
+		(*Abort*)
+			//GV_Axes.stAxisX.bAbort:=(NOT GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.NotMoving) AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to abort
+		(*Reset*)
+			GV_Axes.stAxisX.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement	
+		(*Jog*)
+			GV_Axes.stAxisX.bJogEnable:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisX.bAlAxisFault) AND
+			((GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eAxisSelect=ENUM_Axis_Select.X) OR ((NOT GV_Handwheel.aId[1].bEnable) AND GV_HMI.iCurrentScreenNumber=210 AND GV_Axes.eJogAxisSelect=ENUM_Axis_Select.X));
+			IF GV_Axes.stAxisX.bJogEnable AND (NOT GV_Handwheel.aId[1].bEnable) THEN // Jog from HMI
+				GV_Axes.stAxisX.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_CONTINOUS; // Jog Mode
+				GV_Axes.stAxisX.bJogPlus:=GV_HMI.stAxes.bButtonPlus; // Jog +
+				GV_Axes.stAxisX.bJogMinus:=GV_HMI.stAxes.bButtonMinus; // Jog -
+				GV_Axes.stAxisX.lrJogPos:=0; // Jog Position -> Only in mode INCHING
+				GV_Axes.stAxisX.lrJogVel:=GV_Axes.lrVelocityAxisX; // Jog Velocity
+				GV_Axes.stAxisX.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSIF GV_Axes.stAxisX.bJogEnable AND GV_Handwheel.aId[1].bEnable (*AND GV_Handwheel.aId[1].eJogMode=ENUM_Jog_Mode.Inching*) AND GV_Handwheel.aId[1].bJogRequestRisingEdge THEN // Incremental from Handwheel
+				GV_Axes.stAxisX.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_INCHING; // Jog Mode
+				GV_Axes.stAxisX.bJogPlus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Plus); // Incr +
+				GV_Axes.stAxisX.bJogMinus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Minus); // Incr -
+				GV_Axes.stAxisX.lrJogPos:=GV_Handwheel.aId[1].lrJogIncrRequest; // Jog Position
+				GV_Axes.stAxisX.lrJogVel:=GV_Axes.lrJogMaxSpeedAxisX;//GV_Axes.lrVelocityAxisX; // Jog Velocity
+				GV_Axes.stAxisX.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+// 			ELSIF GV_Axes.stAxisX.bJogEnable AND GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eJogMode=ENUM_Jog_Mode.Continous AND GV_Handwheel.aId[1].bJogRequestRisingEdge THEN // Jog from Handwheel button only
+// 				GV_Axes.stAxisX.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_CONTINOUS; // Jog Mode
+// 				GV_Axes.stAxisX.bJogPlus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Plus); // Jog +
+// 				GV_Axes.stAxisX.bJogMinus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Minus); // Jog -
+// 				GV_Axes.stAxisX.lrJogPos:=0; // Jog Position -> Only in mode INCHING
+// 				GV_Axes.stAxisX.lrJogVel:=GV_Axes.lrVelocityAxisX; // Jog Velocity
+// 				GV_Axes.stAxisX.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+// 				GV_Axes.stAxisX.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+// 				GV_Axes.stAxisX.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisX.bJogPlus:=FALSE; // Jog +
+				GV_Axes.stAxisX.bJogMinus:=FALSE; // Jog -
+				GV_Axes.stAxisX.lrJogPos:=0; // Jog Position
+				GV_Axes.stAxisX.lrJogVel:=0; // Jog Velocity
+				GV_Axes.stAxisX.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager				
+			END_IF
+		(*AUTO*)
+			GV_Axes.stAxisX.bAutoEnable:=GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisX.bAlAxisFault);
+			IF  GV_Axes.stAxisX.bAutoEnable THEN
+				GV_Axes.stAxisX.lrAutoVelAbs:=GV_Axes.lrVelocityAxisX; // AUTO Velocity
+				GV_Axes.stAxisX.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisX.lrAutoVelAbs:=0; // AUTO Velocity
+				GV_Axes.stAxisX.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisX.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			END_IF
+		(*Referencing*)
+			GV_Axes.stAxisX.bSetOffsetExecute:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisX.bAlAxisFault) AND GV_HMI.iCurrentScreenNumber=308 AND GV_Axes.eRefAxisSelect=ENUM_Axis_Select.X AND GV_HMI.stAxes.rtButtonReferencingAxis.Q;
+			GV_Axes.stAxisX.bDeleteOffsetExecute:=FALSE; // Not used in the HMI, we can use it from here or add it in the HMI later if it's necessary
+		(*ReadParameter BOOL*)
+			GV_Axes.stAxisX.bReadbEnable:=(GV_Axes.stAxisX.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit OR GV_Axes.stAxisX.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit) AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisX.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisX.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisX.bReadbValid THEN
+							GV_Axes.stAxisX.bReadEnMaxSoftPosLimit:=GV_Axes.stAxisX.bReadbValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisX.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisX.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisX.bReadbValid THEN
+							GV_Axes.stAxisX.bReadEnMinSoftPosLimit:=GV_Axes.stAxisX.bReadbValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisX.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+				END_IF
+			END_IF
+		(*ReadParameter LREAL*)
+			GV_Axes.stAxisX.bReadlrEnable:=(GV_Axes.stAxisX.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit OR GV_Axes.stAxisX.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit) AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisX.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisX.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisX.bReadlrValid THEN
+							GV_Axes.stAxisX.lrReadMaxSoftPosLimit:=GV_Axes.stAxisX.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisX.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit THEN
+					IF (NOT GV_General.bIsBlinking05s) THEN
+						GV_Axes.stAxisX.mcAxisReadParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisX.bReadlrValid THEN
+							GV_Axes.stAxisX.lrReadMinSoftPosLimit:=GV_Axes.stAxisX.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisX.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+				END_IF
+			END_IF	
+		(*WriteParameter BOOL*)
+			GV_Axes.stAxisX.bWritebExecute:=GV_Axes.eRefAxisSelect=ENUM_Axis_Select.X AND (GV_HMI.stAxes.rtButtonMinSofltLimit.Q OR GV_HMI.stAxes.rtButtonMaxSofltLimit.Q) AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Moving) THEN
+				IF GV_HMI.stAxes.rtButtonMinSofltLimit.Q THEN
+					GV_Axes.stAxisX.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+					IF GV_Axes.stAxisX.bReadEnMinSoftPosLimit THEN
+						GV_Axes.stAxisX.bWritebValue:=FALSE;
+					ELSE
+						GV_Axes.stAxisX.bWritebValue:=TRUE;
+					END_IF
+				ELSIF GV_HMI.stAxes.rtButtonMaxSofltLimit.Q THEN
+					GV_Axes.stAxisX.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+					IF GV_Axes.stAxisX.bReadEnMaxSoftPosLimit THEN
+						GV_Axes.stAxisX.bWritebValue:=FALSE;
+					ELSE
+						GV_Axes.stAxisX.bWritebValue:=TRUE;
+					END_IF
+				END_IF
+			END_IF
+		(*WriteParameter LREAL*)
+// 			bAxisXWrite1:=FALSE;
+// 			bAxisXWrite2:=FALSE;
+// 			bAxisXWrite3:=FALSE;
+// 			bAxisXWrite4:=FALSE;
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrXPosition<>GV_Tool_Magazine.stManipulator.lrXTunnel THEN
+// 					GV_Axes.stAxisX.lrValueMax:=-10;
+// 					GV_Axes.stAxisX.lrValueMin:=-350;
+// 					bAxisXWrite1:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisX.lrValueMax:=-10;
+// 					GV_Axes.stAxisX.lrValueMin:=-800;
+// 					bAxisXWrite2:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrXPosition<>GV_Tool_Magazine.stManipulator.lrXTunnel THEN
+// 					GV_Axes.stAxisX.lrValueMax:=-450;
+// 					GV_Axes.stAxisX.lrValueMin:=-800;
+// 					bAxisXWrite3:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisX.lrValueMax:=-10;
+// 					GV_Axes.stAxisX.lrValueMin:=-800;
+// 					bAxisXWrite4:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			rtAxisXWrite1(CLK:=bAxisXWrite1);
+// 			rtAxisXWrite2(CLK:=bAxisXWrite2);
+// 			rtAxisXWrite3(CLK:=bAxisXWrite3);
+// 			rtAxisXWrite4(CLK:=bAxisXWrite4);
+// 			IF rtAxisXWrite1.Q OR rtAxisXWrite2.Q OR rtAxisXWrite3.Q OR rtAxisXWrite4.Q THEN
+// 				GV_Axes.stAxisX.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+// 				GV_Axes.stAxisX.lrWritelrValue:=GV_Axes.stAxisX.lrValueMax;
+// 				bAxisXWriteMin:=FALSE;
+// 				bAxisXWriteMax:=TRUE;
+// 			END_IF
+// 			IF bAxisXWriteMax AND GV_Axes.stAxisX.bWritelrBusy THEN
+// 				GV_Axes.stAxisX.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+// 				GV_Axes.stAxisX.lrWritelrValue:=GV_Axes.stAxisX.lrValueMin;
+// 				bAxisXWriteMin:=TRUE;
+// 				bAxisXWriteMax:=FALSE;
+// 			END_IF
+// 			IF bAxisXWriteMin AND GV_Axes.stAxisX.bWritelrBusy THEN
+// 				bAxisXWriteMin:=FALSE;
+// 				bAxisXWriteMax:=FALSE;
+// 			END_IF
+// 			GV_Axes.stAxisX.bWritelrExecute:=(bAxisXWriteMax OR bAxisXWriteMin) AND GV_Axes.stAxisX.bWritelrDone AND (NOT GV_Axes.stAxisX.bWritelrBusy) AND GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational;
+// 			
+	(* Fb *)
+		IF GV_Axes.stAxisX.bPresence THEN
+			fbAxisX(
+					stAxis:=GV_Axes.stAxisX,
+					);
+		END_IF
+
+(** AXIS Y **)
+	(* Setup *)
+		GV_Axes.stAxisY.bPresence:=TRUE; // Axis Presence
+		fbEventGroupAssignement(iEventGroup:=GV_Axes.stAxisY.iEventGroup);
+		GV_Axes.stAxisY.strIdHMI:='Y'; // String for events on HMI
+		GV_Axes.stAxisY.iIdHMI:=UDINT_TO_INT(GV_Axes.stAxisY.stDriveAx8206.AxisRef.NcToPlc.AxisId); // Number for events on HMI
+		(*Power*)
+			IF ((GV_General.bSafety AND GV_General.bPower AND (NOT GV_Axes.stAxisY.bAlAxisFault)) OR (GV_Axes.stAxisY.bPowerEnable AND ((GV_Axes.stAxisY.bStopExecute AND (NOT GV_Axes.stAxisY.bStopDone))) OR ((GV_Axes.stAxisY.bHaltExecute AND (NOT GV_Axes.stAxisY.bHaltDone))))) AND (NOT GV_General.bRebootRequest) AND (NOT GV_General.bShutdownRequest) THEN
+				GV_Axes.stAxisY.bPowerEnable:=TRUE;
+			ELSE
+				GV_Axes.stAxisY.bPowerEnable:=FALSE;
+			END_IF
+		(*Stop*)
+			GV_Axes.stAxisY.bStopExecute:=(NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR GV_General.bRebootRequest OR GV_General.bShutdownRequest (*OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))*); // Have to stop
+		(*Halt*)
+			GV_Axes.stAxisY.bHaltExecute:=(GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to halt
+		(*Abort*)
+			//GV_Axes.stAxisY.bAbort:=(NOT GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.NotMoving) AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to abort
+		(*Reset*)
+			GV_Axes.stAxisY.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement	
+		(*Jog*)
+			GV_Axes.stAxisY.bJogEnable:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisY.bAlAxisFault) AND
+			((GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eAxisSelect=ENUM_Axis_Select.Y) OR ((NOT GV_Handwheel.aId[1].bEnable) AND GV_HMI.iCurrentScreenNumber=210 AND GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Y));
+			IF GV_Axes.stAxisY.bJogEnable AND (NOT GV_Handwheel.aId[1].bEnable) THEN // Jog from HMI
+				GV_Axes.stAxisY.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_CONTINOUS; // Jog Mode
+				GV_Axes.stAxisY.bJogPlus:=GV_HMI.stAxes.bButtonPlus; // Jog +
+				GV_Axes.stAxisY.bJogMinus:=GV_HMI.stAxes.bButtonMinus; // Jog -
+				GV_Axes.stAxisY.lrJogPos:=0; // Jog Position -> Only in mode INCHING
+				GV_Axes.stAxisY.lrJogVel:=GV_Axes.lrVelocityAxisY; // Jog Velocity
+				GV_Axes.stAxisY.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSIF GV_Axes.stAxisY.bJogEnable AND GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].bJogRequestRisingEdge THEN // Jog from Handwheel
+				GV_Axes.stAxisY.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_INCHING; // Jog Mode
+				GV_Axes.stAxisY.bJogPlus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Plus); // Jog +
+				GV_Axes.stAxisY.bJogMinus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Minus); // Jog -
+				GV_Axes.stAxisY.lrJogPos:=GV_Handwheel.aId[1].lrJogIncrRequest; // Jog Position
+				GV_Axes.stAxisY.lrJogVel:=GV_Axes.lrJogMaxSpeedAxisY;//GV_Axes.lrVelocityAxisY; // Jog Velocity
+				GV_Axes.stAxisY.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisY.bJogPlus:=FALSE; // Jog +
+				GV_Axes.stAxisY.bJogMinus:=FALSE; // Jog -
+				GV_Axes.stAxisY.lrJogPos:=0; // Jog Position
+				GV_Axes.stAxisY.lrJogVel:=0; // Jog Velocity
+				GV_Axes.stAxisY.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager				
+			END_IF
+		(*AUTO*)
+			GV_Axes.stAxisY.bAutoEnable:=GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisY.bAlAxisFault);
+			IF  GV_Axes.stAxisY.bAutoEnable THEN
+				GV_Axes.stAxisY.lrAutoVelAbs:=GV_Axes.lrVelocityAxisY; // AUTO Velocity
+				GV_Axes.stAxisY.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisY.lrAutoVelAbs:=0; // AUTO Velocity
+				GV_Axes.stAxisY.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisY.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			END_IF
+		(*Referencing*)
+			GV_Axes.stAxisY.bSetOffsetExecute:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisY.bAlAxisFault) AND GV_HMI.iCurrentScreenNumber=308 AND GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Y AND GV_HMI.stAxes.rtButtonReferencingAxis.Q;
+			GV_Axes.stAxisY.bDeleteOffsetExecute:=FALSE; // Not used in the HMI, we can use it from here or add it in the HMI later if it's necessary
+		(*ReadParameter BOOL*)
+			GV_Axes.stAxisY.bReadbEnable:=(GV_Axes.stAxisY.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit OR GV_Axes.stAxisY.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit) AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisY.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisY.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisY.bReadbValid THEN
+							GV_Axes.stAxisY.bReadEnMaxSoftPosLimit:=GV_Axes.stAxisY.bReadbValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisY.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisY.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisY.bReadbValid THEN
+							GV_Axes.stAxisY.bReadEnMinSoftPosLimit:=GV_Axes.stAxisY.bReadbValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisY.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+				END_IF
+			END_IF
+		(*ReadParameter LREAL*)
+			GV_Axes.stAxisY.bReadlrEnable:=(GV_Axes.stAxisY.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit OR GV_Axes.stAxisY.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit) AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisY.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisY.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisY.bReadlrValid THEN
+							GV_Axes.stAxisY.lrReadMaxSoftPosLimit:=GV_Axes.stAxisY.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisY.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit THEN
+					IF (NOT GV_General.bIsBlinking05s) THEN
+						GV_Axes.stAxisY.mcAxisReadParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisY.bReadlrValid THEN
+							GV_Axes.stAxisY.lrReadMinSoftPosLimit:=GV_Axes.stAxisY.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisY.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+				END_IF
+			END_IF	
+		(*WriteParameter BOOL*)
+// 			GV_Axes.stAxisY.bWritebExecute:=GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Y AND (GV_HMI.stAxes.rtButtonMinSofltLimit.Q OR GV_HMI.stAxes.rtButtonMaxSofltLimit.Q) AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational;
+// 			IF GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Moving) THEN
+// 				IF GV_HMI.stAxes.rtButtonMinSofltLimit.Q THEN
+// 					GV_Axes.stAxisY.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+// 					IF GV_Axes.stAxisY.bReadEnMinSoftPosLimit THEN
+// 						GV_Axes.stAxisY.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisY.bWritebValue:=TRUE;
+// 					END_IF
+// 				ELSIF GV_HMI.stAxes.rtButtonMaxSofltLimit.Q THEN
+// 					GV_Axes.stAxisY.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+// 					IF GV_Axes.stAxisY.bReadEnMaxSoftPosLimit THEN
+// 						GV_Axes.stAxisY.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisY.bWritebValue:=TRUE;
+// 					END_IF
+// 				END_IF
+// 			END_IF
+		(*WriteParameter LREAL*)
+// 			bAxisYWrite1:=FALSE;
+// 			bAxisYWrite2:=FALSE;
+// 			bAxisYWrite3:=FALSE;
+// 			bAxisYWrite4:=FALSE;
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrYPosition<>GV_Tool_Magazine.stManipulator.lrYTunnel THEN
+// 					GV_Axes.stAxisY.lrValueMax:=-10;
+// 					GV_Axes.stAxisY.lrValueMin:=-350;
+// 					bAxisYWrite1:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisY.lrValueMax:=-10;
+// 					GV_Axes.stAxisY.lrValueMin:=-800;
+// 					bAxisYWrite2:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrYPosition<>GV_Tool_Magazine.stManipulator.lrYTunnel THEN
+// 					GV_Axes.stAxisY.lrValueMax:=-450;
+// 					GV_Axes.stAxisY.lrValueMin:=-800;
+// 					bAxisYWrite3:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisY.lrValueMax:=-10;
+// 					GV_Axes.stAxisY.lrValueMin:=-800;
+// 					bAxisYWrite4:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			rtAxisYWrite1(CLK:=bAxisYWrite1);
+// 			rtAxisYWrite2(CLK:=bAxisYWrite2);
+// 			rtAxisYWrite3(CLK:=bAxisYWrite3);
+// 			rtAxisYWrite4(CLK:=bAxisYWrite4);
+// 			IF rtAxisYWrite1.Q OR rtAxisYWrite2.Q OR rtAxisYWrite3.Q OR rtAxisYWrite4.Q THEN
+// 				GV_Axes.stAxisY.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+// 				GV_Axes.stAxisY.lrWritelrValue:=GV_Axes.stAxisY.lrValueMax;
+// 				bAxisYWriteMin:=FALSE;
+// 				bAxisYWriteMax:=TRUE;
+// 			END_IF
+// 			IF bAxisYWriteMax AND GV_Axes.stAxisY.bWritelrBusy THEN
+// 				GV_Axes.stAxisY.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+// 				GV_Axes.stAxisY.lrWritelrValue:=GV_Axes.stAxisY.lrValueMin;
+// 				bAxisYWriteMin:=TRUE;
+// 				bAxisYWriteMax:=FALSE;
+// 			END_IF
+// 			IF bAxisYWriteMin AND GV_Axes.stAxisY.bWritelrBusy THEN
+// 				bAxisYWriteMin:=FALSE;
+// 				bAxisYWriteMax:=FALSE;
+// 			END_IF
+// 			GV_Axes.stAxisY.bWritelrExecute:=(bAxisYWriteMax OR bAxisYWriteMin) AND GV_Axes.stAxisY.bWritelrDone AND (NOT GV_Axes.stAxisY.bWritelrBusy) AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational;
+// 			
+	(* Fb *)
+		IF GV_Axes.stAxisY.bPresence THEN
+			fbAxisY(
+					stAxis:=GV_Axes.stAxisY,
+					);
+		END_IF
+
+(** AXIS Z **)
+	(* Brake timer *)
+		tonZBrake(PT:=T#20S);
+		IF GV_Axes.stAxisZ.bPowerEnable AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.NotMoving THEN
+			tonZBrake.IN:=TRUE;
+		ELSE
+			tonZBrake.IN:=FALSE;
+		END_IF
+	(* Setup *)
+		GV_Axes.stAxisZ.bPresence:=TRUE; // Axis Presence
+		fbEventGroupAssignement(iEventGroup:=GV_Axes.stAxisZ.iEventGroup);
+		GV_Axes.stAxisZ.strIdHMI:='Z'; // String for events on HMI
+		GV_Axes.stAxisZ.iIdHMI:=UDINT_TO_INT(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.NcToPlc.AxisId); // Number for events on HMI
+		(*Power*)
+			IF ((GV_OpMode.eOpMode=ENUM_OpMode.INIT AND (GV_Axes.stAxisZ.bAutoCmdAbs OR (GV_Axes.stAxisZ.bPowerEnable AND (NOT tonZBrake.Q)))) // INIT
+			OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND (GV_Axes.stAxisZ.bAutoCmdAbs OR (GV_Axes.stAxisZ.bPowerEnable AND (NOT tonZBrake.Q)))) // AUTO
+			OR (GV_OpMode.eOpMode=ENUM_OpMode.MANU AND (((NOT GV_Handwheel.aId[1].bEnable) AND (GV_Axes.eJogAxisRequest=ENUM_Axis_Select.Z OR GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Z)) OR (GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eAxisSelect=ENUM_Axis_Select.Z)))) // MANU
+			AND ((GV_General.bSafety AND GV_General.bPower AND (NOT GV_Axes.stAxisZ.bAlAxisFault)) OR (GV_Axes.stAxisZ.bPowerEnable AND ((GV_Axes.stAxisZ.bStopExecute AND (NOT GV_Axes.stAxisZ.bStopDone))) OR (GV_Axes.stAxisZ.bHaltExecute AND (NOT GV_Axes.stAxisZ.bHaltDone)))) AND (NOT GV_General.bRebootRequest) AND (NOT GV_General.bShutdownRequest) THEN
+				GV_Axes.stAxisZ.bPowerEnable:=TRUE;
+			ELSE
+				GV_Axes.stAxisZ.bPowerEnable:=FALSE;
+			END_IF
+		(*Stop*)
+			GV_Axes.stAxisZ.bStopExecute:=(NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR GV_General.bRebootRequest OR GV_General.bShutdownRequest (*OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))*); // Have to stop
+		(*Halt*)
+			GV_Axes.stAxisZ.bHaltExecute:=(GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to halt
+		(*Abort*)
+			//GV_Axes.stAxisZ.bAbort:=(NOT GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.NotMoving) AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to abort
+		(*Reset*)
+			GV_Axes.stAxisZ.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement	
+		(*Jog*)
+			GV_Axes.stAxisZ.bJogEnable:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisZ.bAlAxisFault) AND
+			((GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eAxisSelect=ENUM_Axis_Select.Z) OR ((NOT GV_Handwheel.aId[1].bEnable) AND GV_HMI.iCurrentScreenNumber=210 AND GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Z));
+			IF GV_Axes.stAxisZ.bJogEnable AND (NOT GV_Handwheel.aId[1].bEnable) THEN // Jog from HMI
+				GV_Axes.stAxisZ.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_CONTINOUS; // Jog Mode
+				GV_Axes.stAxisZ.bJogPlus:=GV_HMI.stAxes.bButtonPlus; // Jog +
+				GV_Axes.stAxisZ.bJogMinus:=GV_HMI.stAxes.bButtonMinus; // Jog -
+				GV_Axes.stAxisZ.lrJogPos:=0; // Jog Position -> Only in mode INCHING
+				GV_Axes.stAxisZ.lrJogVel:=GV_Axes.lrVelocityAxisZ; // Jog Velocity
+				GV_Axes.stAxisZ.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSIF GV_Axes.stAxisZ.bJogEnable AND GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].bJogRequestRisingEdge THEN // Jog from Handwheel
+				GV_Axes.stAxisZ.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_INCHING; // Jog Mode
+				GV_Axes.stAxisZ.bJogPlus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Plus); // Jog +
+				GV_Axes.stAxisZ.bJogMinus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Minus); // Jog -
+				GV_Axes.stAxisZ.lrJogPos:=GV_Handwheel.aId[1].lrJogIncrRequest; // Jog Position
+				GV_Axes.stAxisZ.lrJogVel:=GV_Axes.lrJogMaxSpeedAxisZ;//GV_Axes.lrVelocityAxisZ; // Jog Velocity
+				GV_Axes.stAxisZ.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisZ.bJogPlus:=FALSE; // Jog +
+				GV_Axes.stAxisZ.bJogMinus:=FALSE; // Jog -
+				GV_Axes.stAxisZ.lrJogPos:=0; // Jog Position
+				GV_Axes.stAxisZ.lrJogVel:=0; // Jog Velocity
+				GV_Axes.stAxisZ.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager				
+			END_IF
+		(*AUTO*)
+			GV_Axes.stAxisZ.bAutoEnable:=GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisZ.bAlAxisFault);
+			IF  GV_Axes.stAxisZ.bAutoEnable THEN
+				GV_Axes.stAxisZ.lrAutoVelAbs:=GV_Axes.lrVelocityAxisZ; // AUTO Velocity
+				GV_Axes.stAxisZ.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisZ.lrAutoVelAbs:=0; // AUTO Velocity
+				GV_Axes.stAxisZ.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisZ.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			END_IF
+		(*Referencing*)
+			GV_Axes.stAxisZ.bSetOffsetExecute:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisZ.bAlAxisFault) AND GV_HMI.iCurrentScreenNumber=308 AND GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Z AND GV_HMI.stAxes.rtButtonReferencingAxis.Q;
+			GV_Axes.stAxisZ.bDeleteOffsetExecute:=FALSE; // Not used in the HMI, we can use it from here or add it in the HMI later if it's necessary	
+		(*ReadParameter BOOL*)
+			GV_Axes.stAxisZ.bReadbEnable:=(GV_Axes.stAxisZ.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit OR GV_Axes.stAxisZ.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit) AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisZ.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisZ.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisZ.bReadbValid THEN
+							GV_Axes.stAxisZ.bReadEnMaxSoftPosLimit:=GV_Axes.stAxisZ.bReadbValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisZ.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisZ.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisZ.bReadbValid THEN
+							GV_Axes.stAxisZ.bReadEnMinSoftPosLimit:=GV_Axes.stAxisZ.bReadbValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisZ.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+				END_IF
+			END_IF
+		(*ReadParameter LREAL*)
+			GV_Axes.stAxisZ.bReadlrEnable:=(GV_Axes.stAxisZ.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit OR GV_Axes.stAxisZ.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit) AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisZ.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisZ.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisZ.bReadlrValid THEN
+							GV_Axes.stAxisZ.lrReadMaxSoftPosLimit:=GV_Axes.stAxisZ.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisZ.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit THEN
+					IF (NOT GV_General.bIsBlinking05s) THEN
+						GV_Axes.stAxisZ.mcAxisReadParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisZ.bReadlrValid THEN
+							GV_Axes.stAxisZ.lrReadMinSoftPosLimit:=GV_Axes.stAxisZ.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisZ.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+				END_IF
+			END_IF	
+		(*WriteParameter BOOL*)
+// 			GV_Axes.stAxisZ.bWritebExecute:=GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Z AND (GV_HMI.stAxes.rtButtonMinSofltLimit.Q OR GV_HMI.stAxes.rtButtonMaxSofltLimit.Q) AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational;
+// 			IF GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Moving) THEN
+// 				IF GV_HMI.stAxes.rtButtonMinSofltLimit.Q THEN
+// 					GV_Axes.stAxisZ.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+// 					IF GV_Axes.stAxisZ.bReadEnMinSoftPosLimit THEN
+// 						GV_Axes.stAxisZ.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisZ.bWritebValue:=TRUE;
+// 					END_IF
+// 				ELSIF GV_HMI.stAxes.rtButtonMaxSofltLimit.Q THEN
+// 					GV_Axes.stAxisZ.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+// 					IF GV_Axes.stAxisZ.bReadEnMaxSoftPosLimit THEN
+// 						GV_Axes.stAxisZ.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisZ.bWritebValue:=TRUE;
+// 					END_IF
+// 				END_IF
+// 			END_IF
+		(*WriteParameter LREAL*)
+// 			bAxisZWrite1:=FALSE;
+// 			bAxisZWrite2:=FALSE;
+// 			bAxisZWrite3:=FALSE;
+// 			bAxisZWrite4:=FALSE;
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrZPosition<>GV_Tool_Magazine.stManipulator.lrZTunnel THEN
+// 					GV_Axes.stAxisZ.lrValueMax:=-10;
+// 					GV_Axes.stAxisZ.lrValueMin:=-350;
+// 					bAxisZWrite1:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisZ.lrValueMax:=-10;
+// 					GV_Axes.stAxisZ.lrValueMin:=-800;
+// 					bAxisZWrite2:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrZPosition<>GV_Tool_Magazine.stManipulator.lrZTunnel THEN
+// 					GV_Axes.stAxisZ.lrValueMax:=-450;
+// 					GV_Axes.stAxisZ.lrValueMin:=-800;
+// 					bAxisZWrite3:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisZ.lrValueMax:=-10;
+// 					GV_Axes.stAxisZ.lrValueMin:=-800;
+// 					bAxisZWrite4:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			rtAxisZWrite1(CLK:=bAxisZWrite1);
+// 			rtAxisZWrite2(CLK:=bAxisZWrite2);
+// 			rtAxisZWrite3(CLK:=bAxisZWrite3);
+// 			rtAxisZWrite4(CLK:=bAxisZWrite4);
+// 			IF rtAxisZWrite1.Q OR rtAxisZWrite2.Q OR rtAxisZWrite3.Q OR rtAxisZWrite4.Q THEN
+// 				GV_Axes.stAxisZ.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+// 				GV_Axes.stAxisZ.lrWritelrValue:=GV_Axes.stAxisZ.lrValueMax;
+// 				bAxisZWriteMin:=FALSE;
+// 				bAxisZWriteMax:=TRUE;
+// 			END_IF
+// 			IF bAxisZWriteMax AND GV_Axes.stAxisZ.bWritelrBusy THEN
+// 				GV_Axes.stAxisZ.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+// 				GV_Axes.stAxisZ.lrWritelrValue:=GV_Axes.stAxisZ.lrValueMin;
+// 				bAxisZWriteMin:=TRUE;
+// 				bAxisZWriteMax:=FALSE;
+// 			END_IF
+// 			IF bAxisZWriteMin AND GV_Axes.stAxisZ.bWritelrBusy THEN
+// 				bAxisZWriteMin:=FALSE;
+// 				bAxisZWriteMax:=FALSE;
+// 			END_IF
+// 			GV_Axes.stAxisZ.bWritelrExecute:=(bAxisZWriteMax OR bAxisZWriteMin) AND GV_Axes.stAxisZ.bWritelrDone AND (NOT GV_Axes.stAxisZ.bWritelrBusy) AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational;
+// 			
+	(* Fb *)
+		IF GV_Axes.stAxisZ.bPresence THEN
+			fbAxisZ(
+					stAxis:=GV_Axes.stAxisZ,
+					);
+		END_IF
+
+(** AXIS Arm **)
+	(* Setup *)
+		GV_Axes.stAxisArm.bPresence:=TRUE; // Axis Presence
+		fbEventGroupAssignement(iEventGroup:=GV_Axes.stAxisArm.iEventGroup);
+		GV_Axes.stAxisArm.strIdHMI:='Arm'; // String for events on HMI
+		GV_Axes.stAxisArm.iIdHMI:=UDINT_TO_INT(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.NcToPlc.AxisId); // Number for events on HMI
+		(*Power*)
+			IF ((GV_General.bSafety AND GV_General.bPower AND (NOT GV_Axes.stAxisArm.bAlAxisFault)) OR (GV_Axes.stAxisArm.bPowerEnable AND ((GV_Axes.stAxisArm.bStopExecute AND (NOT GV_Axes.stAxisArm.bStopDone))) OR ((GV_Axes.stAxisArm.bHaltExecute AND (NOT GV_Axes.stAxisArm.bHaltDone))))) AND (NOT GV_General.bRebootRequest) AND (NOT GV_General.bShutdownRequest) THEN
+				GV_Axes.stAxisArm.bPowerEnable:=TRUE;
+			ELSE
+				GV_Axes.stAxisArm.bPowerEnable:=FALSE;
+			END_IF
+		(*Stop*)
+			GV_Axes.stAxisArm.bStopExecute:=(NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR GV_General.bRebootRequest OR GV_General.bShutdownRequest (*OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop))*); // Have to stop
+		(*Halt*)
+			GV_Axes.stAxisArm.bHaltExecute:=(GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to halt
+		(*Abort*)
+			//GV_Axes.stAxisArm.bAbort:=(NOT GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.NotMoving) AND (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to abort
+		(*Reset*)
+			GV_Axes.stAxisArm.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement	
+		(*Jog*)
+			GV_Axes.stAxisArm.bJogEnable:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisArm.bAlAxisFault) AND
+			((GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].eAxisSelect=ENUM_Axis_Select.Arm) OR ((NOT GV_Handwheel.aId[1].bEnable) AND GV_HMI.iCurrentScreenNumber=210 AND GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Arm));
+			IF GV_Axes.stAxisArm.bJogEnable AND (NOT GV_Handwheel.aId[1].bEnable) THEN // Jog from HMI
+				GV_Axes.stAxisArm.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_CONTINOUS; // Jog Mode
+				GV_Axes.stAxisArm.bJogPlus:=GV_HMI.stAxes.bButtonPlus; // Jog +
+				GV_Axes.stAxisArm.bJogMinus:=GV_HMI.stAxes.bButtonMinus; // Jog -
+				GV_Axes.stAxisArm.lrJogPos:=0; // Jog Position -> Only in mode INCHING
+				GV_Axes.stAxisArm.lrJogVel:=GV_Axes.lrVelocityAxisArm; // Jog Velocity
+				GV_Axes.stAxisArm.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSIF GV_Axes.stAxisArm.bJogEnable AND GV_Handwheel.aId[1].bEnable AND GV_Handwheel.aId[1].bJogRequestRisingEdge THEN // Jog from Handwheel
+				GV_Axes.stAxisArm.eJogMode:=TC2_MC2.E_JogMode.MC_JOGMODE_INCHING; // Jog Mode
+				GV_Axes.stAxisArm.bJogPlus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Plus); // Jog +
+				GV_Axes.stAxisArm.bJogMinus:=(GV_Handwheel.aId[1].eJogDirection=ENUM_Jog_Direction.Minus); // Jog -
+				GV_Axes.stAxisArm.lrJogPos:=GV_Handwheel.aId[1].lrJogIncrRequest; // Jog Position
+				GV_Axes.stAxisArm.lrJogVel:=GV_Axes.lrJogMaxSpeedAxisArm;//GV_Axes.lrVelocityAxisArm; // Jog Velocity
+				GV_Axes.stAxisArm.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisArm.bJogPlus:=FALSE; // Jog +
+				GV_Axes.stAxisArm.bJogMinus:=FALSE; // Jog -
+				GV_Axes.stAxisArm.lrJogPos:=0; // Jog Position
+				GV_Axes.stAxisArm.lrJogVel:=0; // Jog Velocity
+				GV_Axes.stAxisArm.lrJogAcc:=0; // Jog Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogDec:=0; // Jog Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrJogJerk:=0; // Jog Jerk -> see the Axis Configuration in the System Manager				
+			END_IF
+		(*AUTO*)
+			GV_Axes.stAxisArm.bAutoEnable:=GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisArm.bAlAxisFault);
+			IF  GV_Axes.stAxisArm.bAutoEnable THEN
+				GV_Axes.stAxisArm.lrAutoVelAbs:=GV_Axes.lrVelocityAxisArm; // AUTO Velocity
+				GV_Axes.stAxisArm.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			ELSE
+				GV_Axes.stAxisArm.lrAutoVelAbs:=0; // AUTO Velocity
+				GV_Axes.stAxisArm.lrAutoAccAbs:=0; // AUTO Acceleration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrAutoDecAbs:=0; // AUTO Decelration -> see the Axis Configuration in the System Manager
+				GV_Axes.stAxisArm.lrAutoJerkAbs:=0; // AUTO Jerk -> see the Axis Configuration in the System Manager
+			END_IF
+		(*Referencing*)
+			GV_Axes.stAxisArm.bSetOffsetExecute:=GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisArm.bAlAxisFault) AND GV_HMI.iCurrentScreenNumber=308 AND GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Arm AND GV_HMI.stAxes.rtButtonReferencingAxis.Q;
+			GV_Axes.stAxisArm.bDeleteOffsetExecute:=FALSE; // Not used in the HMI, we can use it from here or add it in the HMI later if it's necessary	
+		(*ReadParameter BOOL*)
+			GV_Axes.stAxisArm.bReadbEnable:=(GV_Axes.stAxisArm.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit OR GV_Axes.stAxisArm.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit) AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisArm.mcAxisReadParameterb=MC_AxisParameter.AxisEnMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisArm.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisArm.bReadbValid THEN
+							GV_Axes.stAxisArm.bReadEnMaxSoftPosLimit:=GV_Axes.stAxisArm.bReadbValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisArm.mcAxisReadParameterb=MC_AxisParameter.AxisEnMinSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisArm.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisArm.bReadbValid THEN
+							GV_Axes.stAxisArm.bReadEnMinSoftPosLimit:=GV_Axes.stAxisArm.bReadbValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisArm.mcAxisReadParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+				END_IF
+			END_IF
+		(*ReadParameter LREAL*)
+			GV_Axes.stAxisArm.bReadlrEnable:=(GV_Axes.stAxisArm.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit OR GV_Axes.stAxisArm.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit) AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+			IF GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational THEN
+				IF GV_Axes.stAxisArm.mcAxisReadParameterlr=MC_AxisParameter.AxisMaxSoftPosLimit THEN
+					IF GV_General.bIsBlinking05s THEN
+						GV_Axes.stAxisArm.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisArm.bReadlrValid THEN
+							GV_Axes.stAxisArm.lrReadMaxSoftPosLimit:=GV_Axes.stAxisArm.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSIF GV_Axes.stAxisArm.mcAxisReadParameterlr=MC_AxisParameter.AxisMinSoftPosLimit THEN
+					IF (NOT GV_General.bIsBlinking05s) THEN
+						GV_Axes.stAxisArm.mcAxisReadParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+					ELSE
+						IF GV_Axes.stAxisArm.bReadlrValid THEN
+							GV_Axes.stAxisArm.lrReadMinSoftPosLimit:=GV_Axes.stAxisArm.lrReadlrValue;
+						END_IF
+					END_IF
+				ELSE
+					GV_Axes.stAxisArm.mcAxisReadParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+				END_IF
+			END_IF	
+		(*WriteParameter BOOL*)
+// 			GV_Axes.stAxisArm.bWritebExecute:=GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Arm AND (GV_HMI.stAxes.rtButtonMinSofltLimit.Q OR GV_HMI.stAxes.rtButtonMaxSofltLimit.Q) AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+// 			IF GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational AND (NOT GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Moving) THEN
+// 				IF GV_HMI.stAxes.rtButtonMinSofltLimit.Q THEN
+// 					GV_Axes.stAxisArm.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMinSoftPosLimit;
+// 					IF GV_Axes.stAxisArm.bReadEnMinSoftPosLimit THEN
+// 						GV_Axes.stAxisArm.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisArm.bWritebValue:=TRUE;
+// 					END_IF
+// 				ELSIF GV_HMI.stAxes.rtButtonMaxSofltLimit.Q THEN
+// 					GV_Axes.stAxisArm.mcAxisWriteParameterb:=MC_AxisParameter.AxisEnMaxSoftPosLimit;
+// 					IF GV_Axes.stAxisArm.bReadEnMaxSoftPosLimit THEN
+// 						GV_Axes.stAxisArm.bWritebValue:=FALSE;
+// 					ELSE
+// 						GV_Axes.stAxisArm.bWritebValue:=TRUE;
+// 					END_IF
+// 				END_IF
+// 			END_IF
+		(*WriteParameter LREAL*)
+// 			bAxisArmWrite1:=FALSE;
+// 			bAxisArmWrite2:=FALSE;
+// 			bAxisArmWrite3:=FALSE;
+// 			bAxisArmWrite4:=FALSE;
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrArmPosition<>GV_Tool_Magazine.stManipulator.lrArmTunnel THEN
+// 					GV_Axes.stAxisArm.lrValueMax:=-10;
+// 					GV_Axes.stAxisArm.lrValueMin:=-350;
+// 					bAxisArmWrite1:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisArm.lrValueMax:=-10;
+// 					GV_Axes.stAxisArm.lrValueMin:=-800;
+// 					bAxisArmWrite2:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+// 				IF GV_Tool_Magazine.stManipulator.lrArmPosition<>GV_Tool_Magazine.stManipulator.lrArmTunnel THEN
+// 					GV_Axes.stAxisArm.lrValueMax:=-450;
+// 					GV_Axes.stAxisArm.lrValueMin:=-800;
+// 					bAxisArmWrite3:=TRUE;
+// 				ELSE
+// 					GV_Axes.stAxisArm.lrValueMax:=-10;
+// 					GV_Axes.stAxisArm.lrValueMin:=-800;
+// 					bAxisArmWrite4:=TRUE;
+// 				END_IF
+// 			END_IF
+// 			rtAxisArmWrite1(CLK:=bAxisArmWrite1);
+// 			rtAxisArmWrite2(CLK:=bAxisArmWrite2);
+// 			rtAxisArmWrite3(CLK:=bAxisArmWrite3);
+// 			rtAxisArmWrite4(CLK:=bAxisArmWrite4);
+// 			IF rtAxisArmWrite1.Q OR rtAxisArmWrite2.Q OR rtAxisArmWrite3.Q OR rtAxisArmWrite4.Q THEN
+// 				GV_Axes.stAxisArm.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMaxSoftPosLimit;
+// 				GV_Axes.stAxisArm.lrWritelrValue:=GV_Axes.stAxisArm.lrValueMax;
+// 				bAxisArmWriteMin:=FALSE;
+// 				bAxisArmWriteMax:=TRUE;
+// 			END_IF
+// 			IF bAxisArmWriteMax AND GV_Axes.stAxisArm.bWritelrBusy THEN
+// 				GV_Axes.stAxisArm.mcAxisWriteParameterlr:=MC_AxisParameter.AxisMinSoftPosLimit;
+// 				GV_Axes.stAxisArm.lrWritelrValue:=GV_Axes.stAxisArm.lrValueMin;
+// 				bAxisArmWriteMin:=TRUE;
+// 				bAxisArmWriteMax:=FALSE;
+// 			END_IF
+// 			IF bAxisArmWriteMin AND GV_Axes.stAxisArm.bWritelrBusy THEN
+// 				bAxisArmWriteMin:=FALSE;
+// 				bAxisArmWriteMax:=FALSE;
+// 			END_IF
+// 			GV_Axes.stAxisArm.bWritelrExecute:=(bAxisArmWriteMax OR bAxisArmWriteMin) AND GV_Axes.stAxisArm.bWritelrDone AND (NOT GV_Axes.stAxisArm.bWritelrBusy) AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+// 			
+	(* Fb *)
+		IF GV_Axes.stAxisArm.bPresence THEN
+			fbAxisArm(
+					stAxis:=GV_Axes.stAxisArm,
+					);
+		END_IF
+
+(* Axis Disabled *)
+	GV_Axes.bAxisAllDisabled:=GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Disabled AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Disabled AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Disabled AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Disabled;
+
+(* Axis Not Moving *)
+	GV_Axes.bAxisAllNotMoving:=GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.NotMoving AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.NotMoving AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.NotMoving AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.NotMoving;
+	
+(* Axis Operational *)
+	GV_Axes.bAxisAllOperational:=GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational AND GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

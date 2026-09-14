@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Manipulator_Gripper" Id="{03644c5d-e294-473c-90dc-cae4f67c3022}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Manipulator_Gripper
+//
+//						Structure datas pour la pince du manipulateur 		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.02.2026
+//Dernière modification : 09.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Manipulator_Gripper :
+STRUCT
+
+	(** SETUP TIME **)
+		tMouvementOpen : TIME ; // Value of the open mouvement duration
+		tMouvementClose : TIME ; // Value of the close mouvement duration
+	
+	(** SETUP INT **)
+		iMouvementOpen : INT ; // Value of the open mouvement duration
+		iMouvementClose : INT ; // Value of the close mouvement duration
+	
+	(** SETUP FLAG **)
+		bCheckSensorOpen : BOOL ; // Check the sensor after open mouvement
+		bCheckSensorClose : BOOL ; // Check the sensor after close mouvement
+		
+	(** PROCESS FLAG + R_TRIG **)
+		bButtonOpenManupulatorGripper : BOOL ; // Button for open the gripper of the Manipulator
+			rtOpenManupulatorGripper : R_Trig ; // Trigger for open the gripper of the Manipulator
+		bButtonCloseManupulatorGripper : BOOL ; // Button for open the gripper of the Manipulator
+			rtCloseManupulatorGripper : R_Trig ; // Trigger for open the gripper of the Manipulator
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

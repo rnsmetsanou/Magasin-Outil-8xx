@@ -1,0 +1,235 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CNC_Fanuc" Id="{f22d26ec-6267-45d0-abec-e5ce0969238b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CNC_Fanuc
+VAR_INPUT
+	(** INT **)
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+	stCncData : ST_CNC_Fanuc_Data ;
+END_VAR
+VAR
+	(** FB **)
+	fbInitEvents : FB_Init_Events ;
+	fbEventHMI : FB_Event_HMI ;
+	fbLifeBlink : FB_Blink ;
+		tonLifeON : TON ;
+		tonLifeOFF : TON ;
+	tonCommunicationFault : TON ;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_CNC_Fanuc
+//
+//								Gestion CNC Fanuc    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+IF GV_CNC.bPresence THEN
+		
+	(** EVENTS **)
+		IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+			(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+			GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.CncFanucAlarms.Alarm1,TRUE,0);
+			GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.CncFanucOpMessages.Message1,TRUE,0);	
+			fbInitEvents(iEventGroup:=GV_CNC.iEventGroup,strEventType:='ALARM',strEventGuid:='74BEA104-88D1-4E3B-ADCF-A7B9330EA49F',tcEventSeverity:=2);
+			fbInitEvents(iEventGroup:=GV_CNC.iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='30ABA539-286A-4F70-B3DD-90F6994B0D83',tcEventSeverity:=1);
+		END_IF
+	
+	(** ALARMS **)
+		(* Life bit *)
+				fbLifeBlink(tTimerValue:=T#500MS,bOut=>GV_CNC.stFanucData.stMagazineCNC.boLife); // Life bit Magazine->CNC
+			(*Fault*)
+				tonLifeON(IN:=GV_CNC.stFanucData.stCncMagazine.biLife,PT:=T#1000MS); // Life bit fault CNC->Magazine
+				tonLifeOFF(IN:=(NOT GV_CNC.stFanucData.stCncMagazine.biLife),PT:=T#1000MS); // Life bit fault CNC->Magazine
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlLife:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF (tonLifeON.Q OR tonLifeOFF.Q) AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlLife:=TRUE;
+				END_IF
+			(*Alarm 1 = Life bit fault*)	
+				IF GV_CNC.bAlLife THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[1].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+
+		(* Communication *)
+			(*Fault*)
+				GV_CNC.iCommunicationStatus:=BOOL_TO_INT(GV_CNC.bAlLife); // Life bit fault = Communication fault
+				tonCommunicationFault(IN:=GV_CNC.iCommunicationStatus<>0,PT:=T#2000MS); // Communication fault CNC<->Magazine
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlCommunication:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF tonCommunicationFault.Q AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlCommunication:=TRUE;
+				END_IF
+			(*Alarm 2 = Communication fault*)	
+				IF GV_CNC.bAlCommunication THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[2].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=2,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=2,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+
+		(* Emergency Stop *)
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlEmergencyStop:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF GV_CNC.stFanucData.stCncMagazine.biEmergencyStop AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlEmergencyStop:=TRUE;
+				END_IF
+			(*Alarm 3 = External emergency stop fault*)	
+				IF GV_CNC.bAlEmergencyStop THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[3].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=3,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=3,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+
+		(* In Fault *)
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlCncFault:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF GV_Events.aEventGroup[GV_CNC.iEventGroup].bAlarmPresence AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlCncFault:=TRUE;
+				END_IF
+			(*Alarm 4 = CNC in fault*)	
+				IF GV_CNC.bAlCncFault THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[4].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=4,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=4,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+			
+		(* No Air *)
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlNoAir:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF (NOT GV_CNC.stFanucData.stCncMagazine.biAir) AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlNoAir:=TRUE;
+				END_IF
+			(*Alarm 5 = No air fault*)	
+				IF GV_CNC.bAlNoAir THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[5].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=5,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=5,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+
+		(* No Power *)
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlNoPower:=FALSE;
+				END_IF
+			(*Set Fault*)
+				IF (NOT GV_CNC.stFanucData.stCncMagazine.biPower) AND GV_CNC.bEnable=TRUE THEN
+					GV_CNC.bAlNoPower:=TRUE;
+				END_IF
+			(*Alarm 6 = No power fault*)	
+				IF GV_CNC.bAlNoPower THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[6].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=6,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=6,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+			
+		(* Focas Fault *)
+			(*Reset Fault = Ack*)
+				IF GV_CNC.bEventAck THEN
+					GV_CNC.bAlFocas:=FALSE;
+				END_IF
+			(*Set Fault*)//-> Set in Focas
+				//IF FALSE AND GV_CNC.bEnable=TRUE THEN
+				//	GV_CNC.bAlFocas:=TRUE;
+				//END_IF
+			(*Alarm 7 = Focas fault*)	
+				IF GV_CNC.bAlFocas THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aAlarm[7].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=7,strEventType:='ALARM',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=7,strEventType:='ALARM',bEventSet:=FALSE);
+				END_IF
+	
+	(** OpMESSAGES **)
+		(* CNC Not Ready *)
+			(*Set/Reset*)
+				IF (NOT GV_Events.aEventGroup[GV_CNC.iEventGroup].bAlarmPresence) THEN
+					GV_CNC.bReady:=TRUE;
+				END_IF
+			(*Message 1 = Not ready*)
+				IF (NOT GV_CNC.bReady) AND GV_CNC.bEnable=TRUE THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[1].fbAlarm.ipArguments.Clear();
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=FALSE);
+				END_IF
+			
+		(* CNC Not In Cycle *)
+			(*Message 2 = Not in cycle*)
+				IF (NOT GV_CNC.stFanucData.stCncMagazine.biInCycle) AND GV_CNC.bEnable=TRUE THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[2].fbAlarm.ipArguments.Clear();
+					//fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=2,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=2,strEventType:='OpMESSAGE',bEventSet:=FALSE);
+				END_IF
+				
+		(* CNC en cycle *)
+			(*Message 3 = In cycle*)
+				IF GV_CNC.stFanucData.stCncMagazine.biInCycle AND GV_CNC.bEnable=TRUE THEN
+					GV_Events.aEventGroup[GV_CNC.iEventGroup].aOpMessage[3].fbAlarm.ipArguments.Clear();
+					//fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=3,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_CNC.iEventGroup,iIdEvent:=3,strEventType:='OpMESSAGE',bEventSet:=FALSE);
+				END_IF
+			
+		(* Alarm present *)
+			//fbEventHMI.M_Event_Group_State(iEventGroup:=GV_CNC.iEventGroup,bEventPresence=>GV_Events.aEventGroup[GV_CNC.iEventGroup].bAlarmPresence);
+			
+	(** CNC MANAGEMENT **)
+	
+		(* Output *)
+			GV_CNC.stFanucData.stMagazineCNC.boToolAnticipated:=(GV_CNC.stFanucData.stCncMagazine.biToolAnticipation AND GV_Cycle.bAnticipateLoadDone); // Next tool is prepared/anticipated -> X0.1
+			GV_CNC.stFanucData.stMagazineCNC.boArmInCncPosition:=GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.CNC; // Loading Arm in position in the CNC -> X0.6
+			GV_CNC.stFanucData.stMagazineCNC.boNoFault:=(NOT GV_HMI.bAlarm); // No Fault on the Magazine -> X0.7
+			
+// 			IF GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmManipulator+GV_Tool_Magazine.stArm.lrArmPositionTol) THEN  //(GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Home OR GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Work1);
+// 				GV_CNC.stFanucData.stMagazineCNC.boArmOutOfCncArea:=TRUE;// Changing Arm out of Cnc area -> X1.0
+// 			ELSE
+// 				GV_CNC.stFanucData.stMagazineCNC.boArmOutOfCncArea:=FALSE;// Changing Arm out of Cnc area -> X1.0
+// 			END_IF
+			GV_CNC.stFanucData.stMagazineCNC.boArmOutOfCncArea:=GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmManipulator+GV_Tool_Magazine.stArm.lrArmPositionTol);
+			GV_CNC.stFanucData.stMagazineCNC.boIntermediateDoorOpen:=GV_Cyltronic.aId[1].bWorkPositionDone AND GV_IO.diIntermediateDoorNotClosed; // Intermediate Door is open -> X1.3
+			GV_CNC.stFanucData.stMagazineCNC.boIntermediateDoorClose:=(NOT GV_IO.diIntermediateDoorNotClosed); // Intermediate Door is close -> X1.4
+			
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

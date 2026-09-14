@@ -1,0 +1,244 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Cycle_AlarmsMessages" Id="{397a3c06-c04a-4e1f-96a3-5c69a58066ae}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Cycle_AlarmsMessages
+VAR
+	(** UDINT **)
+		udiErrorCycleID : UDINT ; // Error Id of the Cycle
+		udiErrorActionID : UDINT ; // Error Id of the Action
+		udiErrorSubActionID : UDINT ; // Error Id of the SubAction
+		
+	(** INT **)
+		iAckLoop : INT ; // Int for the Ack Loop
+		
+	(** FB **)
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+		fbInitEvents : FB_Init_Events ;
+		fbEventHMI : FB_Event_HMI ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			PRG_Cycle_AlarmsMessages
+//
+//				Gestion des Alarmes et Messages du cycle en fonction des ID 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 18.02.2026
+//Dernière modification : 18.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 18.02.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** EVENTS **)
+	(* Event assign *)
+		fbEventGroupAssignement(iEventGroup:=GV_Cycle.iEventGroup);
+	(* Event Ack *)
+		GV_Cycle.bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement
+	(* Init on FirstCycle *)
+		IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+			(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+			GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.CycleAlarms.Alarm1,TRUE,0);
+			GV_Events.aEventGroup[GV_Cycle.iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.CycleMessages.Message1,TRUE,0);	
+			fbInitEvents(iEventGroup:=GV_Cycle.iEventGroup,strEventType:='ALARM',strEventGuid:='9B09F55D-389F-4443-8546-009FFE59F41C',tcEventSeverity:=2);
+			fbInitEvents(iEventGroup:=GV_Cycle.iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='302A4BE8-D83F-4A93-942B-02F50E02AD0D',tcEventSeverity:=1);
+		END_IF
+
+(** ALARMS **)
+	// GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[1] -> GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[20] = Alarm for Cycle
+	// GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[21] -> GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[100] = Alarm for Action
+	// GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[101] -> GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[200] = Alarm for SubAction
+	
+	(* Error ID by Level *)
+		IF GV_Cycle.udiErrorID>0 THEN
+			udiErrorSubActionID:=GV_Cycle.udiErrorID MOD 100;
+			udiErrorActionID:=((GV_Cycle.udiErrorID MOD 1000)/100)*100;
+			udiErrorCycleID:=GV_Cycle.udiErrorID-(udiErrorActionID+udiErrorSubActionID);
+		ELSE
+			udiErrorSubActionID:=0;
+			udiErrorActionID:=0;
+			udiErrorCycleID:=0;
+		END_IF
+
+
+	(* Error Cycle *)
+		IF udiErrorCycleID<>0 THEN
+			CASE udiErrorCycleID OF
+				
+				1000 : (*FB_01_Action_PickToolMagazine*)
+						GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[1].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+						fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=TRUE);
+
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									100 : (*Step 1 = Tunnel passage = FB_Manipulator_Tunnel*)
+											GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[21].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorActionID);
+											fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=21,strEventType:='ALARM',bEventSet:=TRUE);
+					
+										(* Error SubAction *)
+										IF udiErrorSubActionID<>0 THEN
+											CASE udiErrorSubActionID OF
+													
+												1 : (*Unknow Manipulator position*)
+													GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[101].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorSubActionID);
+													fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=101,strEventType:='ALARM',bEventSet:=TRUE);
+												2 : (*Unknow Location position*)
+												3 : (*Unknow Manipulator and Location position*)
+												
+												21 : (*Y Axis Error*)
+												23 : (*X Axis Error*)
+												25 : (*Z Axis Error*)
+												
+												29 : (*Timeout Error*)
+												
+												ELSE
+													//; // Unknow Error
+													
+											END_CASE
+										END_IF
+							
+									200 : (*Step 2 = Move the manipulator above the tool/location (Z->X->Y)*)
+									300 : (*Step 3 = Operate manipulator gripper to unclamp = FB_Manipulator_Gripper*)
+									400 : (*Step 4 = Move the manipulator on the tool/location (Z)*)
+									500 : (*Step 5 = Release manipulator gripper to clamp = FB_Manipulator_Gripper*)
+									600 : (*Step 6 = Move the manipulator in front of tool/location (Y) -> Pull the tool from the magazine*)
+									700 : (*Step 7 = Tunnel passage = FB_Manipulator_Tunnel*)
+									800 : (*Step 8 = Move the manipulator to be ready for the transfer to the Changing Arm (X->Z)*)
+									
+									ELSE
+										//; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				2000 : (*FB_02_Action_TransferManipulatorToArm*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[2].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=2,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				3000 : (*FB_03_Action_TransferArmCnc*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[3].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=3,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				4000 : (*FB_04_Action_TransferArmToManipulator*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[4].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=4,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				5000 : (*FB_05_Action_PlaceToolMagazine*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[5].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=5,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				10000 : (*FB_10_Action_ToolMagazineCheckOne*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[10].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=10,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+
+				11000 : (*FB_11_Action_ToolMagazineCheckFull*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[11].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=11,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				20000 : (*FB_20_Action_Init*)
+					GV_Events.aEventGroup[GV_Cycle.iEventGroup].aAlarm[20].fbAlarm.ipArguments.Clear().AddUDInt(GV_Cycle.udiErrorID).AddUDInt(udiErrorCycleID);
+					fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=20,strEventType:='ALARM',bEventSet:=TRUE);
+						(* Error Action *)
+							IF udiErrorActionID<>0 THEN
+								CASE udiErrorActionID OF
+									
+									//ICI;
+									
+									ELSE
+										//ICI; // Unknow Error
+									
+								END_CASE
+							END_IF
+
+				ELSE
+					//ICI; // Unknow Error
+				
+			END_CASE
+		END_IF
+
+	(* Acknowledgement *)
+		IF GV_Cycle.bEventAck THEN
+			GV_Cycle.udiErrorID:=0;
+			FOR iAckLoop:=1 TO GV_Events.iMaxAlarms BY 1 DO
+				fbEventHMI(iEventGroup:=GV_Cycle.iEventGroup,iIdEvent:=iAckLoop,strEventType:='ALARM',bEventSet:=FALSE);
+			END_FOR
+		END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

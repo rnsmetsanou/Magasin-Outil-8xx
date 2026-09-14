@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Cyltronic" Id="{848a0863-a2f2-4af9-b22d-ca4174c68db2}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Cyltronic
+VAR
+	(** INT **)
+		iCyltronicLoop : INT := 0 ; // INT use in a FOR Loop
+	
+	(** FB **)
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+		fbCyltronic : FB_Cyltronic ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Cyltronic
+//
+//					Paramétrage porte(s) Cyltronic + Appel Gestion  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.03.2026
+//Dernière modification : 04.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** CYLTRONIC : CTC-060-K10-0200-A-IOL -> INTERMEDIATE DOOR **)
+	GV_Cyltronic.aId[1].bPresence:=TRUE;
+	fbEventGroupAssignement(iEventGroup:=GV_Cyltronic.aId[1].iEventGroup);
+	GV_Cyltronic.aId[1].iIdHMI:=1; // Number for events on HMI
+	GV_Cyltronic.aId[1].eType:=ENUM_Cyltronic_Type.IOLink; // Cyltronic type
+	(* For IO/Link *)
+		GV_Cyltronic.aId[1].netID:='10.1.176.55.3.8'; // AmsNetId for IO/Link 10.1.176.55.3.8
+		GV_Cyltronic.aId[1].ePort:=E_IolPort.Port1; // Port Number
+		//GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning:=150; // Min = 1mm/s - Max = 600mm/s at voltage of 48V
+		//GV_Cyltronic.aId[1].stConfigWrite.MaxForceFreePositioning:=120; // Min = 0N - Max = 400N (500N in datasheet)
+		//GV_Cyltronic.aId[1].stConfigWrite.MaxAccDec:=2; // Min = 0.01m/s² - Max = 4m/s² (20m/s² in datasheet at voltage of 48V)
+		//GV_Cyltronic.aId[1].stConfigWrite.EndPositionIn:=200.0; // mm Depend of the hardware (see datasheet)
+		//GV_Cyltronic.aId[1].stConfigWrite.EndPositionOut:=0.0; // mm Depend of the hardware (see datasheet)	
+		//GV_Cyltronic.aId[1].stConfigWrite.HomeMode:=CTC_HOME_MODE_ENDSTOPOUT; // Home on In
+		(*Limit MaxSpeedFreePositioning*)
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning<1 THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning:=1;
+			END_IF
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning>GV_Cyltronic.aId[1].stConfigDefault.MaxSpeedFreePositioning THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning:=GV_Cyltronic.aId[1].stConfigDefault.MaxSpeedFreePositioning;
+			END_IF
+		(*Limit MaxForceFreePositioning*)
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxForceFreePositioning<0 THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxSpeedFreePositioning:=0;
+			END_IF
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxForceFreePositioning>GV_Cyltronic.aId[1].stConfigDefault.MaxForceFreePositioning THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxForceFreePositioning:=GV_Cyltronic.aId[1].stConfigDefault.MaxForceFreePositioning;
+			END_IF
+		(*Limit MaxAccDec*)
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxAccDec<0.01 THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxAccDec:=0.01;
+			END_IF
+			IF GV_Cyltronic.aId[1].stConfigWrite.MaxAccDec>GV_Cyltronic.aId[1].stConfigDefault.MaxAccDec THEN
+				GV_Cyltronic.aId[1].stConfigWrite.MaxAccDec:=GV_Cyltronic.aId[1].stConfigDefault.MaxAccDec;
+			END_IF
+		(*Power*)
+			IF (GV_General.bSafety AND GV_General.bPower AND (NOT GV_Cyltronic.aId[1].bAlDriveFault)) OR (GV_Cyltronic.aId[1].bPowerEnable AND GV_Cyltronic.aId[1].bHaltExecute AND (NOT GV_Cyltronic.aId[1].bHaltDone))  THEN
+				GV_Cyltronic.aId[1].bPowerEnable:=TRUE;
+			ELSE
+				GV_Cyltronic.aId[1].bPowerEnable:=FALSE;
+			END_IF
+		(*Halt*)
+			GV_Cyltronic.aId[1].bHaltExecute:=(NOT GV_General.bSafety) OR (NOT GV_General.bPower) OR GV_General.bRebootRequest OR GV_General.bShutdownRequest OR (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bCycleInProgress AND (NOT GV_Cycle.bStartStop)); // Have to halt
+		(*Reset*)
+			GV_Cyltronic.aId[1].bEventAck:=GV_HMI.bEventAck; // Events Acknowledgement
+
+	(* Work Manual Authorization *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_READY AND GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmManipulator+GV_Tool_Magazine.stArm.lrArmPositionTol) (*(GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Home OR GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Work1)*) AND ((GV_CNC.stFanucData.stCncMagazine.biAllowedOpenIntermediateDoor AND GV_CNC.bEnable) OR (NOT GV_CNC.bEnable)) AND (NOT GV_Cyltronic.aId[1].bRestPositionCmd) (*AND (NOT GV_Cyltronic.aId[1].bWorkPositionDone)*) THEN
+			GV_Cyltronic.aId[1].bAuthorizationManuCyltronicWork:=TRUE;
+		ELSE
+			GV_Cyltronic.aId[1].bAuthorizationManuCyltronicWork:=FALSE;
+			//GV_Cyltronic.aId[1].bWorkPositionCmd:=FALSE;
+		END_IF
+	(* Work Auto Authorization *)
+		IF (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_READY AND (GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Home OR GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Work1) AND ((GV_CNC.stFanucData.stCncMagazine.biAllowedOpenIntermediateDoor AND GV_CNC.bEnable) OR (NOT GV_CNC.bEnable)) AND (NOT GV_Cyltronic.aId[1].bRestPositionCmd)) THEN
+			GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicWork:=TRUE;
+		ELSE
+			GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicWork:=FALSE;
+			GV_Cycle.bOpenIntermediateDoorRequest:=FALSE;
+		END_IF
+	(* Work Command *)
+		GV_Cyltronic.aId[1].rtWorkPositionCmd(CLK:=GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicWork AND (NOT GV_Cycle.bCloseIntermediateDoorRequest) AND GV_Cycle.bOpenIntermediateDoorRequest);
+		IF (GV_Cyltronic.aId[1].rtWorkPositionCmd.Q OR (GV_Cyltronic.aId[1].bAuthorizationManuCyltronicWork AND GV_HMI.stCyltronic.rtButtonMoveWork.Q)) THEN
+			GV_Cyltronic.aId[1].bWorkPositionCmd:=TRUE;
+		END_IF
+		IF GV_Cyltronic.aId[1].bWorkPositionCmd AND (GV_Cyltronic.aId[1].bWorkPositionDone OR GV_HMI.bEventAck) THEN
+			GV_Cyltronic.aId[1].bWorkPositionCmd:=FALSE;
+		END_IF
+		
+	(* Rest Manual Authorization *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.MANU AND GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_READY AND GV_Tool_Magazine.stArm.lrArmPosition<=(GV_Tool_Magazine.stArm.lrArmManipulator+GV_Tool_Magazine.stArm.lrArmPositionTol) (*(GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Home OR GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Work1)*) AND (NOT GV_Cyltronic.aId[1].bWorkPositionCmd) (*AND (NOT GV_Cyltronic.aId[1].bRestPositionDone)*) THEN
+			GV_Cyltronic.aId[1].bAuthorizationManuCyltronicRest:=TRUE;
+		ELSE
+			GV_Cyltronic.aId[1].bAuthorizationManuCyltronicRest:=FALSE;
+			//GV_Cyltronic.aId[1].bRestPositionCmd:=FALSE;
+		END_IF
+	(* Rest Auto Authorization *)
+		IF (GV_OpMode.eOpMode=ENUM_OpMode.AUTO AND GV_Cycle.bStartStop AND GV_Cyltronic.aId[1].eState=teCTCStep.FB_CTC_READY AND (GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Home OR GV_Tool_Magazine.stArm.ePositionAxis=ENUM_Position_Axis.Work1) AND (NOT GV_Cyltronic.aId[1].bWorkPositionCmd)) THEN
+			GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicRest:=TRUE;
+		ELSE
+			GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicRest:=FALSE;
+			GV_Cycle.bCloseIntermediateDoorRequest:=FALSE;
+		END_IF
+	(* Rest Command *)
+		GV_Cyltronic.aId[1].rtRestPositionCmd(CLK:=GV_Cyltronic.aId[1].bAuthorizationAutoCyltronicRest AND GV_Cycle.bCloseIntermediateDoorRequest AND (NOT GV_Cycle.bOpenIntermediateDoorRequest));
+		IF (GV_Cyltronic.aId[1].rtRestPositionCmd.Q OR (GV_Cyltronic.aId[1].bAuthorizationManuCyltronicRest AND GV_HMI.stCyltronic.rtButtonMoveRest.Q)) THEN
+			GV_Cyltronic.aId[1].bRestPositionCmd:=TRUE;
+		END_IF
+		IF GV_Cyltronic.aId[1].bRestPositionCmd AND (GV_Cyltronic.aId[1].bRestPositionDone OR GV_HMI.bEventAck) THEN
+			GV_Cyltronic.aId[1].bRestPositionCmd:=FALSE;
+		END_IF
+		
+		
+(** OTHER CYLTRONIC **)
+//...
+
+(** FB **)
+	FOR iCyltronicLoop:=1 TO GV_Cyltronic.iMaxCyltronic DO
+		fbCyltronic(iCyltroNumber:=iCyltronicLoop,StCyltronic:=GV_Cyltronic.aId[iCyltronicLoop]); // Cyltronic function block
+	END_FOR
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

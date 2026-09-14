@@ -1,0 +1,1024 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CTC_PlcOpen" Id="{9e8d2c19-288c-4c08-83d6-9d62b7687029}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CTC_PlcOpen
+VAR_INPUT
+	ProcessDataInRaw 	:ARRAY[0..13] OF BYTE;
+	Enable				:BOOL;
+	Power				:BOOL;
+	Teach				:BOOL;
+	Home				:BOOL;
+	MoveIn				:BOOL;
+	MoveOut				:BOOL;
+	MoveAbsolute		:BOOL;
+	MoveContinuous		:BOOL;
+	Halt				:BOOL;
+	Reset				:BOOL;
+	BrakeMode			:teCTCBrakeMode := CTC_BRAKE_MODE_OFF;
+	BrakeDelay			:UINT := 100;
+	stParameters		:tstCTCParameters;
+	stConfiguration		:tstCTCConfiguration;
+END_VAR
+VAR_OUTPUT
+	ProcessDataOutRaw 	:ARRAY[0..7] OF BYTE;
+	State				:teCTCStep;
+	ControllerOn		:BOOL;
+	ActualPosition		:REAL;
+	ActualVelocity		:REAL;
+	ActualForce			:REAL;
+	Homed				:BOOL;
+	Busy				:BOOL;
+	Done				:BOOL;
+	Warning				:BOOL;
+	WarningID			:teCTCWarningID;
+	Error				:BOOL;
+	ReleaseBrake		:BOOL;
+	stProcessDataIn		:tstCTCProcessDataIn;
+	stProcessDataOut	:tstCTCProcessDataOut;
+END_VAR
+VAR
+	bInit				:BOOL := FALSE;
+	eStep				:teCTCStep;
+	unionContainer		:tuReal;
+	stInternalCommands	:tstCTCInternalCommands;
+	R_TRIG_Array		:ARRAY[0..6] OF R_TRIG;
+	R_TRIG_Reset		:R_TRIG;
+	iIntermediateStep 	:USINT;
+	TON_MMComplete		:TON;
+	TON_Reset			:TON;
+	TON_Brake			:TON;
+	bSetpointError 		:BOOL;
+	bHomeTeachFailed	:BOOL;
+END_VAR
+VAR CONSTANT
+	FREE_POS_TOL		:REAL := 0.2;
+	HALTED_VEL_TOL		:REAL := 1.0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+	FB_CTC_PlcOpen V3.0
+	Cyltronic AG, September 2024
+
+	Function Block that handles an CTC/L/R IO-Link Cylinder, based on Standard Motion
+	Block (PLCOpen)
+
+	V3.0: Added brake functionality
+
+	Cyltronic Firmware compatibility:
+	< V2.06.02: This version only has the option "Home Mode Direct", so it's not really 
+				usable with this Function Block, as the user can only teach or home direct
+	= V2.06.02: This FW version has no "Enable" functionality, so it's not compatible
+				with a break mode. DO NOT USE WITH BREAK MODE
+	> V2.06.02: Compatible with break mode
+
+	NOTE:
+	stConfiguration must match Cyltronic drive acyclic configuration parameters, 
+	otherwise this function block will not work as intended
+*)
+
+// =================================================================================
+// === PROCESS DATA INPUTS =========================================================
+// =================================================================================
+// Status = Byte 0
+stProcessDataIn.State := BYTE_TO_USINT(ProcessDataInRaw[0]);
+// StatusBits = Byte 1
+stProcessDataIn.stStatusBits.TrackingErrorToleranceExceeded	:= ProcessDataInRaw[1].7;
+stProcessDataIn.stStatusBits.WarningActive 					:= ProcessDataInRaw[1].6;
+stProcessDataIn.stStatusBits.MotionCommandCompleted 		:= ProcessDataInRaw[1].5;
+stProcessDataIn.stStatusBits.MotionModeActive 				:= ProcessDataInRaw[1].4;
+stProcessDataIn.stStatusBits.LimitSwitchIn 					:= ProcessDataInRaw[1].3;
+stProcessDataIn.stStatusBits.LimitSwitchOut 				:= ProcessDataInRaw[1].2;
+stProcessDataIn.stStatusBits.Homed 							:= ProcessDataInRaw[1].1;
+stProcessDataIn.stStatusBits.Ready 							:= ProcessDataInRaw[1].0;
+// Actual Position = Bytes 2-5
+unionContainer.aBytes[0] := ProcessDataInRaw[5];
+unionContainer.aBytes[1] := ProcessDataInRaw[4];
+unionContainer.aBytes[2] := ProcessDataInRaw[3];
+unionContainer.aBytes[3] := ProcessDataInRaw[2];
+stProcessDataIn.ActualPosition := unionContainer.rReal;
+// Actual Speed = Bytes 6-9
+unionContainer.aBytes[0] := ProcessDataInRaw[9];
+unionContainer.aBytes[1] := ProcessDataInRaw[8];
+unionContainer.aBytes[2] := ProcessDataInRaw[7];
+unionContainer.aBytes[3] := ProcessDataInRaw[6];
+stProcessDataIn.ActualSpeed := unionContainer.rReal;
+// Actual Force = Bytes 10-13
+unionContainer.aBytes[0] := ProcessDataInRaw[13];
+unionContainer.aBytes[1] := ProcessDataInRaw[12];
+unionContainer.aBytes[2] := ProcessDataInRaw[11];
+unionContainer.aBytes[3] := ProcessDataInRaw[10];
+stProcessDataIn.ActualForce := unionContainer.rReal;
+
+// =================================================================================
+// === Catch rising edges ==========================================================
+// =================================================================================
+// Some commands only valid on rising edges, so we catch these and set internal commands
+R_TRIG_Array[0](CLK := Halt);
+IF (R_TRIG_Array[0].Q) THEN
+stInternalCommands.bHalt := TRUE;
+ELSIF (NOT Halt) THEN
+    stInternalCommands.bHalt := FALSE;
+END_IF;
+
+R_TRIG_Array[1](CLK := Home);
+IF (R_TRIG_Array[1].Q) THEN
+    stInternalCommands.bHome := TRUE;
+ELSIF (NOT Home) THEN
+    stInternalCommands.bHome := FALSE;
+END_IF;
+
+R_TRIG_Array[2](CLK := Teach);
+IF (R_TRIG_Array[2].Q) THEN
+    stInternalCommands.bTeach := TRUE;
+ELSIF (NOT Teach) THEN
+    stInternalCommands.bTeach := FALSE;
+END_IF;
+
+R_TRIG_Array[3](CLK := MoveAbsolute);
+IF (R_TRIG_Array[3].Q) THEN
+    stInternalCommands.bMoveAbsolute := TRUE;
+ELSIF (NOT MoveAbsolute) THEN
+    stInternalCommands.bMoveAbsolute := FALSE;
+END_IF;
+
+R_TRIG_Array[4](CLK := MoveContinuous);
+IF (R_TRIG_Array[4].Q) THEN
+    stInternalCommands.bMoveContinuous := TRUE;
+ELSIF (NOT MoveContinuous) THEN
+    stInternalCommands.bMoveContinuous := FALSE;
+END_IF;
+
+R_TRIG_Array[5](CLK := MoveIn);
+IF (R_TRIG_Array[5].Q) THEN
+    stInternalCommands.bMoveIn := TRUE;
+ELSIF (NOT MoveIn) THEN
+    stInternalCommands.bMoveIn := FALSE;
+END_IF;
+
+R_TRIG_Array[6](CLK := MoveOut);
+IF (R_TRIG_Array[6].Q) THEN
+	stInternalCommands.bMoveOut := TRUE;
+ELSIF (NOT MoveOut) THEN
+    stInternalCommands.bMoveOut := FALSE;
+END_IF;
+
+// =================================================================================
+// === CTC State Machine ===========================================================
+// =================================================================================
+// Global guards which force state machine into defined states	
+IF(Enable = FALSE)THEN
+	stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+	eStep := FB_CTC_FUNCTIONBLOCK_DISABLED;
+ELSIF(eStep > FB_CTC_CONNECTING AND stProcessDataIn.State = CTC_STATUS_BYTE_IDLE)THEN
+	eStep := FB_CTC_FUNCTIONBLOCK_DISABLED;
+END_IF
+IF (Enable = FALSE) THEN
+    stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+    eStep := FB_CTC_FUNCTIONBLOCK_DISABLED;
+END_IF;
+
+CASE eStep OF
+        // ========================================================
+        // === FB FUNCTIONBLOCK DISABLED ==========================
+        // ========================================================
+    FB_CTC_FUNCTIONBLOCK_DISABLED:
+        
+        stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+		ReleaseBrake := FALSE;
+		
+		Busy := FALSE;
+		Done := FALSE;
+		Error := FALSE;
+        
+        IF (Enable = TRUE) THEN
+            eStep := FB_CTC_CONNECTING;
+        END_IF;
+        
+        // ========================================================
+        // === FB_CTC_CONNECTING ==================================
+        // ========================================================
+    FB_CTC_CONNECTING:
+        
+        IF (stProcessDataIn.State = CTC_STATUS_BYTE_READY) THEN
+            eStep := FB_CTC_DISABLED;
+        ELSIF (Reset = TRUE) THEN
+            eStep := FB_CTC_RESET;
+        ELSIF (stProcessDataIn.State = CTC_STATUS_BYTE_ERROR) THEN
+            Busy := FALSE;
+            Done := FALSE;
+            Error := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_ERROR;
+        END_IF;
+        
+        // ========================================================
+        // === DISABLED ===========================================
+        // ========================================================
+    FB_CTC_DISABLED:
+        
+        stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+        
+        Busy := FALSE;
+        Done := FALSE;
+        Error := FALSE;
+        
+		IF((Power = TRUE) AND (stProcessDataIn.State = CTC_STATUS_BYTE_READY))THEN
+				
+			// homed drive may be powered on...
+			IF(stProcessDataIn.stStatusBits.Homed = TRUE)THEN
+				
+				// we power on by setting targetpos=actualpos, with a tolerance when we are near the configured end positions
+				IF(stProcessDataIn.ActualPosition < stConfiguration.EndPositionIn 
+					AND stProcessDataIn.ActualPosition >= (stConfiguration.EndPositionIn - FREE_POS_TOL))THEN
+					stProcessDataOut.TargetPosition := stConfiguration.EndPositionIn;
+				ELSIF(stProcessDataIn.ActualPosition > stConfiguration.EndPositionOut 
+					AND stProcessDataIn.ActualPosition <= (stConfiguration.EndPositionOut + FREE_POS_TOL))THEN
+					stProcessDataOut.TargetPosition := stConfiguration.EndPositionOut;
+				ELSE
+					stProcessDataOut.TargetPosition := stProcessDataIn.ActualPosition;
+				END_IF
+				
+				stProcessDataOut.MotionMode := CTC_MOTION_MODE_FREEPOS;
+				
+				TON_Brake.IN := FALSE;
+				eStep := FB_CTC_ENABLING;
+				
+			ELSE
+				// ... unhomed drive stays powered off and brake stays active
+				eStep := FB_CTC_READY;
+			END_IF
+			ELSE
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+		END_IF
+       
+        // === Catch error
+        IF (stProcessDataIn.State = CTC_STATUS_BYTE_ERROR) THEN
+            Busy := FALSE;
+            Done := FALSE;
+            Error := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_ERROR;
+        END_IF;
+        
+		
+		// ========================================================
+		// === ENABLING ===========================================
+		// ========================================================
+	FB_CTC_ENABLING:
+		
+		// delay releasing brake according brake mode. Wait for drive status active
+		IF(BrakeMode = CTC_BRAKE_MODE_WHEN_DISABLED)THEN
+			TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+			TON_Brake.IN := TRUE;
+			IF(TON_Brake.Q AND (stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE))THEN
+				TON_Brake.IN := FALSE;
+				ReleaseBrake := TRUE;
+				eStep := FB_CTC_READY;
+			END_IF
+		ELSIF(stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE)THEN
+			TON_Brake.IN := FALSE;
+			ReleaseBrake := FALSE;
+			eStep := FB_CTC_READY;	
+		END_IF
+		
+		// === Catch power off or halt
+		IF(Power = FALSE)THEN
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+			eStep := FB_CTC_DISABLED;
+		END_IF
+		
+		// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+		
+		// ========================================================
+		// === DISABLING ==========================================
+		// ========================================================
+	FB_CTC_DISABLING:
+		
+		IF((BrakeMode = CTC_BRAKE_MODE_WHEN_DISABLED) AND Homed)THEN
+			
+			CASE iIntermediateStep OF
+				0: // if brake option is active, try to at least halt drive until brake enables...
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+					TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+					TON_Brake.IN := TRUE;
+					IF(TON_Brake.Q)THEN
+						TON_Brake.IN := FALSE;
+						ReleaseBrake := FALSE;
+						iIntermediateStep := 1;
+					END_IF
+				1: // ...and after another delay, drive disables
+					TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+					TON_Brake.IN := TRUE;
+					IF(TON_Brake.Q)THEN
+						TON_Brake.IN := FALSE;
+						iIntermediateStep := 2;
+						stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+					END_IF
+					
+				2: // transition only if drive has been deactivated successfully
+					IF(stProcessDataIn.State = CTC_STATUS_BYTE_READY)THEN
+						TON_Brake.IN := FALSE;
+						iIntermediateStep := 0;
+						eStep := FB_CTC_DISABLED;
+					END_IF
+					
+				ELSE
+					iIntermediateStep := 0;
+			END_CASE;
+			
+		ELSE // if no brake, or the drive is not homed (meaning not powered on), 
+			// then drive is disabled immediately. Transition only if drive has been deactivated successfully
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+			IF(stProcessDataIn.State = CTC_STATUS_BYTE_READY)THEN
+				TON_Brake.IN := FALSE;
+				iIntermediateStep := 0;
+				eStep := FB_CTC_DISABLED;
+			END_IF
+		END_IF
+			
+        // ====================================================
+        // === READY ==========================================
+        // ====================================================
+    FB_CTC_READY:
+        
+        TON_MMComplete.IN := 0;
+        iIntermediateStep := 0;
+        
+        Busy := FALSE;
+        Done := FALSE;
+        
+        IF (stInternalCommands.bHome = TRUE) THEN
+            stInternalCommands.bHome := FALSE;
+            bSetpointError := FALSE;
+            Busy := TRUE;
+            Done := FALSE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_HOME;
+        ELSIF (stInternalCommands.bTeach = TRUE) THEN
+            stInternalCommands.bTeach := FALSE;
+            Busy := TRUE;
+            Done := FALSE;
+            bSetpointError := FALSE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_TEACH;
+        ELSIF (stInternalCommands.bMoveIn = TRUE) THEN
+            stInternalCommands.bMoveIn := FALSE;
+            //IF (Homed) THEN
+                Busy := TRUE;
+                Done := FALSE;
+                bSetpointError := FALSE;
+                eStep := FB_CTC_MOVE_IN;
+            //END_IF;
+        ELSIF (stInternalCommands.bMoveOut = TRUE) THEN
+            stInternalCommands.bMoveOut := FALSE;
+            //IF (Homed) THEN
+                Busy := TRUE;
+                Done := FALSE;
+                bSetpointError := FALSE;
+                eStep := FB_CTC_MOVE_OUT;
+            //END_IF;
+        ELSIF (stInternalCommands.bMoveAbsolute = TRUE) THEN
+            stInternalCommands.bMoveAbsolute := FALSE;
+            IF (Homed) THEN
+                Busy := TRUE;
+                Done := FALSE;
+                bSetpointError := FALSE;
+                eStep := FB_CTC_MOVE_ABSOLUTE;
+            END_IF;
+        ELSIF (stInternalCommands.bMoveContinuous = TRUE) THEN
+            IF (Homed) THEN
+                Busy := TRUE;
+                Done := FALSE;
+                bSetpointError := FALSE;
+                eStep := FB_CTC_MOVE_CONTINUOUS;
+            END_IF;
+        END_IF;
+        
+        // === Catch power off or halt
+        IF (Power = FALSE) THEN
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+        ELSIF (stInternalCommands.bHalt = TRUE) THEN
+            stInternalCommands.bHalt := FALSE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_HALTING;
+        END_IF;
+        
+        // === Catch error
+        IF (stProcessDataIn.State = CTC_STATUS_BYTE_ERROR) THEN
+            Busy := FALSE;
+            Done := FALSE;
+            Error := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_ERROR;
+        END_IF;
+        
+        // ====================================================
+        // === HOME ===========================================
+        // ====================================================
+    FB_CTC_HOME:
+			
+		CASE iIntermediateStep OF
+							
+			0: 	// we can start homing if brake mode is off, or if brake is already released...
+				IF(BrakeMode = CTC_BRAKE_MODE_OFF OR (ReleaseBrake = TRUE))THEN
+					iIntermediateStep := 21;
+				ELSE
+					// ...else we must enable drive and release brake first
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+					TON_Brake.IN := FALSE;
+					iIntermediateStep := 11;
+				END_IF
+				
+			11: // delay --> release brake (check for active drive) --> 12
+				TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+				TON_Brake.IN := TRUE;
+				IF(TON_Brake.Q AND (stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE))THEN
+					TON_Brake.IN := FALSE;
+					ReleaseBrake := TRUE;
+					iIntermediateStep := 12;
+				END_IF
+				
+			12: // delay --> start homing --> 21
+				TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+				TON_Brake.IN := TRUE;
+				IF(TON_Brake.Q)THEN
+					TON_Brake.IN := FALSE;
+					iIntermediateStep := 21;
+				END_IF
+				
+			21:	// home mode dependant on actual configuration					
+				IF (stConfiguration.HomeMode = CTC_HOME_MODE_ENDSTOPIN) THEN
+					iIntermediateStep := 22;
+				ELSIF (stConfiguration.HomeMode = CTC_HOME_MODE_ENDSTOPOUT) THEN
+					iIntermediateStep := 23;
+				ELSE
+					stProcessDataOut.TargetPosition := stParameters.TargetPosition;
+					iIntermediateStep := 24;
+				END_IF
+				stProcessDataOut.MotionMode := CTC_MOTION_MODE_HOME;
+				
+			22:	// Home in
+				IF((stProcessDataIn.stStatusBits.Homed = TRUE) AND 
+					(stProcessDataIn.stStatusBits.LimitSwitchIn = TRUE OR stProcessDataIn.stStatusBits.LimitSwitchOut = TRUE))THEN
+					Busy := FALSE;
+					Done := TRUE;
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+					iIntermediateStep := 0;
+					eStep := FB_CTC_READY;
+				END_IF
+				
+			23: // Home out
+				IF((stProcessDataIn.stStatusBits.Homed = TRUE) AND 
+					(stProcessDataIn.stStatusBits.LimitSwitchIn = TRUE OR stProcessDataIn.stStatusBits.LimitSwitchOut = TRUE))THEN
+					Busy := FALSE;
+					Done := TRUE;
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+					iIntermediateStep := 0;
+					eStep := FB_CTC_READY;
+				END_IF
+			
+			24: // Home direct
+				Busy := FALSE;
+				Done := TRUE;
+				stProcessDataOut.MotionMode := CTC_MOTION_MODE_HOME;
+				iIntermediateStep := 0;
+				eStep := FB_CTC_READY;
+				
+			ELSE
+				iIntermediateStep := 0;
+			
+		END_CASE;
+		
+		// ---
+		bHomeTeachFailed := stProcessDataIn.State = CTC_STATUS_BYTE_TEACH 
+		AND stProcessDataIn.stStatusBits.WarningActive 
+		AND NOT stProcessDataIn.stStatusBits.TrackingErrorToleranceExceeded;
+		// ---
+		
+		// === Catch power off or halt
+		IF(Power = FALSE)THEN	
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+		ELSIF(stInternalCommands.bHalt = TRUE OR bHomeTeachFailed)THEN
+			stInternalCommands.bHalt := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+			IF(BrakeMode = CTC_BRAKE_MODE_WHEN_DISABLED)THEN
+				ReleaseBrake := FALSE;
+			END_IF
+			eStep := FB_CTC_DISABLED;
+		END_IF
+			// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+	        
+       // ====================================================
+       // === TEACH ==========================================
+       // ====================================================
+	FB_CTC_TEACH:
+				
+		// TEACH IS NOT COMPATIBLE WITH BRAKE & OLDER FW (<= V2.06.02!)
+		
+		CASE iIntermediateStep OF
+				
+			0: 	// if no brake, we can start teach via Mode 0 (compatible with older FW)
+				// if brake, but released, then teach via Mode 1 (not compatible with older FW)
+				// if brake, but not released --> enable drive, release brake, teach via Mode 1 (not compatible with older FW)
+				IF(BrakeMode = CTC_BRAKE_MODE_OFF)THEN
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+					iIntermediateStep := 21;
+				ELSIF(ReleaseBrake = TRUE)THEN
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT; // this enables drive
+					iIntermediateStep := 21;
+				ELSE
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT; // this enables drive
+					TON_Brake.IN := FALSE;
+					iIntermediateStep := 11;
+				END_IF
+				
+			11: // delay --> release brake (if drive active) --> 12
+				TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+				TON_Brake.IN := TRUE;
+				IF(TON_Brake.Q AND (stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE))THEN // older drives will get stuck here, so the break will not release
+					TON_Brake.IN := FALSE;
+					ReleaseBrake := TRUE;
+					iIntermediateStep := 12;
+				END_IF
+				
+			12: // delay --> start teaching --> 21
+				TON_Brake.PT := UINT_TO_TIME(BrakeDelay);
+				TON_Brake.IN := TRUE;
+				IF(TON_Brake.Q)THEN
+					TON_Brake.IN := FALSE;
+					iIntermediateStep := 21;
+				END_IF
+				
+			21: // teach only allowed out of "off" and "ready, i.e. ready state
+				IF((stProcessDataIn.State = CTC_STATUS_BYTE_READY) OR (stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE))THEN
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_TEACH;
+					iIntermediateStep := 22;
+				END_IF				
+			22:				
+				IF(stProcessDataIn.State = CTC_STATUS_BYTE_TEACH)THEN
+					iIntermediateStep := 23;
+				END_IF
+			23:
+				IF(stProcessDataIn.State <> CTC_STATUS_BYTE_TEACH)THEN
+					Busy := FALSE;
+					Done := TRUE;
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+					eStep := FB_CTC_READY;
+					iIntermediateStep := 0;
+				END_IF
+				
+			ELSE
+				iIntermediateStep := 0;
+		END_CASE
+		
+		// ---
+		bHomeTeachFailed := stProcessDataIn.State = CTC_STATUS_BYTE_TEACH 
+		AND stProcessDataIn.stStatusBits.WarningActive 
+		AND NOT stProcessDataIn.stStatusBits.TrackingErrorToleranceExceeded;
+		// ---
+		
+		// === Catch power off or halt
+		IF(Power = FALSE)THEN
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;			
+		ELSIF(stInternalCommands.bHalt = TRUE OR bHomeTeachFailed)THEN
+			stInternalCommands.bHalt := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+			IF(BrakeMode = CTC_BRAKE_MODE_WHEN_DISABLED)THEN
+				ReleaseBrake := FALSE;
+			END_IF
+			eStep := FB_CTC_DISABLED;
+		END_IF
+		// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+		
+		
+		// ====================================================
+		// === MOVEOUT ========================================
+		// ====================================================
+	FB_CTC_MOVE_OUT:
+		
+		TON_MMComplete.IN := stProcessDataIn.stStatusBits.MotionCommandCompleted;					
+		stProcessDataOut.MotionMode := CTC_MOTION_MODE_MOVEOUT;
+		
+		IF((stProcessDataIn.stStatusBits.LimitSwitchOut = TRUE) AND (TON_MMComplete.Q = TRUE))THEN
+			Busy := FALSE;
+			Done := TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_READY;
+		END_IF
+			// === Catch power off or halt or state transition
+		IF(Power = FALSE)THEN
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+		ELSIF(stInternalCommands.bHalt = TRUE)THEN
+			stInternalCommands.bHalt := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_HALTING;
+		ELSIF(stInternalCommands.bMoveIn OR stInternalCommands.bMoveAbsolute 
+			OR stInternalCommands.bMoveContinuous)THEN
+			eStep := FB_CTC_READY;
+		END_IF
+		
+			// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+		      
+      	// ====================================================
+      	// === MOVEIN =========================================
+		// ====================================================
+	FB_CTC_MOVE_IN:
+        
+        TON_MMComplete.IN := stProcessDataIn.stStatusBits.MotionCommandCompleted;
+        stProcessDataOut.MotionMode := CTC_MOTION_MODE_MOVEIN;
+        
+        IF ((stProcessDataIn.stStatusBits.LimitSwitchIn = TRUE) AND (TON_MMComplete.Q = TRUE)) THEN
+            Busy := FALSE;
+            Done := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_READY;
+        END_IF;
+        
+        // === Catch power off or halt or state transition
+		IF(Power = FALSE)THEN
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+		ELSIF(stInternalCommands.bHalt = TRUE)THEN
+			stInternalCommands.bHalt := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_HALTING;
+		ELSIF(stInternalCommands.bMoveIn OR stInternalCommands.bMoveAbsolute 
+			OR stInternalCommands.bMoveContinuous)THEN
+			eStep := FB_CTC_READY;
+		END_IF
+        
+        // === Catch error
+        IF (stProcessDataIn.State = CTC_STATUS_BYTE_ERROR) THEN
+            Busy := FALSE;
+            Done := FALSE;
+            Error := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_ERROR;
+        END_IF;
+        
+        // ====================================================
+        // === MOVE ABSOLUTE ==================================
+        // ====================================================
+	FB_CTC_MOVE_ABSOLUTE:
+  			
+		TON_MMComplete.IN := stProcessDataIn.stStatusBits.MotionCommandCompleted;
+		
+		CASE iIntermediateStep OF
+			0:	// check if target values ok
+				IF((stParameters.TargetPosition < stConfiguration.EndPositionIn)OR
+					(stParameters.TargetPosition > stConfiguration.EndPositionOut)OR
+					(stParameters.TargetAccDec <= 0.0)OR
+					(stParameters.TargetForce <= 0.0)OR
+					(stParameters.TargetVelocity <= 0.0))THEN
+					bSetpointError := TRUE;
+				ELSE
+					bSetpointError := FALSE;
+					iIntermediateStep := 1;
+				END_IF
+				
+			1:	// target values ok --> start motion
+				stProcessDataOut.TargetPosition := stParameters.TargetPosition;
+				stProcessDataOut.Override1 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxSpeedFreePositioning * stParameters.TargetVelocity ));
+				stProcessDataOut.Override2 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxForceFreePositioning * stParameters.TargetForce ));
+				stProcessDataOut.Override3 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxAccDec * stParameters.TargetAccDec));
+				stProcessDataOut.MotionMode := CTC_MOTION_MODE_FREEPOSPRO;
+				iIntermediateStep := 2;
+				
+			2:	// monitor for motion complete, or retrigger of MoveAbsolute command
+				IF((ABS(stProcessDataOut.TargetPosition - stProcessDataIn.ActualPosition) <= FREE_POS_TOL)AND 
+					(TON_MMComplete.Q = TRUE))THEN
+					TON_MMComplete.IN := FALSE;
+					Busy := FALSE;
+					Done := TRUE;
+					iIntermediateStep := 0;
+					eStep := FB_CTC_READY;
+				ELSIF(stInternalCommands.bMoveAbsolute = TRUE)THEN
+					stInternalCommands.bMoveAbsolute := FALSE;
+					iIntermediateStep := 0;
+				END_IF
+		END_CASE
+		
+		// === Catch power off or halt
+		IF(Power = FALSE)THEN
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+		ELSIF(bSetpointError)THEN
+			eStep := FB_CTC_READY;
+		ELSIF(stInternalCommands.bHalt = TRUE)THEN
+			stInternalCommands.bHalt := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_HALTING;
+		ELSIF(stInternalCommands.bMoveIn OR stInternalCommands.bMoveOut OR 
+			stInternalCommands.bMoveContinuous)THEN
+			eStep := FB_CTC_READY;
+		END_IF
+		
+		// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+		
+        // ====================================================
+       	// === MOVE ABSOLUTE CONTINUOUS =======================
+       	// ====================================================
+	FB_CTC_MOVE_CONTINUOUS:
+	
+		TON_MMComplete.IN := stProcessDataIn.stStatusBits.MotionCommandCompleted;
+
+		// monitor for setpoint error continuously
+		IF((stParameters.TargetPosition < stConfiguration.EndPositionIn)OR
+			(stParameters.TargetPosition > stConfiguration.EndPositionOut)OR
+			(stParameters.TargetAccDec <= 0.0)OR
+			(stParameters.TargetForce <= 0.0)OR
+			(stParameters.TargetVelocity <= 0.0))THEN
+			bSetpointError := TRUE;
+		ELSE
+			bSetpointError := FALSE;
+		END_IF
+		
+		CASE iIntermediateStep OF
+			
+			0:	// target values ok --> start motion							
+				IF(bSetpointError = FALSE)THEN
+					stProcessDataOut.TargetPosition := stParameters.TargetPosition;
+					stProcessDataOut.Override1 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxSpeedFreePositioning * stParameters.TargetVelocity ));
+					stProcessDataOut.Override2 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxForceFreePositioning * stParameters.TargetForce ));
+					stProcessDataOut.Override3 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxAccDec * stParameters.TargetAccDec));
+					stProcessDataOut.MotionMode := CTC_MOTION_MODE_FREEPOSPRO;
+					iIntermediateStep := 1;
+				END_IF
+				
+			1:	// monitor for motion complete				
+				IF((ABS(stProcessDataOut.TargetPosition - stProcessDataIn.ActualPosition) <= FREE_POS_TOL)AND 
+					(TON_MMComplete.Q = TRUE))THEN
+					Done := TRUE;
+					iIntermediateStep := 2;
+					// target values still ok --> update motion	even before completed
+				ELSIF(bSetpointError = FALSE)THEN
+					stProcessDataOut.TargetPosition := stParameters.TargetPosition;
+					stProcessDataOut.Override1 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxSpeedFreePositioning * stParameters.TargetVelocity ));
+					stProcessDataOut.Override2 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxForceFreePositioning * stParameters.TargetForce ));
+					stProcessDataOut.Override3 := REAL_TO_USINT(ceil( 100.0 / stConfiguration.MaxAccDec * stParameters.TargetAccDec));
+				END_IF
+			
+			2:	// await new setpoint after motion completed, or finish if no command pending anymore
+				Done := FALSE;
+				IF((bSetpointError = FALSE) AND (stProcessDataOut.TargetPosition <> stParameters.TargetPosition))THEN
+					iIntermediateStep := 0;		
+				END_IF
+			
+		END_CASE
+			// === Catch power off or halt
+		IF(Power = FALSE)THEN	
+			TON_Brake.IN := FALSE;
+			iIntermediateStep := 0;
+			eStep := FB_CTC_DISABLING;
+		ELSIF(stInternalCommands.bHalt = TRUE OR stInternalCommands.bMoveContinuous = FALSE)THEN
+			stInternalCommands.bHalt := FALSE;
+			stInternalCommands.bMoveContinuous := FALSE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_HALTING;
+		ELSIF(stInternalCommands.bMoveIn OR stInternalCommands.bMoveOut OR
+			stInternalCommands.bMoveAbsolute)THEN
+			stInternalCommands.bMoveContinuous := FALSE;
+			eStep := FB_CTC_READY;
+		END_IF
+			// === Catch error
+		IF(stProcessDataIn.State = CTC_STATUS_BYTE_ERROR)THEN
+			Busy 	:= FALSE;
+			Done	:= FALSE;
+			Error 	:= TRUE;
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+			eStep := FB_CTC_ERROR;
+		END_IF
+      
+       // ====================================================
+       // === HALT ===========================================
+        // ====================================================
+    FB_CTC_HALTING:
+        
+        stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+        
+        IF ((ABS(stProcessDataIn.ActualSpeed) <= HALTED_VEL_TOL) AND
+            (stProcessDataIn.stStatusBits.MotionModeActive = FALSE)) THEN
+            Busy := FALSE;
+            Done := TRUE;
+            eStep := FB_CTC_READY;
+        END_IF;
+        
+        // === Catch power off
+        IF (Power = FALSE) THEN
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+            eStep := FB_CTC_DISABLED;
+        END_IF;
+        
+        // === Catch error
+        IF (stProcessDataIn.State = CTC_STATUS_BYTE_ERROR) THEN
+            Busy := FALSE;
+            Done := FALSE;
+            Error := TRUE;
+            stProcessDataOut.MotionMode := CTC_MOTION_MODE_HALT;
+            eStep := FB_CTC_ERROR;
+        END_IF;
+        
+        // ====================================================
+        // === ERROR ==========================================
+        // ====================================================
+    FB_CTC_ERROR:
+        
+		// drive remains powered off
+		stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+		
+		// optional brake is activated if in error
+		ReleaseBrake := FALSE;	
+		
+		Busy	:= FALSE;
+		Done	:= FALSE;
+		Error	:= TRUE;
+		
+		R_TRIG_Reset.CLK := Reset;
+		
+		IF(R_TRIG_Reset.Q = TRUE)THEN
+			Busy := TRUE;
+			TON_Reset.IN := FALSE;
+			eStep := FB_CTC_RESET;
+		END_IF
+	
+        // ====================================================
+        // === RESET ==========================================
+        // ====================================================
+    FB_CTC_RESET:
+        
+		TON_Reset.IN := TRUE;
+	
+		stProcessDataOut.MotionMode := CTC_MOTION_MODE_RESET;
+		
+		// internal resets
+		bSetpointError := FALSE;
+		
+		IF(stProcessDataIn.State <> CTC_STATUS_BYTE_ERROR)THEN
+			TON_Reset.IN := FALSE;
+			Busy := FALSE;
+			Done := TRUE;
+			Error := FALSE;				
+			stProcessDataOut.MotionMode := CTC_MOTION_MODE_OFF;
+			eStep := FB_CTC_DISABLED;
+		ELSIF(TON_Reset.Q = TRUE)THEN
+			TON_Reset.IN := FALSE;
+			Busy := FALSE;
+			Done := FALSE;
+			Error := TRUE;
+			eStep := FB_CTC_ERROR;
+		END_IF
+       
+    ELSE
+        eStep := FB_CTC_FUNCTIONBLOCK_DISABLED;
+        
+END_CASE;
+
+
+
+// =================================================================================
+// === FB Outputs & calls ==========================================================
+// =================================================================================
+	
+// === Warning Handler
+IF (bSetpointError = TRUE) THEN
+    WarningID := CTC_WARNING_FB_SETPOINTS;
+ELSIF (stProcessDataIn.stStatusBits.WarningActive = TRUE) THEN
+    WarningID := CTC_WARNING_EVENT;
+ELSE
+    WarningID := CTC_WARNING_OK;
+END_IF;
+	
+// Copy process data status information to output variables
+ControllerOn := (stProcessDataIn.State = CTC_STATUS_BYTE_ACTIVE OR stProcessDataIn.State = CTC_STATUS_BYTE_TEACH) AND Enable;
+Homed := stProcessDataIn.stStatusBits.Homed;
+State := eStep;
+ActualPosition := stProcessDataIn.ActualPosition;
+ActualVelocity := stProcessDataIn.ActualSpeed;
+ActualForce := stProcessDataIn.ActualForce;
+Warning := stProcessDataIn.stStatusBits.WarningActive OR bSetpointError;
+	
+R_TRIG_Reset();
+	
+TON_MMComplete.PT := T#20MS;
+TON_MMComplete();
+	
+TON_Reset.PT := T#100MS;
+TON_Reset();
+
+TON_Brake();
+
+// =================================================================================
+// === PD OUTPUTS ==================================================================
+// =================================================================================
+// Motion Mode
+ProcessDataOutRaw[0] := USINT_TO_BYTE(stProcessDataOut.MotionMode);
+// Set Position
+unionContainer.rReal := stProcessDataOut.TargetPosition;
+ProcessDataOutRaw[1] := unionContainer.aBytes[3];
+ProcessDataOutRaw[2] := unionContainer.aBytes[2];
+ProcessDataOutRaw[3] := unionContainer.aBytes[1];
+ProcessDataOutRaw[4] := unionContainer.aBytes[0];
+// Overrides 1-3
+ProcessDataOutRaw[5] := USINT_TO_BYTE(stProcessDataOut.Override1);
+ProcessDataOutRaw[6] := USINT_TO_BYTE(stProcessDataOut.Override2);
+ProcessDataOutRaw[7] := USINT_TO_BYTE(stProcessDataOut.Override3);
+]]></ST>
+    </Implementation>
+    <Method Name="ceil" Id="{f02eb73f-7058-4b4b-a743-8166eaf54694}">
+      <Declaration><![CDATA[METHOD ceil : REAL
+VAR_INPUT
+	rIN :REAL;
+END_VAR
+VAR
+	lrIntegerPart	:LREAL;
+	lrIN	:LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// simple implementation of the ceil function, 
+// intended for positive numbers
+// --> 3.0 = 3.0, 3.1 = 4.0, 3.9 = 4.0
+
+lrIN := REAL_TO_LREAL(rIN);
+lrIntegerPart := LTRUNC(lrIN);
+
+IF((lrIN - lrIntegerPart) > 0.0)THEN
+	ceil := LREAL_TO_REAL(lrIntegerPart + 1.0);
+ELSE
+	ceil := LREAL_TO_REAL(lrIntegerPart);
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="round" Id="{a2a12ec0-52f2-4413-b348-991442c6769b}">
+      <Declaration><![CDATA[METHOD round : REAL
+VAR_INPUT
+	IN :REAL;
+END_VAR
+VAR
+	integerPart	:LREAL;
+	IN_as_lreal	:LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// simple implementation of a round function, 
+// intended for positive numbers
+// --> 3.14 = 3.0, 3.54 = 4.0
+
+IN_as_lreal := REAL_TO_LREAL(IN);
+integerPart := LTRUNC(IN_as_lreal);
+
+IF((IN_as_lreal - integerPart) >= 0.5)THEN
+	round := LREAL_TO_REAL(integerPart + 1.0);
+ELSE
+	round := LREAL_TO_REAL(integerPart);
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

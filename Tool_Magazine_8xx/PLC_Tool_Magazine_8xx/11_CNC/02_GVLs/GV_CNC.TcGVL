@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_CNC" Id="{e6c5401f-78b2-4687-bf32-bb999aad5035}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_CNC
+//
+//								Variables CNC 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** ALARMS FLAG **)
+		bAlLife : BOOL ; // Life bit alarm
+		bAlEmergencyStop : BOOL ; // Emergency stop alarm
+		bAlNoPower : BOOL ; // No Power alarm
+		bAlNoAir : BOOL ; // No Air alarm
+		bAlCncFault : BOOL ; // CNC in fault alarm
+		bAlCommunication : BOOL ; // Communication alarm
+		bAlFocas : BOOL ; // Focas Error
+	
+	(** SETUP ENUM **)
+		eType : ENUM_CNC_Type ; // Type of the CNC
+	
+	(** SETUP FLAG **)
+		bEventAck : BOOL := FALSE ; // Events Acknowledgement
+		bPresence : BOOL := FALSE ; // CNC presence or not
+		bEnable : BOOL := FALSE ; // CNC enable or not
+		bFocas : BOOL := FALSE ; // With Focas or not
+		
+	(** PROCESS FLAG **)
+	
+	(** ST **)
+		stSpindle : ST_Spindle ; // Spindle structure
+		
+		stFanucData : ST_CNC_Fanuc_Data ; // Structure CNC Fanuc data
+		stHeidenhainData : ST_CNC_Heidenhain_Data ; // Structure CNC Heidenhain data	
+
+END_VAR
+
+VAR_GLOBAL
+
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+	
+	(** PROCESS INT **)
+		iCommunicationStatus : INT ; // Communication Status with the CNC
+	
+	(** PROCESS FLAG **)	
+		bReady : BOOL ; // CNC is ready
+	
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

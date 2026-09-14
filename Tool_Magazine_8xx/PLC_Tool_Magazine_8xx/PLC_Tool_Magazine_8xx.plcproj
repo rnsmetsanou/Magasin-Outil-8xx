@@ -1,0 +1,850 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <FileVersion>1.0.0.0</FileVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{c1b1ed4e-dff5-47e3-9016-24f8ba7221d0}</ProjectGuid>
+    <SubObjectsSortedByName>True</SubObjectsSortedByName>
+    <DownloadApplicationInfo>true</DownloadApplicationInfo>
+    <WriteProductVersion>true</WriteProductVersion>
+    <GenerateTpy>false</GenerateTpy>
+    <Name>PLC_Tool_Magazine_8xx</Name>
+    <ProgramVersion>3.1.4026.20</ProgramVersion>
+    <Application>{1707fc7a-8053-404b-8478-74b73c13218c}</Application>
+    <TypeSystem>{fa8316d8-c7f6-4715-a2ea-3b22ec2716b8}</TypeSystem>
+    <Implicit_Task_Info>{56e4d7c7-4e28-428b-ba95-93510a149656}</Implicit_Task_Info>
+    <Implicit_KindOfTask>{ef8e8f5c-9d99-4852-afc2-e185d5694edd}</Implicit_KindOfTask>
+    <Implicit_Jitter_Distribution>{19959a46-7e15-4c6b-b1a2-9b23c593bb4e}</Implicit_Jitter_Distribution>
+    <LibraryReferences>{fac5a527-ce40-493f-baab-8652765cef01}</LibraryReferences>
+    <Released>false</Released>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="01_General %28MAIN%29\01_DUTs\01_ENUM\ENUM_VarType.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\01_DUTs\02_ST\ST_Array_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\01_DUTs\02_ST\ST_Miscellaneous.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\01_DUTs\02_ST\ST_Pointer_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\02_GVLs\GV_General.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\02_GVLs\GV_IO.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\01_PRGs\PRG_Backup.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\01_PRGs\PRG_FirstCycle.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\01_PRGs\PRG_Main.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\01_PRGs\PRG_SavePersistentData.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\02_FBs\FB_ArrayToolLocation_Reverse.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\02_FBs\FB_BackupExport.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\02_FBs\FB_BackupImport.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="01_General %28MAIN%29\03_POUs\02_FBs\FB_Blink.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\01_DUTs\02_ST\ST_Alarm.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\01_DUTs\02_ST\ST_Event_Group.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\01_DUTs\02_ST\ST_Message.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\02_GVLs\GV_Events.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="02_Events\03_POUs\02_FBs\FB_Event_Group_Number_Assignement.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\03_POUs\02_FBs\FB_Event_HMI.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\03_POUs\02_FBs\FB_Init_Call_Events.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="02_Events\03_POUs\02_FBs\FB_Init_Events.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="03_Operating_Mode\01_DUTs\01_ENUM\ENUM_OpMode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="03_Operating_Mode\02_GVLs\GV_OpMode.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="03_Operating_Mode\03_POUs\01_PRGs\PRG_OpMode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="04_Lamps_Lights\03_POUs\01_PRGs\PRG_Lamps_Lights.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="05_Fans\01_DUTs\01_ENUM\ENUM_Fan_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="05_Fans\01_DUTs\02_ST\ST_Fan.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="05_Fans\02_GVLs\GV_Fans.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="05_Fans\03_POUs\01_PRGs\PRG_Fans.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="05_Fans\03_POUs\02_FBs\FB_Fan.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="06_Doors\01_DUTs\01_ENUM\ENUM_Door_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="06_Doors\01_DUTs\02_ST\ST_Door.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="06_Doors\02_GVLs\GV_Doors.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="06_Doors\03_POUs\01_PRGs\PRG_Doors.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="06_Doors\03_POUs\02_FBs\FB_Door.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\ENUM_Cyltronic_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCBrakeMode.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCConfigStep.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCDeviceStatus.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCEvent.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCGDSStep.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCHomeMode.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCStep.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\01_ENUM\teCTCWarningID.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\ST_Cyltronic.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCConfiguration.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCConfigVariable.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCDeviceStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCEvent.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCInternalCommands.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCProcessDataIn.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCProcessDataOut.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\02_ST\tstCTCStatusBits.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\01_DUTs\03_Union\tuReal.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\02_GVLs\CTC_CONSTANTS.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="07_Cyltronic\02_GVLs\GV_Cyltronic.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\01_PRGs\PRG_Cyltronic.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\02_FBs\FB_CTC_Basic.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\02_FBs\FB_CTC_GetDeviceStatus.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\02_FBs\FB_CTC_PlcOpen.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\02_FBs\FB_CTC_ReadWriteConfig.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="07_Cyltronic\03_POUs\02_FBs\FB_Cyltronic.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\01_DUTs\01_ENUM\ENUM_Cycle_Action.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\01_DUTs\01_ENUM\ENUM_Cycle_Step.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\01_DUTs\01_ENUM\ENUM_Cycle_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\02_GVLs\GV_Cycle.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\01_PRGs\PRG_Cycle_AlarmsMessages.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\01_PRGs\PRG_Cycle.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_01_Action_PickToolMagazine.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_05_Action_PlaceToolMagazine.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_10_Action_ToolMagazineCheckOne.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_200_Action_HomePosition.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_202_Action_PickPlaceToolMag.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_20_Action_Initialization.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_03_Action_TransferArmCnc.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_02_Action_TransferManipulatorToArm.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_04_Action_TransferArmToManipulator.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="08_Cycle\03_POUs\02_FBs\FB_11_Action_ToolMagazineCheckAll.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\01_ENUM\ENUM_Gripper_Mode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\01_ENUM\ENUM_Position_Axis.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\01_ENUM\ENUM_Position_Magazine.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\01_ENUM\ENUM_Tool_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\01_ENUM\ENUM_Tunnel_Mode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Changing_Arm.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Changing_Arm_Gripper.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Manipulator_Head.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Tool_Corrector_M.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Tool_Corrector_T.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Tool_Name.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Tool_Parameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\01_DUTs\02_ST\ST_Tool_Location.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\02_GVLs\GV_Tool_Magazine.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\01_PRGs\PRG_Tool_Magazine_Type1_Refresh.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\01_PRGs\PRG_Tool_Magazine_Type1.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\02_FBs\FB_Manipulator_Breakage.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\02_FBs\FB_Manipulator_Gripper.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\02_FBs\FB_Manipulator_Tunnel.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\02_FBs\FB_Manipulator_Tunnel_5.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="09_Tool_Magazine\03_POUs\02_FBs\FB_Manipulator_Tunnel_2.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Axis_Mode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Axis_Status.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Axis_Select.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Handwheel_Incr_Select.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Jog_Direction.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\01_ENUM\ENUM_Jog_Mode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\02_ST\ST_Axis.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\02_ST\ST_Beckhoff_Drive_AX8206.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\01_DUTs\02_ST\ST_Handwheel.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\02_GVLs\GV_Axes.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="10_Axes\02_GVLs\GV_Handwheel.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="10_Axes\03_POUs\01_PRGs\PRG_Handwheel.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\03_POUs\01_PRGs\PRG_Axis.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\03_POUs\02_FBs\FB_Axis.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\03_POUs\02_FBs\FB_Handwheel.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="10_Axes\03_POUs\02_FBs\FB_Handwheel_2.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\01_ENUM\ENUM_CNC_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Fanuc_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Fanuc_Focas_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Heidenhain_Exchange_In_1.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Heidenhain_Exchange_Out_1.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Heidenhain_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Fanuc_Exchange_In_1.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_CNC_Fanuc_Exchange_Out_1.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\01_DUTs\02_ST\ST_Spindle.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\02_GVLs\GV_CNC.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="11_CNC\03_POUs\01_PRGs\PRG_CNC.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\03_POUs\02_FBs\FB_CNC_Fanuc.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="11_CNC\03_POUs\02_FBs\FB_CNC_Heidenhain.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\01_DUTs\02_ST\St_Write_Focas.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\01_DUTs\02_ST\ST_Focas_To_Magazine.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\01_DUTs\02_ST\St_Read_Focas.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\01_DUTs\02_ST\ST_Magazine_To_Focas.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\02_GVLs\GV_Focas.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="12_Focas\03_POUs\01_PRGs\PRG_Focas.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\03_POUs\02_FBs\FB_ConnectionFocas.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\03_POUs\02_FBs\FB_ReadFocas.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="12_Focas\03_POUs\02_FBs\FB_WriteFocas.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\01_ENUM\ENUM_User_Level.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Axes.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Backup.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Cycle.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Cyltronic.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Doors.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Footer.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Header.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Lamps_Lights.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Magazine_Check.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Magazine_Settings.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Magazine_Teach.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Manipulator_Gripper.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Manipulator_Breakage.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Manipulator_Tunnel.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Pick_Tool_Magazine.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Transfer_ManipulatorToArm.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Screen_Home.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Transfer_ArmCnc.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\01_DUTs\02_ST\ST_HMI_Transfer_ArmToManipulator.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="13_HMI\02_GVLs\GV_HMI.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="13_HMI\03_POUs\01_PRGs\PRG_HMI.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\01_DUTs\01_ENUM\ENUM_Log_File_Management.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\01_DUTs\01_ENUM\ENUM_Log_Type.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\01_DUTs\02_ST\ST_Log.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\01_DUTs\02_ST\ST_Log_Data.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\02_GVLs\GV_Log.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="14_Log\03_POUs\01_PRGs\PRG_Log.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\03_POUs\01_PRGs\PRG_Log_WM.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\03_POUs\02_FBs\FB_Log.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\03_POUs\02_FBs\FB_Write_DataToFile.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="14_Log\03_POUs\02_FBs\sTime.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="PlcTask.TcTTO">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="07_Cyltronic\01_DUTs\03_Union" />
+    <Folder Include="08_Cycle" />
+    <Folder Include="08_Cycle\01_DUTs" />
+    <Folder Include="08_Cycle\01_DUTs\01_ENUM" />
+    <Folder Include="08_Cycle\01_DUTs\02_ST" />
+    <Folder Include="08_Cycle\02_GVLs" />
+    <Folder Include="08_Cycle\03_POUs" />
+    <Folder Include="08_Cycle\03_POUs\01_PRGs" />
+    <Folder Include="08_Cycle\03_POUs\02_FBs" />
+    <Folder Include="08_Cycle\04_VISUs" />
+    <Folder Include="13_HMI" />
+    <Folder Include="13_HMI\01_DUTs" />
+    <Folder Include="13_HMI\01_DUTs\01_ENUM" />
+    <Folder Include="13_HMI\01_DUTs\02_ST" />
+    <Folder Include="13_HMI\02_GVLs" />
+    <Folder Include="13_HMI\03_POUs" />
+    <Folder Include="13_HMI\03_POUs\01_PRGs" />
+    <Folder Include="13_HMI\03_POUs\02_FBs" />
+    <Folder Include="13_HMI\04_VISUs" />
+    <Folder Include="11_CNC" />
+    <Folder Include="11_CNC\01_DUTs" />
+    <Folder Include="11_CNC\01_DUTs\01_ENUM" />
+    <Folder Include="11_CNC\01_DUTs\02_ST" />
+    <Folder Include="11_CNC\02_GVLs" />
+    <Folder Include="11_CNC\03_POUs" />
+    <Folder Include="11_CNC\03_POUs\01_PRGs" />
+    <Folder Include="11_CNC\03_POUs\02_FBs" />
+    <Folder Include="11_CNC\04_VISUs" />
+    <Folder Include="10_Axes" />
+    <Folder Include="10_Axes\01_DUTs" />
+    <Folder Include="10_Axes\01_DUTs\01_ENUM" />
+    <Folder Include="10_Axes\01_DUTs\02_ST" />
+    <Folder Include="10_Axes\02_GVLs" />
+    <Folder Include="10_Axes\03_POUs" />
+    <Folder Include="10_Axes\03_POUs\01_PRGs" />
+    <Folder Include="10_Axes\03_POUs\02_FBs" />
+    <Folder Include="10_Axes\04_VISUs" />
+    <Folder Include="04_Lamps_Lights" />
+    <Folder Include="04_Lamps_Lights\01_DUTs" />
+    <Folder Include="04_Lamps_Lights\01_DUTs\01_ENUM" />
+    <Folder Include="04_Lamps_Lights\01_DUTs\02_ST" />
+    <Folder Include="04_Lamps_Lights\02_GVLs" />
+    <Folder Include="04_Lamps_Lights\03_POUs" />
+    <Folder Include="04_Lamps_Lights\03_POUs\01_PRGs" />
+    <Folder Include="04_Lamps_Lights\03_POUs\02_FBs" />
+    <Folder Include="04_Lamps_Lights\04_VISUs" />
+    <Folder Include="06_Doors" />
+    <Folder Include="06_Doors\01_DUTs" />
+    <Folder Include="06_Doors\01_DUTs\01_ENUM" />
+    <Folder Include="06_Doors\01_DUTs\02_ST" />
+    <Folder Include="06_Doors\02_GVLs" />
+    <Folder Include="06_Doors\03_POUs" />
+    <Folder Include="06_Doors\03_POUs\01_PRGs" />
+    <Folder Include="06_Doors\03_POUs\02_FBs" />
+    <Folder Include="06_Doors\04_VISUs" />
+    <Folder Include="03_Operating_Mode" />
+    <Folder Include="03_Operating_Mode\01_DUTs" />
+    <Folder Include="03_Operating_Mode\01_DUTs\01_ENUM" />
+    <Folder Include="03_Operating_Mode\01_DUTs\02_ST" />
+    <Folder Include="03_Operating_Mode\02_GVLs" />
+    <Folder Include="03_Operating_Mode\03_POUs" />
+    <Folder Include="03_Operating_Mode\03_POUs\01_PRGs" />
+    <Folder Include="03_Operating_Mode\03_POUs\02_FBs" />
+    <Folder Include="03_Operating_Mode\04_VISUs" />
+    <Folder Include="02_Events" />
+    <Folder Include="02_Events\01_DUTs" />
+    <Folder Include="02_Events\01_DUTs\01_ENUM" />
+    <Folder Include="02_Events\01_DUTs\02_ST" />
+    <Folder Include="02_Events\02_GVLs" />
+    <Folder Include="02_Events\03_POUs" />
+    <Folder Include="02_Events\03_POUs\01_PRGs" />
+    <Folder Include="02_Events\03_POUs\02_FBs" />
+    <Folder Include="02_Events\04_VISUs" />
+    <Folder Include="01_General %28MAIN%29\01_DUTs" />
+    <Folder Include="01_General %28MAIN%29\01_DUTs\01_ENUM" />
+    <Folder Include="01_General %28MAIN%29\01_DUTs\02_ST" />
+    <Folder Include="01_General %28MAIN%29\02_GVLs" />
+    <Folder Include="01_General %28MAIN%29\03_POUs\01_PRGs" />
+    <Folder Include="01_General %28MAIN%29\03_POUs\02_FBs" />
+    <Folder Include="01_General %28MAIN%29\03_POUs" />
+    <Folder Include="01_General %28MAIN%29\04_VISUs" />
+    <Folder Include="xx_Folder_Exemple" />
+    <Folder Include="xx_Folder_Exemple\01_DUTs" />
+    <Folder Include="xx_Folder_Exemple\01_DUTs\01_ENUM" />
+    <Folder Include="xx_Folder_Exemple\01_DUTs\02_ST" />
+    <Folder Include="xx_Folder_Exemple\02_GVLs" />
+    <Folder Include="xx_Folder_Exemple\03_POUs" />
+    <Folder Include="xx_Folder_Exemple\03_POUs\01_PRGs" />
+    <Folder Include="xx_Folder_Exemple\03_POUs\02_FBs" />
+    <Folder Include="xx_Folder_Exemple\04_VISUs" />
+    <Folder Include="01_General %28MAIN%29" />
+    <Folder Include="09_Tool_Magazine" />
+    <Folder Include="09_Tool_Magazine\01_DUTs" />
+    <Folder Include="09_Tool_Magazine\01_DUTs\01_ENUM" />
+    <Folder Include="09_Tool_Magazine\01_DUTs\02_ST" />
+    <Folder Include="09_Tool_Magazine\02_GVLs" />
+    <Folder Include="09_Tool_Magazine\03_POUs" />
+    <Folder Include="09_Tool_Magazine\03_POUs\01_PRGs" />
+    <Folder Include="09_Tool_Magazine\03_POUs\02_FBs" />
+    <Folder Include="09_Tool_Magazine\04_VISUs" />
+    <Folder Include="05_Fans" />
+    <Folder Include="05_Fans\01_DUTs" />
+    <Folder Include="05_Fans\01_DUTs\01_ENUM" />
+    <Folder Include="05_Fans\01_DUTs\02_ST" />
+    <Folder Include="05_Fans\02_GVLs" />
+    <Folder Include="05_Fans\03_POUs" />
+    <Folder Include="05_Fans\03_POUs\01_PRGs" />
+    <Folder Include="05_Fans\03_POUs\02_FBs" />
+    <Folder Include="05_Fans\04_VISUs" />
+    <Folder Include="12_Focas" />
+    <Folder Include="12_Focas\01_DUTs" />
+    <Folder Include="12_Focas\01_DUTs\01_ENUM" />
+    <Folder Include="12_Focas\01_DUTs\02_ST" />
+    <Folder Include="12_Focas\02_GVLs" />
+    <Folder Include="12_Focas\03_POUs" />
+    <Folder Include="12_Focas\03_POUs\01_PRGs" />
+    <Folder Include="12_Focas\03_POUs\02_FBs" />
+    <Folder Include="12_Focas\04_VISUs" />
+    <Folder Include="14_Log" />
+    <Folder Include="14_Log\01_DUTs" />
+    <Folder Include="14_Log\01_DUTs\01_ENUM" />
+    <Folder Include="14_Log\01_DUTs\02_ST" />
+    <Folder Include="14_Log\02_GVLs" />
+    <Folder Include="14_Log\03_POUs" />
+    <Folder Include="14_Log\03_POUs\01_PRGs" />
+    <Folder Include="14_Log\03_POUs\02_FBs" />
+    <Folder Include="14_Log\04_VISUs" />
+    <Folder Include="07_Cyltronic" />
+    <Folder Include="07_Cyltronic\01_DUTs" />
+    <Folder Include="07_Cyltronic\01_DUTs\01_ENUM" />
+    <Folder Include="07_Cyltronic\01_DUTs\02_ST" />
+    <Folder Include="07_Cyltronic\02_GVLs" />
+    <Folder Include="07_Cyltronic\03_POUs" />
+    <Folder Include="07_Cyltronic\03_POUs\01_PRGs" />
+    <Folder Include="07_Cyltronic\03_POUs\02_FBs" />
+    <Folder Include="07_Cyltronic\04_VISUs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PlaceholderReference Include="Tc2_Drive">
+      <DefaultResolution>Tc2_Drive, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Drive</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Math">
+      <DefaultResolution>Tc2_Math, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Math</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_MC2">
+      <DefaultResolution>Tc2_MC2, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_MC2</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_MC2_Drive">
+      <DefaultResolution>Tc2_MC2_Drive, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_MC2_Drive</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Standard">
+      <DefaultResolution>Tc2_Standard, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Standard</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_System">
+      <DefaultResolution>Tc2_System, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_System</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Utilities">
+      <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Utilities</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_EventLogger">
+      <DefaultResolution>Tc3_EventLogger, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_EventLogger</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_IoLink">
+      <DefaultResolution>Tc3_IoLink, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_IoLink</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_Module">
+      <DefaultResolution>Tc3_Module, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_Module</Namespace>
+    </PlaceholderReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PLC_Tool_Magazine_8xx.tmc">
+      <SubType>Content</SubType>
+    </None>
+    <Content Include="readme.txt">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <PlaceholderResolution Include="Tc2_Drive">
+      <Resolution>Tc2_Drive, 3.3.14.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_EtherCAT">
+      <Resolution>Tc2_EtherCAT, 3.7.1.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_IoFunctions">
+      <Resolution>Tc2_IoFunctions, 3.4.5.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_Math">
+      <Resolution>Tc2_Math, 3.5.1.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_MC2">
+      <Resolution>Tc2_MC2, 3.3.72.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_MC2_Drive">
+      <Resolution>Tc2_MC2_Drive, 3.3.53.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_Standard">
+      <Resolution>Tc2_Standard, 3.4.5.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_System">
+      <Resolution>Tc2_System, 3.10.1.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_Utilities">
+      <Resolution>Tc2_Utilities, 3.10.1.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc3_JsonXml">
+      <Resolution>Tc3_JsonXml, 3.4.7.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc3_Module">
+      <Resolution>Tc3_Module, 3.4.5.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+  </ItemGroup>
+  <ProjectExtensions>
+    <PlcProjectOptions>
+      <XmlArchive>
+        <Data>
+          <o xml:space="preserve" t="OptionKey">
+      <v n="Name">"&lt;ProjectRoot&gt;"</v>
+      <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+        <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
+        <o>
+          <v n="Name">"{192FAD59-8248-4824-A8DE-9177C94C195A}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{29BD8D0C-3586-4548-BB48-497B9A01693F}</v>
+        <o>
+          <v n="Name">"{29BD8D0C-3586-4548-BB48-497B9A01693F}"</v>
+          <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+            <v>NamingConventions</v>
+            <o>
+              <v n="Name">"NamingConventions"</v>
+              <d n="SubKeys" t="Hashtable" />
+              <d n="Values" t="Hashtable" />
+            </o>
+            <v>Rules</v>
+            <o>
+              <v n="Name">"Rules"</v>
+              <d n="SubKeys" t="Hashtable" />
+              <d n="Values" t="Hashtable" />
+            </o>
+          </d>
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{40450F57-0AA3-4216-96F3-5444ECB29763}</v>
+        <o>
+          <v n="Name">"{40450F57-0AA3-4216-96F3-5444ECB29763}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{8A0FB252-96EB-4DCC-A5B4-B4804D05E2D6}</v>
+        <o>
+          <v n="Name">"{8A0FB252-96EB-4DCC-A5B4-B4804D05E2D6}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" ckt="String" cvt="Boolean">
+            <v>WriteLineIDs</v>
+            <v>True</v>
+          </d>
+        </o>
+        <v>{8F99A816-E488-41E4-9FA3-846536012284}</v>
+        <o>
+          <v n="Name">"{8F99A816-E488-41E4-9FA3-846536012284}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{eeeeeeee-3909-4298-8022-501ac3238667}</v>
+        <o>
+          <v n="Name">"{eeeeeeee-3909-4298-8022-501ac3238667}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+      </d>
+      <d n="Values" t="Hashtable" />
+    </o>
+        </Data>
+        <TypeList>
+          <Type n="Boolean">System.Boolean</Type>
+          <Type n="Hashtable">System.Collections.Hashtable</Type>
+          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+          <Type n="String">System.String</Type>
+        </TypeList>
+      </XmlArchive>
+    </PlcProjectOptions>
+  </ProjectExtensions>
+</Project>

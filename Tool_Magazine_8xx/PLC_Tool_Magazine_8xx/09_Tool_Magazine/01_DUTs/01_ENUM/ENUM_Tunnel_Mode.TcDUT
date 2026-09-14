@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Tunnel_Mode" Id="{c826ae2f-1e95-4fa6-92de-74963a6dea32}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  			ENUM_Tunnel_Mode
+//
+//			Enumération des modes de passage du tunnel par le manipulateur			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 06.02.2026
+//Dernière modification : 06.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 06.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Tunnel_Mode :
+(
+	TopToBottom := 0 , // Tunnel way : Top -> Bottom
+	BottomToTop := 1 // Tunnel way : Bottom -> Top
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

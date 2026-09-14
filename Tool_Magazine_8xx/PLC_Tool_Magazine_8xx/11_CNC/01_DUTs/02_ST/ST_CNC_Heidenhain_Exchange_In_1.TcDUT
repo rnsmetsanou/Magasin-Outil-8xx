@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Heidenhain_Exchange_In_1" Id="{bec01091-0051-482f-816a-b14738b235df}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Heidenhain_Exchange_In
+//
+//								Structure Echange CNC_Heidenhain->Magasin 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (In agreement with ...)
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Heidenhain_Exchange_In_1 : // 16 Bytes -> Start at X0.0 / End at X15.7 (X0.0+15.7)
+STRUCT
+	
+	(* Byte 0 *)
+		biLife : BIT ; // CNC Life bit -> X0.0
+		biReserve01 : BIT ; // Reserve 01 -> X0.1
+		biReserve02 : BIT ; // Reserve 02 -> X0.2
+		biReserve03 : BIT ; // Reserve 03 -> X0.3
+		biReserve04 : BIT ; // Reserve 04 -> X0.4
+		biReserve05 : BIT ; // Reserve 05 -> X0.5
+		biReserve06 : BIT ; // Reserve 06 -> X0.6
+		biReserve07 : BIT ; // Reserve 07 -> X0.7
+
+	(* Byte 1 *)
+		biReserve10 : BIT ; // Reserve 10 -> X1.0
+		biReserve11 : BIT ; // Reserve 11 -> X1.1
+		biReserve12 : BIT ; // Reserve 12 -> X1.2
+		biReserve13 : BIT ; // Reserve 13 -> X1.3
+		biReserve14 : BIT ; // Reserve 14 -> X1.4
+		biReserve15 : BIT ; // Reserve 15 -> X1.5
+		biReserve16 : BIT ; // Reserve 16 -> X1.6
+		biDoorClosed : BIT ; // CNC Door closed (operator) -> X1.7
+
+	(* Byte 2 *)
+		biReserve20 : BIT ; // Reserve 20 -> X2.0
+		biReserve21 : BIT ; // Reserve 21 -> X2.1
+		biReserve22 : BIT ; // Reserve 22 -> X2.2
+		biReserve23 : BIT ; // Reserve 23 -> X2.3
+		biReserve24 : BIT ; // Reserve 24 -> X2.4
+		biReserve25 : BIT ; // Reserve 25 -> X2.5
+		biReserve26 : BIT ; // Reserve 26 -> X2.6
+		biReserve27 : BIT ; // Reserve 27 -> X2.7
+	
+	(* Byte 3 *)
+		biReserve30 : BIT ; // Reserve 30 -> X3.0
+		biReserve31 : BIT ; // Reserve 31 -> X3.1
+		biReserve32 : BIT ; // Reserve 32 -> X3.2
+		biReserve33 : BIT ; // Reserve 33 -> X3.3
+		biReserve34 : BIT ; // Reserve 34 -> X3.4
+		biReserve35 : BIT ; // Reserve 35 -> X3.5
+		biReserve36 : BIT ; // Reserve 36 -> X3.6
+		biReserve37 : BIT ; // Reserve 37 -> X3.7
+
+	(* Byte 4-5-6-7 *)
+		dwiToolSpindle : DWORD ; // Tool in CNC Spindle -> X4-5-6-7
+	
+	(* Byte 8-9-10-11 *)
+		dwiToolToLoad : DWORD ; // Tool to Load in CNC Spindle -> X8-9-10-11
+	
+	(* Byte 12 *)
+		byiReserve120 : BYTE ; // Reserve 120 -> X12
+	
+	(* Byte 13 *)
+		byiReserve130 : BYTE ; // Reserve 130 -> X13
+	
+	(* Byte 14 *)
+		byiReserve140 : BYTE ; // Reserve 140 -> X14
+	
+	(* Byte 15 *)
+		byiReserve150 : BYTE ; // Reserve 150 -> X15
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

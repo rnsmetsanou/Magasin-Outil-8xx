@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Changing_Arm" Id="{ba14a95c-f221-4986-867b-08a2e7e943b8}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Changing_Arm
+//
+//								Structure bras changeur		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 03.02.2026
+//Dernière modification : 03.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 03.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Changing_Arm :
+STRUCT
+	
+	(** ARRAY ST **)
+		aGripper : ARRAY[1..2] OF ST_Changing_Arm_Gripper ; // Changing_Arm_Gripper structure
+	
+	(** ALARMS FLAG **)
+		bAlAlarme1 : BOOL ; // Alarme 1 alarm
+
+	(** SETUP FLAG **)
+		bAck : BOOL :=FALSE; // Event acknowledgement
+		
+	(** PROCESS ENUM **)
+		ePositionAxis : ENUM_Position_Axis ; // Position of the Changing Arm
+	
+	(** PROCESS LREAL **)
+		lrArmPosition : LREAL ; // Arm position
+		lrArmPositionTol : LREAL ; // Arm Position Tolerance
+		
+		lrArmHome : LREAL ; // Arm coordinate at Home
+		lrArmManipulator : LREAL ; // Arm coordinate at transfer position (Arm<->Manipuator)
+		lrArmCnc: LREAL ; // Arm coordinate at transfer position (Arm<->Cnc)
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

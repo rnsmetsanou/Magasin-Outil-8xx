@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCProcessDataOut" Id="{2f415a41-4450-4ba1-8105-0bc99decbf81}">
+    <Declaration><![CDATA[TYPE tstCTCProcessDataOut :
+STRUCT
+	MotionMode		:USINT;	
+	TargetPosition	:REAL;	
+	Override1		:USINT; 
+	Override2		:USINT; 
+	Override3		:USINT; 	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

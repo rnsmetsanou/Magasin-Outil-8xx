@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Backup" Id="{616dc7b6-abc4-438a-897f-29cd3845fa34}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_HMI_Backup
+//
+//								Structure Backup HMI			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 11.03.2026
+//Dernière modification : 11.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 11.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Backup :
+STRUCT
+	
+	(** FLAG + R_Trig **)
+		bButtonProject : BOOL ; // Button for Backup Project
+			rtButtonProject : R_TRIG ; // Trigger for Backup Project	
+	
+		bButtonInitData : BOOL ; // Button for Init data of the Export/Import Array
+			rtButtonInitData : R_TRIG ; // Trigger for Init data of the Export/Import Array
+		bButtonExportData : BOOL ; // Button for Export data
+			rtButtonExportData : R_TRIG ; // Trigger for Export data
+		bButtonImportData : BOOL ; // Button for Import data
+			rtButtonImportData : R_TRIG ; // Trigger for Import data
+			
+		bButtonExportAlarms : BOOL ; // Button for Export alarms
+			rtButtonExportAlarms : R_TRIG ; // Trigger for Export alarms
+		bButtonExportMessages : BOOL ; // Button for Export messages
+			rtButtonExportMessages : R_TRIG ; // Trigger for Export messages
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

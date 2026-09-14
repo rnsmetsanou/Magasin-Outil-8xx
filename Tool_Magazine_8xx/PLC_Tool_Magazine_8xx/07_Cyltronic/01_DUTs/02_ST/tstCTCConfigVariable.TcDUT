@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCConfigVariable" Id="{3149f17d-b353-4617-955f-2524210527ec}">
+    <Declaration><![CDATA[TYPE tstCTCConfigVariable :
+STRUCT
+	Name 			:STRING[64];
+	Index 			:WORD;
+	Subindex 		:BYTE;
+	DataType 		:USINT := 0; 	// 0=Real, 1=Usint
+	ValueIfReal 	:REAL;
+	ValueIfUSINT 	:USINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

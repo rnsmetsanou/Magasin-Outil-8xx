@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_ReadFocas" Id="{4af6cd39-23f7-4abc-ab59-b9a0f33575ea}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ReadFocas
+VAR_INPUT
+	(** UINT **)
+		uiPMCAdr1 : UINT ; // Adresse de début de la donnée à lire
+		uiPMCAdr2 : UINT ; // Adresse de fin de la donnée à lire
+		uiGrandType : UINT ; // Grandeur du block de donnée à lire Exemple : data_type is 0(byte type) : length = 8 + N
+
+	(** BYTE **)
+		byTypePMC : BYTE ; // Type de variable à lire dans le PMC (G, R, X, Y...)
+		byTypeData : BYTE ; // Type de donnée à lire (0 = byte, 1 = Word, 2 = Long, 3 = Bit, 4 = 32-bit floating-point type(30i-B Series/0i-F/PMi-A only), 5 = 64-bit floating-point type(30i-B Series/0i-F/PMi-A only)
+	
+	(** FLAG **)	
+		bStartRead : BOOL := FALSE ;
+		bBitRead : BYTE ; // Bit à lire dans le word du PMC
+END_VAR
+VAR_OUTPUT
+	(** ARRAY **)
+		aTabValLect : ARRAY [0..499] OF BYTE ; // Valeurs récupérées lors de la lecture		
+		
+	(** INT **)
+		udiErrorID : INT ; // Error ID (0 == exécution ok)
+		
+	(** FLAG **)
+		bBusy : BOOL := FALSE ; // Vrai si le bloc est en cours d'exécution
+		bDone : BOOL := FALSE ; // Vrai si le bloc à terminé l'exécution sans erreur
+		bError : BOOL := FALSE ; // Vrai si une erreur est survenue
+END_VAR
+VAR
+	(** UINT **)
+		uiTrueSizeRead : UINT ; // Table vérirable de la table à lire
+
+	(** BYTE **)
+		byIndexLect : BYTE := 0 ;
+
+	(** FLAG **)	
+		bErreurAff : BOOL := FALSE ; // Erreur lors de l'affectation, mauvaise valeur
+		bTabEnvOk : BOOL := FALSE ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_ReadFocas
+//
+//									Lecture Focas		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+IF bStartRead AND (NOT GV_Focas.bReadDone) THEN
+	
+	IF byTypePMC>=0 AND byTypePMC<=13 THEN
+		GV_Focas.stRead.uiTypePMC:=byTypePMC;
+	ELSE
+		bErreurAff := TRUE;
+	END_IF
+	
+	IF byTypeData>=0 AND byTypeData<=5 THEN
+		GV_Focas.stRead.uiTypeData:=byTypeData;
+	ELSE
+		bErreurAff := TRUE;
+	END_IF
+	
+	IF (uiPMCAdr1>=0 AND uiPMCAdr1<=9499) AND (uiPMCAdr2>=0 AND uiPMCAdr2<=9499) THEN
+		GV_Focas.stRead.uiPMCAdr1:=uiPMCAdr1;
+		GV_Focas.stRead.uiPMCAdr2:=uiPMCAdr2;
+		uiTrueSizeRead:=8+(uiPMCAdr2-uiPMCAdr1+1);
+	ELSE
+		bErreurAff := TRUE;		
+	END_IF
+	
+	IF uiGrandType>=8 AND uiGrandType<=65535 THEN
+		GV_Focas.stRead.uiGrandType:=uiGrandType;
+	ELSE
+		bErreurAff := TRUE;
+	END_IF
+	
+	IF bBitRead>=0 AND bBitRead<=7 THEN
+		GV_Focas.stRead.uiBitLect:=bBitRead;
+	ELSE
+		bErreurAff := TRUE;
+	END_IF
+	
+	IF (NOT bErreurAff) THEN // Contrôle que le tableau soit remplis correctement et start de la lecture ou non
+		GV_Focas.bReadStart:=TRUE;
+		bTabEnvOk:=TRUE;
+	ELSE
+		GV_Focas.bReadStart:=FALSE;
+		bError:=TRUE;
+	END_IF
+	
+ELSE
+	IF bTabEnvOk AND (NOT bStartRead) THEN // Réinitialisation du start après envoie et reset du start sur le bloc
+		GV_Focas.bReadStart:=FALSE;
+		bTabEnvOk:=FALSE;
+	END_IF
+	
+	IF bError THEN // Réinitialisation des erreurs après le reset du start sur le bloc
+		bError:=FALSE;
+		bErreurAff:=FALSE;
+	END_IF
+END_IF
+
+// Récupération des variables de sortie géré par le programme C#
+	IF GV_Focas.bReadDone THEN
+		aTabValLect:=GV_Focas.stRead.aTabValeur;
+		udiErrorID:=GV_Focas.iReadErrorID;
+	END_IF
+
+// Test de la mise à jour du busy en temps réel
+	bBusy:=GV_Focas.bReadBusy;
+	bDone:=GV_Focas.bReadDone;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

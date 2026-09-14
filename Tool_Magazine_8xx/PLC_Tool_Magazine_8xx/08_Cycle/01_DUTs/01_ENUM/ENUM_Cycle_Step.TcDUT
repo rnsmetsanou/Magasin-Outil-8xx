@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Cycle_Step" Id="{135e9eef-1a11-40da-aeff-668441469737}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Cycle_Step
+//
+//							Enumération des étapes du cycle			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 02.02.2026
+//Dernière modification : 02.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 02.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Cycle_Step :
+(
+	InitAll := 0 , // Init All
+	InitData := 1 , // Init Data
+	Ready := 2 , // Ready
+	Preparation := 3 , // Tool Preparation/Anticipation
+	BuildSequence := 4 , // Build the Sequence
+	ExecuteSequence := 5 , // Execute the Sequence
+	End := 7 , // End
+	Abort := 8 , // Abort
+	Error := 9 // Error
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

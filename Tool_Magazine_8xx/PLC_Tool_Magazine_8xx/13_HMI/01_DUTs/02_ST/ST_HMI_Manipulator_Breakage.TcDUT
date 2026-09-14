@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Manipulator_Breakage" Id="{36386bdf-20aa-4efe-a42e-3a4b35b2f58f}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Manipulator_Breakage
+//
+//					Structure datas pour le bris outil via le manipulateur 	
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 06.02.2026
+//Dernière modification : 06.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 06.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Manipulator_Breakage :
+STRUCT
+
+	(** SETUP TIME **)
+		tTimeout : TIME ; // Value of the timeout for the breakage ctrl
+	
+	(** SETUP LREAL **)
+		lrOffsetSensor : LREAL ; // Offset position above the breakage sensor
+		lrToleranceLength : LREAL ; // Tolerance for tool length
+		lrMeasureVelocity : LREAL ; // Velocity for the measure
+
+	(** SETUP INT **)
+		iTimeout : INT ; // Value of the timeout for the breakage ctrl
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

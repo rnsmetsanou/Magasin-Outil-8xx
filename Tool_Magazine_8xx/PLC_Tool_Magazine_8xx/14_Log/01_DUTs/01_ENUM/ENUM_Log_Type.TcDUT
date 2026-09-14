@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Log_Type" Id="{d93690e3-b1fe-4532-a50a-f5d9e91d5995}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  			ENUM_Log_Type
+//
+//									Log type 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Log_Type :
+(
+	WM := 1 , 
+	Customer := 2 	
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

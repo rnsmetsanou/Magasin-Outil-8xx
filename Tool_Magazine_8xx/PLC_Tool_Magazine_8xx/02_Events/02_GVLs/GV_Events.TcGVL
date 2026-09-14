@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Events" Id="{dd24241d-4b16-4e1f-92b4-cf07dbfaf564}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Events
+//
+//								Variables évènements 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+END_VAR
+
+VAR_GLOBAL 
+	
+	(** ARRAY ST **) // Data for HMI
+	aEventGroup	: ARRAY[1..GV_Events.iMaxEventGroup] OF ST_EVENT_GROUP ; // Event Group Structure	
+	
+	(** INT **)
+	iEventGroupNumberAssignement : INT := 0 ;
+	iEventGroupGeneralEvent : INT := 0 ; 
+	iEventGroupCallEvent : INT := 0 ; 
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT INT **) // Data for HMI
+	iMaxEventGroup : INT := 50; // Max EVENT GROUP 1-60 
+	iMaxAlarms : INT := 200; // Max Alarms by EVENT GROUP	
+	iMaxMessages : INT := 50; // Max Messages by EVENT GROUP			
+	iMaxOpMessages : INT := 50; // Max Operator Messages by EVENT GROUP
+	
+END_VAR
+
+	]]></Declaration>
+  </GVL>
+</TcPlcObject>

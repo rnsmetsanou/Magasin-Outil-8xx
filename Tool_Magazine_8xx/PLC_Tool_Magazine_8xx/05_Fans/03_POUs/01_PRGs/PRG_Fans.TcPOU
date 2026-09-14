@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Fans" Id="{3ac6e5da-4843-4c97-b310-e0c7231bcc3f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Fans
+VAR
+	(** REAL **)
+		rProportionnal: REAL := 0 ;	// kP for the Fan regulation
+
+	(** WORD **)
+		wPT100ArmorValue : WORD ;
+		wPT100ArmorValue1 : WORD ;
+		wPT100ArmorValue2 : WORD ;
+
+	(** INT **)
+		iFanLoop : INT := 0 ; // INT use in a FOR Loop
+	
+	(** BYTE **)
+		bPT100ArmorValue1 : BYTE ;
+		bPT100ArmorValue2 : BYTE ;
+	
+	(** FB **)
+		FbFan : FB_Fan ;
+		fbEventGroupAssignement : FB_Event_Group_Number_Assignement ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Fans
+//
+//			Paramétrage ventilateur(s) + Appel Gestion ventilateur(s)  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** MAGAZINE ARMOR FAN **)
+	GV_Fans.aId[1].bPresence:=TRUE; // Fan presence or not
+	fbEventGroupAssignement(iEventGroup:=GV_Fans.aId[1].iEventGroup);
+	GV_Fans.aId[1].iIdHMI:=1; // Number for events on HMI
+	GV_Fans.aId[1].eFanType:=ENUM_Fan_Type.PWM; // Fan type
+	GV_Fans.aId[1].uPwmPeriod:=40; // PWM period 100ns = 10kHz
+	GV_Fans.aId[1].uMinSpeed:=1000; // Min speed 1000tr/min
+	GV_Fans.aId[1].uMaxSpeed:=8500; // Max speed 8500tr/min
+	GV_Fans.aId[1].uMinPwm:=10; // Min Pwm = 10% at min speed
+	GV_Fans.aId[1].uMaxPwm:=100; // Max Pwm = 95% at max speed
+	GV_Fans.aId[1].rTempStart:=30.0; // Temp in °C to start the fan
+	GV_Fans.aId[1].rTempMax:=45.0; // Temp in °C for max speed of the fan
+	GV_IO.pwmMagazineArmorFanOutput:=LREAL_TO_UINT(UINT_TO_LREAL(GV_Fans.aId[1].uPwmOutput)*200); // PWM output (0-65535) -> (0-20000)
+	GV_IO.pwmMagazineArmorFanPeriod:=GV_Fans.aId[1].uPwmPeriod; // PWM perod
+	(* Speed Set *)
+		(* PT100 Armor *)
+			wPT100ArmorValue1:=GV_CNC.stFanucData.stCncMagazine.wiPT100ArmorValue; // Temp from CNC
+			//MSB  
+			bPT100ArmorValue1:=WORD_TO_BYTE(SHR(wPT100ArmorValue1,8));
+			//LSB
+			bPT100ArmorValue2:=WORD_TO_BYTE(wPT100ArmorValue1 AND 16#FF);
+			wPT100ArmorValue:=(SHL(BYTE_TO_WORD(bPT100ArmorValue2),8) OR BYTE_TO_WORD(bPT100ArmorValue1));
+		GV_Fans.rTempArmor:=WORD_TO_REAL(wPT100ArmorValue/10); // Temp convert from CNC
+		IF GV_Fans.rTempArmor<=-1 OR GV_Fans.rTempArmor>=1 THEN
+			GV_Fans.rTempArmorFiltered:=GV_Fans.rTempArmorFiltered+0.05*(GV_Fans.rTempArmor-GV_Fans.rTempArmorFiltered); // Temp Filtered
+		ELSE
+			GV_Fans.rTempArmorFiltered:=0;
+		END_IF
+		IF GV_Fans.rTempArmorFiltered<=GV_Fans.aId[1].rTempStart THEN
+			GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMinSpeed; // Speed command (Min speed)
+		ELSIF GV_Fans.rTempArmorFiltered>=GV_Fans.aId[1].rTempMax THEN
+			GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMaxSpeed; // Speed command (Max speed)
+		ELSE
+		   IF GV_Fans.aId[1].rTempMax>GV_Fans.aId[1].rTempStart THEN
+				rProportionnal:=(GV_Fans.rTempArmorFiltered-GV_Fans.aId[1].rTempStart)/(GV_Fans.aId[1].rTempMax-GV_Fans.aId[1].rTempStart);
+				GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMinSpeed+REAL_TO_UINT(rProportionnal*(GV_Fans.aId[1].uMaxSpeed-GV_Fans.aId[1].uMinSpeed));
+			ELSE
+					 GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMaxSpeed;
+			END_IF
+		END_IF
+
+	(*Limit*)
+		IF GV_Fans.aId[1].uSpeedSet<GV_Fans.aId[1].uMinSpeed THEN
+			GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMinSpeed;
+		END_IF
+		IF GV_Fans.aId[1].uSpeedSet>GV_Fans.aId[1].uMaxSpeed THEN
+			GV_Fans.aId[1].uSpeedSet:=GV_Fans.aId[1].uMaxSpeed;
+		END_IF
+	
+	(*Start*)
+		GV_Fans.aId[1].rtStart(CLK:=GV_General.bSafety);
+ 		 IF GV_Fans.aId[1].rtStart.Q THEN
+ 			 GV_Fans.aId[1].bStart:=TRUE;
+ 		 END_IF
+		
+(** OTHER FAN **)
+	//...
+
+(** FB_Fan **)
+	FOR iFanLoop:=1 TO GV_Fans.iMaxFans BY 1 DO
+		FbFan(iFanNumber:=iFanLoop,StFan:=GV_Fans.aId[iFanLoop]); // Fan function block
+	END_FOR
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

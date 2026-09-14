@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="teCTCGDSStep" Id="{c718748c-16b6-4d39-afe7-0d979d31cff0}">
+    <Declaration><![CDATA[TYPE teCTCGDSStep :
+(
+	CTC_GDS_IDLE,
+	CTC_GDS_READ_STATUS_START,
+	CTC_GDS_READ_STATUS_WAIT,
+	CTC_GDS_READ_DETSTAT_START,
+	CTC_GDS_READ_DETSTAT_WAIT
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

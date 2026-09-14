@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Fan" Id="{59b2c815-0fa7-4446-a133-0e902de12bf5}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Fan
+//
+//							Structure ventilateur(s) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 16.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+// 16.02.2026 (G.GOETZ) -> Ajout Sonde température PT-100
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Fan :
+STRUCT
+	
+	(** SETUP ENUM **)
+	eFanType : ENUM_Fan_Type ; // Type of the Fan
+
+	(** SETUP REAL **)
+	rTempStart : REAL := 30.0 ; // Temp in °C mini to start the Fan
+	rTempMax : REAL := 45.0 ; // Temp in °C max speed of the Fan
+	
+	(** SETUP UINT **)
+	uMinSpeed : UINT := 0 ; // Min Speed
+	uMaxSpeed : UINT := 0 ; // Max Speed
+	uMinPwm : UINT := 0 ; // Min Pwm at min speed (in %)
+	uMaxPwm : UINT := 0 ; // Max Pwm at max speed (in %)
+	uPwmPeriod : UINT := 0 ; // Period of the PWM signal (in ns)
+	
+	(** SETUP INT **)
+	iEventGroup : INT := 0 ; // Group for events
+	iIdHMI : INT := 0 ; // Number for events on HMI
+	
+	(** SETUP FLAG **)
+	bEventAck : BOOL := FALSE ; // Events Acknowledgement
+	bPresence : BOOL := FALSE ; // Fan presence or not
+
+	(** PROCESS UINT **)
+	uSpeedSet : UINT := 0 ; // Speed command (in tr/min)
+	uPwmTarget : UINT := 0 ; // Taregt of the PWM signal, used to do a ramp
+	uPwmOutput : UINT := 0 ; // Output of the PWM signal
+	
+	(** PROCESS INT **)
+
+	(** PROCESS FLAG + R_TRIG **)
+		bStart: BOOL := FALSE; // Start the Fan
+			rtStart : R_TRIG ; // Trigger for Start the Fan
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

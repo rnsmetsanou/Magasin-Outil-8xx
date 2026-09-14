@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Door" Id="{7f2aa6ce-ad06-42ed-a0f5-95123de6952b}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Door
+//
+//								Structure porte(s) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Door :
+STRUCT
+
+	(** SETUP ENUM **)
+		eType : ENUM_Door_Type ; // Type of the Door
+	
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+		iIdHMI : INT := 0 ; // Number for events on HMI
+	
+	(** SETUP FLAG **)
+		bEventAck : BOOL := FALSE ; // Events Acknowledgement
+		bPresence : BOOL := FALSE ; // Presence or not
+	
+	(** PROCESS INT **)
+
+	(** PROCESS FLAG **)	
+		bUnlockRequest : BOOL := FALSE ; // Request for unlock the door
+		bUnlockRequestAck : BOOL := FALSE ; //Request for unlock the door acknowledgement
+		bUnlockAuthorization : BOOL := FALSE ; // Authorization to unlock the door
+		bLockRequest : BOOL := FALSE ; // Request for lock the door
+		bLockRequestAck : BOOL := FALSE ; //Request for lock the door acknowledgement
+		bLockAuthorization : BOOL := FALSE ; // Authorization to lock the door	
+		
+		bButtonUnlock : BOOL := FALSE ; // Button for unlock the door
+		rtButtonUnlockTrig : R_trig ; // Trigger of the Button for unlock the door
+		bButtonUnlockLamp : BOOL := FALSE ; // Lamp of the Button for unlock the door
+		bButtonLock : BOOL := FALSE ; // Button for lock the door
+		rtButtonLockTrig : R_trig ; // Trigger of the Button for lock the door
+		bButtonLockLamp : BOOL := FALSE ; // Lamp of the Button for lock the door
+		
+		bUnlockOut : BOOL := FALSE ; // Output for unlock the door
+		bLockOut : BOOL := FALSE ; // Output for lock the door
+		
+		bDoorOpen : BOOL := FALSE ; // Door is open
+		bDoorCloseLock : BOOL := FALSE ; // Door is closed and locked
+		bDoorSafetyRelay : BOOL := FALSE ; // Door safety relay
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Door_Type" Id="{5011c2e8-1a8b-4c8e-8efc-a6ad2f887cad}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Door_Type
+//
+//							Enumération des types de portes
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Door_Type :
+(
+	Unknow := 0 ,
+	AutoLockButtonUnlockOff := 1 ,
+	AutoLockButtonUnlockOn := 2 
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_BackupExport" Id="{1ed5dd19-f20b-4807-bcf1-6b953e5e075d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_BackupExport
+VAR_INPUT
+	(** PROCESS FLAG **)
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_IN_OUT
+	(** SETUP ARRAY ST **)
+		aData : ARRAY[0..GV_General.udiMaxBackupRow] OF ST_Array_Data ; // Data to Export
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR
+	(** STRING **)
+		sNetId : T_AmsNetId := '' ; (* TwinCAT system network address *)
+		sFileName : T_MaxString := '' ; (* CSV destination file path and name *)
+		sPathName : T_MaxString := '' ; (* CSV destination file path*)
+		sCSVLine : STRING(255) := '' ; (* Single CSV text line*)
+		sCSVField : T_MaxString := '' ;
+		
+	(** UDINT **)
+		udiBackuphFile : UINT := 0 ; (* File handle of the source file *)
+		udiRow : UDINT ;
+		udiColumn : UDINT ;
+		udiLoopInit : UDINT ;
+		
+	(** INT **)
+		iBackupStep : INT ;
+		iLoop : INT ;
+		iFind : INT ;
+		
+	(** FB **)
+	    fbFileOpen  : FB_FileOpen ; (* Opens file *)
+		fbFilePuts : FB_FilePuts ; (* Writes one record (line) *)
+		fbWriter : FB_CSVMemBufferWriter ;(* Helper function block used to create CSV data bytes (single record line) *)
+		fbFileClose : FB_FileClose ; (* Closes file *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_BackupExport
+//
+//				Bloc fonction pour exporter un Backup des datas au format .CSV    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by Beckhoff -> https://infosys.beckhoff.com/english.php?content=../content/1033/tcplclib_tc2_utilities/35419787.html&id=)
+//Création: 09.03.2026
+//Dernière modification : 10.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 10.03.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+
+(** STEPS **)
+	CASE iBackupStep OF
+		
+		0: (* Wait Start *)
+			IF bStart AND (NOT bBusy) THEN
+				sPathName:='C:\WM\Backup\Data\';
+				sFileName:=CONCAT('DataToolMagazine_',DT_TO_STRING(GV_General.dtCurrentDateTime));
+				sFileName:=DELETE(sFileName,3,18);
+				FOR iLoop:=1 TO 3 BY 1 DO
+					iFind:=FIND(sFileName,'-');
+					sFileName:=DELETE(sFileName,1,iFind);
+				END_FOR
+				FOR iLoop:=1 TO 3 BY 1 DO
+					iFind:=FIND(sFileName,':');
+					sFileName:=DELETE(sFileName,1,iFind);
+				END_FOR
+				sFileName:=INSERT(sFileName,'_',25);
+				sFileName:=CONCAT(sPathName,sFileName);
+				sFileName:=CONCAT(sFileName,'.csv');
+				bBusy:=TRUE;
+				bError:=FALSE;
+				udiErrorID:=0;
+				udiRow:=0;
+				udiColumn:=0;
+				iBackupStep:=1;
+			END_IF
+			
+		1: (* Open file *)
+			fbFileOpen(bExecute:=FALSE);
+			fbFileOpen(
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						sPathName:=sFileName,
+						nMode:=FOPEN_MODEWRITE OR FOPEN_MODETEXT,
+						ePath:=PATH_GENERIC
+						);
+			iBackupStep:=2;
+		
+		2:(* Wait until open not busy *)
+			fbFileOpen(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID => udiErrorID, 
+						hFile => udiBackuphFile 
+						);
+			IF (NOT fbFileOpen.bBusy) THEN
+				IF (NOT fbFileOpen.bError) THEN
+					iBackupStep:=3;
+				ELSE(* Error: file not found ? *)
+					iBackupStep:=100;
+				END_IF
+			END_IF
+		
+		3: (* Convert one PLC record to CSV format *)
+			sCSVLine:='';
+			fbWriter.eCmd:=eEnumCmd_First;
+		
+			IF udiRow<=GV_General.udiMaxBackupRow THEN
+		
+				FOR udiColumn:=0 TO GV_General.udiMaxBackupColumn BY 1 DO
+		
+					CASE udiColumn OF
+						0: sCSVField:=STRING_TO_CSVFIELD(aData[udiRow].sIndex, FALSE);
+						1: sCSVField:=STRING_TO_CSVFIELD(aData[udiRow].sName, FALSE);
+						2: sCSVField:=STRING_TO_CSVFIELD(aData[udiRow].sType, FALSE);
+						3: sCSVField:=STRING_TO_CSVFIELD(aData[udiRow].sValue, FALSE);
+					END_CASE
+		
+					(* Add new field to the record buffer *)
+						fbWriter(
+							pBuffer:=ADR(sCSVLine),
+							cbBuffer:=SIZEOF(sCSVLine)-1,
+							putValue:=sCSVField,
+							pValue:=0,
+							cbValue:=0,
+							bCRLF:=(udiColumn=GV_General.udiMaxBackupColumn)
+						);
+		
+					IF fbWriter.bOk THEN
+						fbWriter.eCmd:=eEnumCmd_Next;
+					ELSE
+						iBackupStep := 100;
+						RETURN;
+					END_IF
+				END_FOR
+				
+				(* Avoid double CR *)
+				IF RIGHT(sCSVLine,2)='$R$L' THEN
+					sCSVLine:=REPLACE(sCSVLine,'$L',2,LEN(sCSVLine)-1);
+				END_IF
+				udiRow:=udiRow+1;
+				iBackupStep:=4;
+				
+			ELSE
+				iBackupStep:=10;
+			END_IF
+		
+		4: (* Create CSV data line *)
+			fbFilePuts(bExecute:=FALSE);
+			fbFilePuts(
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						hFile:=udiBackuphFile,
+						sLine:=sCSVLine
+						);
+			iBackupStep:=5;
+			
+		5: (* Wait data write *)
+			fbFilePuts(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID=>udiErrorID
+						);
+						
+			IF (NOT fbFilePuts.bBusy) THEN
+				IF (NOT fbFilePuts.bError) THEN
+					iBackupStep:=3;
+				ELSE
+					iBackupStep:=100;
+				END_IF
+			END_IF
+			
+		10: (* Close source file *)
+			fbFileClose(bExecute:=FALSE);
+			fbFileClose( 
+						bExecute:=TRUE,
+						sNetId:=sNetId,
+						hFile:=udiBackuphFile, 
+						);
+			iBackupStep:=11;
+	
+		11:(* Wait until close not busy *)
+			fbFileClose(
+						bExecute:=FALSE,
+						bError=>bError,
+						nErrID=>udiErrorID
+						);
+			IF (NOT fbFileClose.bBusy) THEN
+				udiBackuphFile:=0;
+				iBackupStep:=100;
+			END_IF
+	
+		100: (* Error or ready step => cleanup *)
+			IF (udiBackuphFile>0) THEN
+				iBackupStep:=10; (* Close the source file *)
+			ELSE
+				bBusy:=FALSE;
+				iBackupStep:=0;	(* Ready *)
+			END_IF
+		
+	END_CASE
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Changing_Arm_Gripper" Id="{3c7d2f7a-60c3-4ce5-b2a6-513039ae3a8e}">
+    <Declaration><![CDATA[TYPE ST_Changing_Arm_Gripper :
+STRUCT
+	
+	(** ST **)
+		stLocationMemory : ST_Tool_Location ; // Tool_Location structure
+	
+	(** PROCESS INT **)
+		iAbsLocationNumberMemory : INT := 0 ; // Memory -> Number of the location in the Magazine
+		iRelLocationNumberMemory : INT ; // Memory -> Number of the location in relative in the Magazine
+		
+	(** PROCESS FLAG **)
+		bToolPresenceMemory : BOOL ; // Memory -> Tool Presence in the Manipulator
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Axes" Id="{c7a0838e-c1db-4d7c-b031-b5e44aa1a1da}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Axes
+//
+//							Variables pour les Axes
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 28.01.2026
+//Dernière modification : 28.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 28.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** ST **)
+		stAxisX : ST_Axis ; // Structure Axis
+		stAxisY : ST_Axis ; // Structure Axis
+		stAxisZ : ST_Axis ; // Structure Axis
+		stAxisArm : ST_Axis ; // Structure Axis
+
+END_VAR
+
+VAR_GLOBAL
+
+	(** PROCESS ENUM **)
+		eJogAxisSelect : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Axis Selected for Jog
+		eJogAxisRequest : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Axis Request for Jog
+
+		eJogDirection : ENUM_Jog_Direction := ENUM_Jog_Direction.None ; // Direction for jog
+		eJogMode : ENUM_Jog_Mode := ENUM_Jog_Mode.None ; // Mode for jog	
+	
+		eRefAxisSelect : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Axis Selected for Referencing
+		eRefAxisRequest : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Axis Request for Referencing
+
+	(** PROCESS TIME **)
+		tBrakeAxisZ : TIME ; // Time after a mouvement to set the brake of the Axis Z
+		
+	(** PROCESS LREAL **)
+		lrVelocityAxisX : LREAL ; // Velocity Axis X
+		lrVelocityAxisY : LREAL ; // Velocity Axis Y
+		lrVelocityAxisZ : LREAL ; // Velocity Axis Z
+		lrVelocityAxisArm : LREAL ; // Velocity Axis Arm
+		
+	(** PROCESS FLAG **)	
+		//bJogRequestRisingEdge : BOOL ; // Rising Edge for Jog Request	
+		bAxisAllDisabled : BOOL ; // All Axis are disabled
+		bAxisAllNotMoving : BOOL ; // All Axis are not moving
+		bAxisAllOperational : BOOL ; // All Axis are operational
+		bAxisXAllowed : BOOL ; // Select Axis X is Allowed
+		bAxisYAllowed : BOOL ; // Select Axis Y is Allowed
+		bAxisZAllowed : BOOL ; // Select Axis Z is Allowed
+		bAxisArmAllowed : BOOL ; // Select Axis Arm is Allowed
+		
+		bReferencingXAllowed : BOOL ; // Select Referencing X is Allowed
+		bReferencingYAllowed : BOOL ; // Select Referencing Y is Allowed
+		bReferencingZAllowed : BOOL ; // Select Referencing Z is Allowed
+		bReferencingArmAllowed : BOOL ; // Select Referencing Arm is Allowed
+
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+
+	(** CONSTANT LREAL **)
+		lrAutoMaxSpeedAxisX : LREAL := 697.0 ; // Max Speed in AUTO for the Axis X (mm/s)
+		lrAutoMaxSpeedAxisY : LREAL := 169.0 ; // Max Speed in AUTO for the Axis Y (mm/s)
+		lrAutoMaxSpeedAxisZ : LREAL := 384.0 ; // Max Speed in AUTO for the Axis Z (mm/s)
+		lrAutoMaxSpeedAxisArm : LREAL := 578.0 ; // Max Speed in AUTO for the Axis Arm (mm/s)
+		
+		lrJogMaxSpeedAxisX : LREAL := 30 ; //lrAutoMaxSpeedAxisX/10 ; // Max Speed in Jog for the Axis X (mm/s)
+		lrJogMaxSpeedAxisY : LREAL := 15 ; //lrAutoMaxSpeedAxisY/10 ; // Max Speed in Jog for the Axis Y (mm/s)
+		lrJogMaxSpeedAxisZ : LREAL := 30 ; //lrAutoMaxSpeedAxisZ/10 ; // Max Speed in Jog for the Axis Z (mm/s)
+		lrJogMaxSpeedAxisArm : LREAL := 30 ; //lrAutoMaxSpeedAxisArm/10 ; // Max Speed in Jog for the Axis Arm (mm/s)
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

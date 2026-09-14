@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Log" Id="{ccebccef-b4f8-4a24-bb59-8b5dc85a8256}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Log
+VAR_INPUT
+	File_name : STRING ; // File name without .CSV
+	Path_name : STRING; // Path for file
+	File_management : INT ; // File management :
+										// 1:Automatic
+										// 2:manual (with external start) 
+										// 3:manual (with external start and file delete on start)
+END_VAR
+VAR_IN_OUT
+	Execute : BOOL ; // Execute writing (not use in automatic mode)
+	File_number : INT ; // File number
+	stLogData : ST_LOG_DATA;
+END_VAR
+VAR
+	FB_Write_log : FB_Write_DataToFile;
+	Log_file_name : STRING ; // File name
+	Temp_data : ARRAY[1..40000] OF BYTE;
+	Init_data : ARRAY[1..40000] OF BYTE;
+	Fill: UDINT ;
+	Index : DINT;
+	LENGTH : UDINT;
+	LENGTH_FILE : UDINT;	
+	SIZE : UDINT;
+	SEPARATOR : STRING [10];
+	END_OF_LINE : STRING [10];
+	STEP : INT ;
+	Save_timer : TON; // Timer for auto save
+	File_delete : BOOL;
+	Last_Log_date_time_new_file: INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_Log
+//
+//							Fonction pour les Log    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+Save_timer(IN:=NOT Save_timer.Q,PT:=T#60S);
+
+// Buffer full
+IF stLogData.iLineIndex>GV_Log.iMaxLog THEN
+	stLogData.bBufferFull:=TRUE;
+ELSE
+	stLogData.bBufferFull:=FALSE;
+END_IF
+
+// Launch writing into file
+IF STEP=0 THEN
+
+	// Check file management mode
+	CASE  File_management OF
+		ENUM_Log_file_management.Automatic: // Automatic
+			// Check if timer reach or check if buffer full
+			IF (Save_timer.Q OR stLogData.bBufferFull) THEN 
+				//check if new log file (each 24H)
+				IF (GV_General.dtCurrentDateTime>(stLogData.dtLastLogDateTimeNewFile + T#24H)) THEN
+					File_number:=File_number+1;
+					File_delete:=TRUE;
+					stLogData.dtLastLogDateTimeNewFile:=GV_General.dtCurrentDateTime;
+					IF File_number>GV_Log.iMaxLogFile THEN
+						File_number:=1;
+					END_IF
+				END_IF
+				STEP:=1;
+			END_IF	
+
+		ENUM_Log_file_management.Manual: // Manual
+			IF (Execute OR stLogData.bBufferFull) THEN
+				STEP:=1;
+				Execute:=FALSE;
+			END_IF
+			
+		ENUM_Log_file_management.ManualWithDelete: // Manual with file delete
+			IF Execute THEN
+				STEP:=1;
+				Execute:=FALSE;
+				File_delete:=TRUE;
+			END_IF					
+	END_CASE
+END_IF
+
+// Preparing data and parameters
+IF STEP=1 THEN
+	Log_file_name :=Path_name;
+	Log_file_name := CONCAT(Log_file_name,File_name);
+	IF File_management=ENUM_Log_file_management.Automatic THEN
+		Log_file_name := CONCAT(Log_file_name,INT_TO_STRING(File_number));
+	END_IF
+	Log_file_name := CONCAT(Log_file_name,'.CSV');
+	Temp_data:=Init_data;
+	Fill:=1;
+	SEPARATOR:=';';
+	END_OF_LINE:='$N';
+	
+		// Copy each log line in Array of bytes
+		// Copy date and time
+	FOR Index:=1 TO GV_Log.iMaxLog DO
+		LENGTH:=INT_TO_UDINT(LEN(stLogData.aBufferLog[Index].strLogDateTime));
+		IF LENGTH>0 THEN
+			MEMCPY(destAddr:=ADR(Temp_data[Fill]),srcAddr:=ADR(stLogData.aBufferLog[Index].strLogDateTime),n:=LENGTH);
+			Fill:=Fill+LENGTH;
+			
+			// Copy separator
+			LENGTH:=INT_TO_UDINT(LEN(SEPARATOR));
+			MEMCPY(destAddr:=ADR(Temp_data[Fill]),srcAddr:=ADR(SEPARATOR),n:=LENGTH);
+			Fill:=Fill+LENGTH;
+					
+			// Copy log texte
+			LENGTH:=INT_TO_UDINT(LEN(stLogData.aBufferLog[Index].strLogTxt));
+			MEMCPY(destAddr:=ADR(Temp_data[Fill]),srcAddr:=ADR(stLogData.aBufferLog[Index].strLogTxt),n:=LENGTH);	
+			Fill:=Fill+LENGTH;
+					
+			// Copy separator
+			LENGTH:=INT_TO_UDINT(LEN(SEPARATOR));
+			MEMCPY(destAddr:=ADR(Temp_data[Fill]),srcAddr:=ADR(SEPARATOR),n:=LENGTH);
+			Fill:=Fill+LENGTH;
+					
+			// Copy End of line
+			LENGTH:=INT_TO_UDINT(LEN(END_OF_LINE));
+			MEMCPY(destAddr:=ADR(Temp_data[Fill]),srcAddr:=ADR(END_OF_LINE),n:=LENGTH);
+			Fill:=Fill+LENGTH;
+		END_IF		
+	END_FOR
+	// Reset WM log
+	SIZE:=SIZEOF(stLogData.aBufferLog);
+	LENGTH_FILE:=Fill-1;	
+	MEMSET(destAddr:=ADR(stLogData.aBufferLog),fillByte:=0,n:=SIZE);
+	stLogData.iLineIndex:=1;
+	STEP:=2;
+END_IF
+
+
+// Write finished
+IF FB_Write_log.bBusy THEN
+	STEP:=0;
+END_IF
+
+
+FB_Write_log(sFilePath:=Log_file_name,DataToWrite:=ADR(Temp_data),DataToWriteLen:=LENGTH_FILE,bExecute:=STEP=2,With_file_delete:=File_delete);
+]]></ST>
+    </Implementation>
+    <Method Name="M_Write_Log" Id="{86de61b7-ba8d-4f06-94e7-b4d772e16d83}">
+      <Declaration><![CDATA[METHOD M_Write_Log : BOOL
+VAR_INPUT
+	(** STRING **)
+	strText : STRING(255 ); // Text to write in log
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				M_Write_Log
+//
+//						Méthode pour écritue dans le Log Buffer   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** WRITE DATA IN LOG BUFFER **)
+
+	(* The warning can be disabled here as the user is aware of the risk that the reference may not be valid by checking its validity *)
+		{warning disable C0371}
+		
+			IF PRG_MAIN.fbTime.systemTime.wYear<>1970 THEN
+				IF stLogData.iLineIndex<=0 THEN
+					stLogData.iLineIndex:=1;
+				END_IF
+				IF stLogData.iLineIndex<=GV_Log.iMaxLog THEN
+					stLogData.aBufferLog[stLogData.iLineIndex].strLogDateTime:=sTime();
+					stLogData.aBufferLog[stLogData.iLineIndex].strLogTxt:=strText;
+					stLogData.iLineIndex:=stLogData.iLineIndex+1;
+				END_IF
+			END_IF
+	
+		{warning restore C0371}
+	(* The warning may be restored at the end of the access area *)]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

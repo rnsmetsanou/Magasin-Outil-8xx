@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Blink" Id="{436676e5-01b4-44cb-863d-02f8448af0ec}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Blink
+VAR_INPUT
+	(** TIME **)
+	tTimerValue : TIME ; // Timer value Input
+END_VAR
+VAR_OUTPUT
+	(** FLAG **)
+	bOut : BOOL :=FALSE ; // Blinking flag Output
+END_VAR
+VAR
+	(** FB **)
+	tonTimerON : TON ; 
+	tonTimerOFF : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  					FB_Blink
+//
+//						Clignotement d'un un flag à un certain rythme    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+tonTimerOFF(IN:= (NOT bOut),PT:=tTimerValue);
+tonTimerON(IN:=bOut,PT:=tTimerValue);
+
+IF tonTimerOFF.Q=TRUE THEN
+	bOut:=TRUE;
+END_IF
+IF tonTimerON.Q=TRUE THEN
+	bOut:=FALSE;
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

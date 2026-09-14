@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Cycle_Action" Id="{e93da455-c2f8-4eab-9e23-ae4cbae5cb82}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Cycle_Action
+//
+//							Enumération des actions du cycle			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Cycle_Action :
+(
+    None := 0 , // No action
+    PickToolMagazine := 1 , // Pick tool in magazine with the manipulator head
+    ManipulatorToArm := 2 , // Transfer tool from the manipulator head to the changing arm
+    ArmCNC := 3 , // Transfer between changing arm and CNC
+    ArmToManipulator := 4 , // Transfer tool from the changing arm to the manipulator head
+    PlaceToolMagazine := 5 , // Place tool in magazine with the manipulator head
+	
+	HomePosition := 200 , 
+	
+	PickPlaceToolMag1 := 211 ,
+	PickPlaceToolMag2 := 212 ,
+	PickPlaceToolMag3 := 213 ,
+	PickPlaceToolMag4 := 214 ,
+	PickPlaceToolMag5 := 215
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

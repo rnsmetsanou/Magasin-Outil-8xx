@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_CTC_Basic" Id="{8ff3bce7-0b67-434b-a5e7-0eb525f8c501}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CTC_Basic
+VAR_INPUT
+	ProcessDataInRaw 	:ARRAY[0..13] OF BYTE;
+	MotionMode 			:USINT;
+	TargetPosition 		:REAL;
+	Override1 			:USINT;
+	Override2 			:USINT;
+	Override3 			:USINT;
+END_VAR
+VAR_OUTPUT
+	ProcessDataOutRaw 	:ARRAY[0..7] OF BYTE;
+	State 				:USINT;
+	StatusBits 			:tstCTCStatusBits;
+	ActualPosition 		:REAL;
+	ActualSpeed 		:REAL;
+	ActualForce 		:REAL;
+END_VAR
+VAR
+	stProcessDataIn 	:tstCTCProcessDataIn;
+	stProcessDataOut 	:tstCTCProcessDataOut;
+	unionContainer		:tuReal;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+	FB_CTC_Basic V3.0
+	Cyltronic AG, September 2024
+
+	Function Block that handles process data in raw octet form of Cyltronic devices
+	and provides according process data structure
+*)
+// =================================================================================
+// === PROCESS DATA INPUTS =========================================================
+// =================================================================================
+// Status = Byte 0
+stProcessDataIn.State := BYTE_TO_USINT(ProcessDataInRaw[0]);
+// StatusBits = Byte 1
+stProcessDataIn.stStatusBits.TrackingErrorToleranceExceeded	:= ProcessDataInRaw[1].7;
+stProcessDataIn.stStatusBits.WarningActive 					:= ProcessDataInRaw[1].6;
+stProcessDataIn.stStatusBits.MotionCommandCompleted 		:= ProcessDataInRaw[1].5;
+stProcessDataIn.stStatusBits.MotionModeActive 				:= ProcessDataInRaw[1].4;
+stProcessDataIn.stStatusBits.LimitSwitchIn 					:= ProcessDataInRaw[1].3;
+stProcessDataIn.stStatusBits.LimitSwitchOut 				:= ProcessDataInRaw[1].2;
+stProcessDataIn.stStatusBits.Homed 							:= ProcessDataInRaw[1].1;
+stProcessDataIn.stStatusBits.Ready 							:= ProcessDataInRaw[1].0;
+// Actual Position = Bytes 2-5
+unionContainer.aBytes[0] := ProcessDataInRaw[5];
+unionContainer.aBytes[1] := ProcessDataInRaw[4];
+unionContainer.aBytes[2] := ProcessDataInRaw[3];
+unionContainer.aBytes[3] := ProcessDataInRaw[2];
+stProcessDataIn.ActualPosition := unionContainer.rReal;
+// Actual Speed = Bytes 6-9
+unionContainer.aBytes[0] := ProcessDataInRaw[9];
+unionContainer.aBytes[1] := ProcessDataInRaw[8];
+unionContainer.aBytes[2] := ProcessDataInRaw[7];
+unionContainer.aBytes[3] := ProcessDataInRaw[6];
+stProcessDataIn.ActualSpeed := unionContainer.rReal;
+// Actual Force = Bytes 10-13
+unionContainer.aBytes[0] := ProcessDataInRaw[13];
+unionContainer.aBytes[1] := ProcessDataInRaw[12];
+unionContainer.aBytes[2] := ProcessDataInRaw[11];
+unionContainer.aBytes[3] := ProcessDataInRaw[10];
+stProcessDataIn.ActualForce := unionContainer.rReal;
+
+// =================================================================================
+// === Distribute ==================================================================
+// =================================================================================
+// Inputs --> CTC to PLC
+State 			:= stProcessDataIn.State;
+StatusBits 		:= stProcessDataIn.stStatusBits;
+ActualPosition 	:= stProcessDataIn.ActualPosition;
+ActualSpeed 	:= stProcessDataIn.ActualSpeed;
+ActualForce 	:= stProcessDataIn.ActualForce;
+
+// Outputs --> PLC to CTC
+stProcessDataOut.MotionMode 	:= MotionMode;
+stProcessDataOut.TargetPosition := TargetPosition;
+stProcessDataOut.Override1 		:= Override1;
+stProcessDataOut.Override2 		:= Override2;
+stProcessDataOut.Override3 		:= Override3;
+
+// =================================================================================
+// === PD OUTPUTS ==================================================================
+// =================================================================================
+// Motion Mode
+ProcessDataOutRaw[0] := USINT_TO_BYTE(stProcessDataOut.MotionMode);
+// Set Position
+unionContainer.rReal := stProcessDataOut.TargetPosition;
+ProcessDataOutRaw[1] := unionContainer.aBytes[3];
+ProcessDataOutRaw[2] := unionContainer.aBytes[2];
+ProcessDataOutRaw[3] := unionContainer.aBytes[1];
+ProcessDataOutRaw[4] := unionContainer.aBytes[0];
+// Overrides 1-3
+ProcessDataOutRaw[5] := USINT_TO_BYTE(stProcessDataOut.Override1);
+ProcessDataOutRaw[6] := USINT_TO_BYTE(stProcessDataOut.Override2);
+ProcessDataOutRaw[7] := USINT_TO_BYTE(stProcessDataOut.Override3);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

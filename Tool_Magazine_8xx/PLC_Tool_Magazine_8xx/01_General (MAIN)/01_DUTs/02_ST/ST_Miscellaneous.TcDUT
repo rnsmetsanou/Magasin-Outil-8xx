@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Miscellaneous" Id="{8ad231be-170e-4914-aeca-37c543ec397c}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Miscellaneous
+//
+//									Structure divers 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Miscellaneous :
+STRUCT
+	
+	(** STRING **)
+		sString1 : STRING ;
+		sString2 : STRING ;
+		sString3 : STRING ;
+		sString4 : STRING ;
+		sString5 : STRING ;
+
+	(** LREAL **)
+		lrReal1 : LREAL ;
+		lrReal2 : LREAL ;
+		lrReal3 : LREAL ;
+		lrReal4 : LREAL ;
+		lrReal5 : LREAL ;
+	
+	(** INT **)
+		iInt1 : INT ;
+		iInt2 : INT ;
+		iInt3 : INT ;
+		iInt4 : INT ;
+		iInt5 : INT ;
+	
+	(** FLAG **)
+		bFlag1 : BOOL ;
+		bFlag2 : BOOL ;
+		bFlag3 : BOOL ;
+		bFlag4 : BOOL ;
+		bFlag5 : BOOL ;
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

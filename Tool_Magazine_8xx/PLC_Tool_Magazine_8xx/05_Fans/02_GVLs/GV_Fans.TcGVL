@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Fans" Id="{14c8630e-e335-4605-8473-2dc7fca29d8f}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Fans
+//
+//							Variables ventilateur(s) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+END_VAR
+
+VAR_GLOBAL
+	
+	(** ARRAY ST **)
+	aId	: ARRAY[1..iMaxFans] OF ST_Fan ; // Fan Structure
+	
+	(** REAL **)
+	rTempArmor : REAL ; // Temp of the Electrical Armor
+	rTempArmorFiltered : REAL ; // Temp Filtered of the Electrical Armor
+	
+	(** ST **)
+	stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT UINT **)
+	uRampStep1 : UINT := 1 ; //  step ramp for the fan accel and decel
+
+	(** CONSTANT INT **)
+	iMaxFans : INT := 1 ; // Max Fans
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

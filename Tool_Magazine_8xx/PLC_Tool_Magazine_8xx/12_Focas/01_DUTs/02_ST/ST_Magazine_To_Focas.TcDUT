@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ST_Magazine_To_Focas" Id="{1448ee82-10ed-4a43-9462-99500444ff99}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Magazine_To_Focas
+//
+//							Structure échanges Magasin vers Focas			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Magazine_To_Focas :
+STRUCT
+		
+	(** ARRAY ST **)
+	aToolParamOut : ARRAY[1..GV_Tool_Magazine.iMaxAbsLocation] OF ST_Tool_Parameters ; // Tool_Parameters structure
+	aToolNameOut : ARRAY[1..GV_Tool_Magazine.iMaxAbsLocation] OF ST_Tool_Name ; // Tool_Name structure
+	
+	(** PROCESS FLAG **)
+	bRefreshOut : BOOL ; // Refresh Exchange
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

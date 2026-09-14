@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Gripper_Mode" Id="{ed52ce19-3e28-4003-8104-4658d428f215}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  			ENUM_Gripper_Mode
+//
+//			Enumération des modes de mouvements de la pince du manipulateur			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 05.02.2026
+//Dernière modification : 05.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 05.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Gripper_Mode :
+(
+	Open := 0 , // Open the gripper
+	Close := 1 // CLose the gripper
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

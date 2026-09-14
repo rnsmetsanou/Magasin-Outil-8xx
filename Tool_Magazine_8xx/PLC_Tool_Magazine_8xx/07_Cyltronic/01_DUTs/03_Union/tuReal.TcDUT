@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tuReal" Id="{4b53c85d-f291-4b0d-b157-b52605749f0d}">
+    <Declaration><![CDATA[TYPE tuReal:
+UNION
+	rReal	:REAL;
+	aBytes	:ARRAY[0..3] OF BYTE;
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCStatusBits" Id="{ff28900c-8d4b-4409-b2d1-d07fdb089f3b}">
+    <Declaration><![CDATA[TYPE tstCTCStatusBits :
+STRUCT
+	TrackingErrorToleranceExceeded 	:BOOL;
+	WarningActive					:BOOL;
+	MotionModeActive				:BOOL;
+	MotionCommandCompleted 			:BOOL;	
+	LimitSwitchIn					:BOOL;	
+	LimitSwitchOut					:BOOL;
+	Homed							:BOOL;
+	Ready							:BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="tstCTCConfiguration" Id="{7c946e9e-772f-45ea-a30e-21312e5ec35c}">
+    <Declaration><![CDATA[TYPE tstCTCConfiguration :
+STRUCT
+	MaxSpeedFreePositioning	:REAL := 600.0;	
+	MaxForceFreePositioning	:REAL := 400.0;	
+	MaxAccDec				:REAL := 5.0;	
+	EndPositionIn			:REAL := 0.0;	
+	EndPositionOut			:REAL := 100.0;	
+	HomeMode				:teCTCHomeMode := CTC_HOME_MODE_ENDSTOPIN;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

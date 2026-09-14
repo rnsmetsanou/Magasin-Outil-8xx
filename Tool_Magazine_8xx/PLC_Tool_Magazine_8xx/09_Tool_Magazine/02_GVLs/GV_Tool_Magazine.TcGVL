@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Tool_Magazine" Id="{5e80706a-d72b-4ee6-a9fe-18557ce154f9}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Tool_Magazine
+//
+//								Variables magasin d'outils 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 14.01.2026
+//Dernière modification : 14.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 14.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** ARRAY ST **)
+		aLocation : ARRAY[1..iMaxAbsLocation] OF ST_Tool_Location ; // Tool_Location structure
+		aCheckLocation : ARRAY[1..iMaxAbsLocation] OF ST_Tool_Location ; // Tool_Location structure for the Full Check
+
+	(** ARRAY **)
+		(* For IO/Link *)
+			//aBreakageSensorIn AT %I* : ARRAY[0..1] OF BYTE ;
+// 		alrXExclusionZone : ARRAY[1..10] OF LREAL ; // Exclusion Zone coordinate Axis X
+// 		alrYExclusionZone : ARRAY[1..10] OF LREAL ; // Exclusion Zone coordinate Axis Y
+// 		alrZExclusionZone : ARRAY[1..10] OF LREAL ; // Exclusion Zone coordinate Axis Z
+// 		abExclusionZone : ARRAY[1..10] OF BOOL ; // Exclusion Zone
+
+	(** SETUP LREAL **)  // -> from HMI st/screen : Magazine_Settings
+		(* Top *)
+			lrZAbsCompensationLocationTop : LREAL := 0.0 ; // Z compensation total for the locations at the top in mm
+	
+			lrXLocationOffsetTop : LREAL := 0.0 ; // X Offset between location at the top of the Magazine
+			lrYLocationOffsetTop : LREAL := 0.0 ; // Y Offset between location at the top of the Magazine
+			lrZLocationOffsetTop : LREAL := 0.0 ; // Z Offset between location at the top of the Magazine
+			
+			lrXFirstLocationTop : LREAL := 0.0 ; // X of the first location at the top of the Magazine (first absolute)
+			lrYLocationTop : LREAL := 0.0 ; // Y of the Location at the top of the Magazine
+			lrZLowestRackTop : LREAL := 0.0 ; // Z of the lowest rack at the top of the Magazine 
+			
+		(* Bottom *)
+			lrZAbsCompensationLocationBottom : LREAL := 0.0 ; // Z compensation total for the locations at the bottom in mm
+			
+			lrXLocationOffsetBottom : LREAL := 0.0 ; // X Offset between location at the bottom of the Magazine
+			lrYLocationOffsetBottom : LREAL := 0.0 ; // Y Offset between location at the bottom of the Magazine
+			lrZLocationOffsetBottom : LREAL := 0.0 ; // Z Offset between location at the bottom of the Magazine
+			
+			lrXFirstLocationBottom : LREAL := 0.0 ; // X of the first location at the bottom of the Magazine (first absolute)
+			lrYLocationBottom : LREAL := 0.0 ; // Y of the Location at the bottom of the Magazine
+			lrZLowestRackBottom : LREAL := 0.0 ; // Z of the first lowest at the bottom of the Magazine
+	
+	
+		lrYOffsetFrontLocation : LREAL := 0.0 ; // Y Offset to be in front of the Y coordinate of the location
+		lrZOffsetAboveLocation : LREAL := 0.0 ; // Y Offset to be in front of the Y coordinate of the location
+
+		lrZOffsetAboveArmGripper1 : LREAL := 0.0 ; // Z Offset to be above the Z coordinate of the changing arm gripper 1 when in tansfer position
+		lrZOffsetAboveArmGripper2 : LREAL := 0.0 ; // Z Offset to be above the Z coordinate of the changing arm gripper 2 when in tansfer position
+
+		lrZOffsetToolCheck : LREAL := 0.0 ; // Z Offset above the tool for the check
+		lrYOffsetToolCheck : LREAL := 0.0 ; // Y Offset in front of the tool for the check
+
+		lrZRelCompensationLocationTop : LREAL := 0.0 ; // Z compensation between each location at the top in mm
+		lrZRelCompensationLocationBottom : LREAL := 0.0 ; // Z compensation between each location at the bottom in mm
+
+	(** SETUP REAL **)
+		rZBrakeTimer : REAL := 0.0 ; // Timer before brake axis Z 
+
+	(** SETUP INT **)  // -> from HMI st/screen : Magazine_Settings
+		iMaxRelRackLocationTop : INT := 0 ; // Max Location in a Rack in relative at the top of the Magazine
+		iMaxRelRackLocationBottom : INT := 0 ; // Max Location in a Rack in relative at the bottom of the Magazine
+		iMaxRelRackTop : INT := 0 ; // Max Rack in relative at the top of the Magazine
+		iMaxRelRackBottom : INT := 0 ; // Max Rack in relative at the bottom of the Magazine
+
+	(** SETUP INT **)
+		iMaxRelLocation : INT := 0 ; // Max Location in relative in the Magazine
+		iMaxRelLocationTop : INT := 0 ; // Max Location in relative at the top of the Magazine
+		iMaxRelLocationBottom : INT := 0 ; // Max Location in relative at the bottom of the Magazine
+		iMaxRelRack : INT := 0 ; // Max Rack in relative in the Magazine
+	
+	(** PROCESS LREAL **)
+		lrMinXTeach : LREAL := 0.0 ;
+		lrMaxXTeach : LREAL := 0.0 ;
+		lrMinYTeach : LREAL := 0.0 ;
+		lrMaxYTeach : LREAL := 0.0 ;
+		lrMinZTeach : LREAL := 0.0 ;
+		lrMaxZTeach : LREAL := 0.0 ;
+		
+	(** PROCESS UINT **)
+	 	uiBreakageSensor AT %I* : UINT ; //Input Tool Measure sensor
+	
+	(** PROCESS FLAG **)
+//		bExclusionZone : BOOL ; // Exclusion Zone is Activ
+	
+		bFirstCycleCheckMagazine : BOOL ; // Check the Magazine after First Cycle
+		bCheckFullMagazineRequest : BOOL ; // Request for Full Check the Magazine
+		bCheckFullMagazineDone : BOOL ; // Full Check of the Magazine is Done
+		bCheckOneMagazineRequest : BOOL ; // Request for Check one Location in the Magazine
+		bCheckOneMagazineDone : BOOL ; // One Location Check in the Magazine is Done
+		
+		bCheckManipulatorMemoryRequest : BOOL ; // Request for Check Manipulator memory in the Magazine
+		bCheckArmGripper1MemoryRequest : BOOL ; // Request for Check Arm Gripper 1 memory in the Magazine
+		bCheckArmGripper2MemoryRequest : BOOL ; // Request for Check Arm Gripper 2 memory in the Magazine
+		bCheckSpindleMemoryRequest : BOOL ; // Request for Check Spindle memory in the Magazine
+		
+		bAuthorizationTeachLocation : BOOL ; // Authorization to teach the selected Location
+		bAuthorizationTeachRack : BOOL ; // Authorization to teach the Rack of the selected Location
+		bAuthorizationTeachAllTop : BOOL ; // Authorization to teach AllTop Location
+		bAuthorizationTeachAllBottom : BOOL ; // Authorization to teach AllBottom Location
+
+		bAuthorizationTeachPositions : BOOL ; // Authorization to teach Positions
+
+	(** ST **)
+		stManipulator : ST_Manipulator_Head ; // Manipulator_Head structure
+		stArm : ST_Changing_Arm ; // Changing_Arm structure
+	
+END_VAR
+
+VAR_GLOBAL
+
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+
+	(** PROCESS INT **)
+		iCheckLocationTopSize : INT := 0 ; // Number of Location on the Top in the aCheckLocation Array
+		iCheckLocationBottomSize : INT := 0 ; // Number of Location on the Bottom in the aCheckLocation Array
+	
+	(** PROCESS FLAG **)
+		bFullCheckMagazineInitLocation : BOOL := FALSE ; // Start the Init of the Location data for the Check Magazine
+	
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need	
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+		
+	(** CONSTANT LREAL **)
+		lrMinAbsCompensationLocationTop : LREAL := -5.0 ; // Min Compensation in absolute for the Location at the top of the Magazine
+		lrMaxAbsCompensationLocationTop : LREAL := 5.0 ; // Max Compensation in absolute for the Location at the top of the Magazine
+		lrMinAbsCompensationLocationBottom : LREAL := -5.0 ; // Min Compensation in absolute for the Location at the bottom of the Magazine
+		lrMaxAbsCompensationLocationBottom : LREAL := 5.0 ; // Max Compensation in absolute for the Location at the bottom of the Magazine
+	
+		lrMinXLocationOffsetTop : LREAL := 30.0 ; // Min X Offset between location at the top of the Magazine
+		lrMaxXLocationOffsetTop : LREAL := 40.0 ; // Max X Offset between location at the top of the Magazine
+		lrMinYLocationOffsetTop : LREAL := -5.0 ; // Min Y Offset between location at the top of the Magazine
+		lrMaxYLocationOffsetTop : LREAL := 5.0 ; // Max Y Offset between location at the top of the Magazine
+		lrMinZLocationOffsetTop : LREAL := 110.0 ; // Min Z Offset between location at the top of the Magazine
+		lrMaxZLocationOffsetTop : LREAL := 130.0 ; // Max Z Offset between location at the top of the Magazine
+
+		lrMinXLocationOffsetBottom : LREAL := 30.0 ; // Min X Offset between location at the bottom of the Magazine
+		lrMaxXLocationOffsetBottom : LREAL := 40.0 ; // Max X Offset between location at the bottom of the Magazine
+		lrMinYLocationOffsetBottom : LREAL := 0.0 ; // Min Y Offset between location at the bottom of the Magazine
+		lrMaxYLocationOffsetBottom : LREAL := 10.0 ; // Max Y Offset between location at the bottom of the Magazine
+		lrMinZLocationOffsetBottom : LREAL := 140.0 ; // Min Z Offset between location at the bottom of the Magazine
+		lrMaxZLocationOffsetBottom : LREAL := 160.0 ; // Max Z Offset between location at the bottom of the Magazine
+		
+		lrMinYOffsetFrontLocation : LREAL := 40.0 ; // Min Y Offset to be in Front of the Location in the Magazine
+		lrMaxYOffsetFrontLocation : LREAL := 60.0 ; // Max Y Offset to be in Front of the Location in the Magazine
+
+		lrMinZOffsetAboveLocation : LREAL := 15.0 ; // Min Z Offset to be Above of the Location in the Magazine
+		lrMaxZOffsetAboveLocation : LREAL := 20.0 ; // Max Z Offset to be Above of the Location in the Magazine
+		
+		lrMinZOffsetAboveArmGripper1 : LREAL := 15.0 ; // Min Z Offset to be Above the transfer position of the ArmGripper1
+		lrMaxZOffsetAboveArmGripper1 : LREAL := 25.0 ; // Max Z Offset to be Above the transfer position of the ArmGripper1
+		lrMinZOffsetAboveArmGripper2 : LREAL := 15.0 ; // Min Z Offset to be Above the transfer position of the ArmGripper2
+		lrMaxZOffsetAboveArmGripper2 : LREAL := 25.0 ; // Max Z Offset to be Above the transfer position of the ArmGripper2
+		
+		lrMinZOffsetToolCheck : LREAL := 15.0 ; // Min Z Offset to be Above of the Location in the Magazine for the check
+		lrMaxZOffsetToolCheck : LREAL := 20.0 ; // Max Z Offset to be Above of the Location in the Magazine for the check
+		lrMinYOffsetToolCheck : LREAL := -10.0 ; // Min Z Offset to be Above of the Location in the Magazine for the check
+		lrMaxYOffsetToolCheck : LREAL := 0.0 ; // Max Z Offset to be Above of the Location in the Magazine for the check
+		
+		lrMinXFirstLocationTop : LREAL := 30.0 ; // Min X of the First Location at the top of the Magazine
+		lrMaxXFirstLocationTop : LREAL := 685.0 ; // Max X of the First Location at the top of the Magazine
+		lrMinXFirstLocationBottom : LREAL := 170.0 ; // Min X of the First Location at the bottom of the Magazine
+		lrMaxXFirstLocationBottom : LREAL := 685.0 ; // Max X of the First Location at the bottom of the Magazine
+		
+		lrMinYLocationTop : LREAL := 70.0 ; // Min Y of the Location at the top of the Magazine
+		lrMaxYLocationTop : LREAL := 72.5 ; // Max Y of the Location at the top of the Magazine
+		lrMinYLocationBottom : LREAL := 70 ; // Min Y of the Location at the bottom of the Magazine
+		lrMaxYLocationBottom : LREAL := 72.5 ; // Max Y of the Location at the bottom of the Magazine
+		
+		lrMinZLowestRackTop : LREAL := 650 ; // Min Z of the Lowest Rack at the top of the Magazine
+		lrMaxZLowestRackTop : LREAL := 1150 ; // Max Z of the Lowest Rack at the top of the Magazine
+		lrMinZLowestRackBottom : LREAL := 1 ; // Min Z of the Lowest Rack at the bottom of the Magazine
+		lrMaxZLowestRackBottom : LREAL := 350 ; // Max Z of the Lowest Rack at the bottom of the Magazine
+		
+	(** CONSTANT INT **)
+		iMaxAbsRackTop : INT := 5 ; // Max Rack in absolute at the top of the Magazine
+		iMaxAbsRackBottom : INT := 3 ; // Max Rack in absolute at the bottom of the Magazine
+		iMaxAbsRack : INT := iMaxAbsRackTop+iMaxAbsRackBottom ; // Max Rack in absolute in the Magazine
+	
+		iMaxAbsLocationRackTop : INT := 19 ; // Max Location in absolute in a Rack at the top
+		iMaxAbsLocationRackBottom : INT := 15 ; // Max Location in absolute in a Rack at the bottom
+		
+		iMaxAbsLocationTop : INT := iMaxAbsRackTop*iMaxAbsLocationRackTop ; // Max Location in absolute at the top of the Magazine
+		iMaxAbsLocationBottom : INT := iMaxAbsRackBottom*iMaxAbsLocationRackBottom ; // Max Location in absolute at the bottom of the Magazine
+		iMaxAbsLocation : INT := iMaxAbsLocationTop+iMaxAbsLocationBottom ; // Max Location in absolute in the Magazine
+		
+		//iMaxSmallDiam : INT := 30 ; // Max diameter for a small tool
+		//iMaxSmallLength : INT := 60 ; // Max length of a small tool
+		
+		iNumCharaToolName: INT := 30 ; // Number of characters for a tool name
+	
+	(** CONSTANT ST **)
+		stEmptyToolLocation : ST_Tool_Location ; // Empty Tool_Location structure
+		stEmptyToolParam : ST_Tool_Parameters ; // Empty Tool Parameters structure
+		stEmptyToolName : ST_Tool_Name ; // Empty Tool Name structure
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

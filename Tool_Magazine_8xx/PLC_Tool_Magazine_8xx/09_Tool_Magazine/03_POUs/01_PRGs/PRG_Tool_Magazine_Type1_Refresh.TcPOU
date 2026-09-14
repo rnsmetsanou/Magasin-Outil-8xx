@@ -1,0 +1,424 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Tool_Magazine_Type1_Refresh" Id="{7fe52bfe-eb47-4785-a1a4-3ae5366bbeaa}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Tool_Magazine_Type1_Refresh
+VAR
+	(** INT **)
+	iRackLoop : INT := 0 ; // Use in a FOR Loop
+	iLocationLoop : INT := 0 ; // Use in a FOR Loop
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  		PRG_Tool_Magazine_Type1_Refresh
+//
+//				Paramétrage magasin d'outils sur demande ou toute 1ère fois 	
+//			ATTENTION -> REINITIALISE LES COORDONEES DES EMPLACEMENTS DU MAGASIN !!!	
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 14.01.2026
+//Dernière modification : 19.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 14.01.2026 (G.GOETZ) -> Création		
+// 19.03.2026 (G.GOETZ) -> X,Y,Z lrCoord... Calcul
+//-----------------------------------------------------------------------------------------
+
+(** SETUP PROCESS **)
+	GV_Tool_Magazine.lrYOffsetFrontLocation:=GV_HMI.stMagazineSettings.lrYOffsetFrontLocation; // MIN = ? = GV_Tool_Magazine.lrMinYOffsetFrontLocation // MAX = ? = GV_Tool_Magazine.lrMaxYOffsetFrontLocation // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrYOffsetFrontLocation:=GV_HMI.stMagazineSettings.lrZOffsetAboveLocation; // MIN = ? = GV_Tool_Magazine.lrMinZOffsetAboveLocation // MAX = ? = GV_Tool_Magazine.lrMaxZOffsetAboveLocation // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZOffsetAboveArmGripper1:=GV_HMI.stMagazineSettings.lrZOffsetAboveArmGripper1; // MIN = ? = GV_Tool_Magazine.lrZOffsetAboveArmGripper1 // MAX = ? = GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper1 // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZOffsetAboveArmGripper2:=GV_HMI.stMagazineSettings.lrZOffsetAboveArmGripper2; // MIN = ? = GV_Tool_Magazine.lrZOffsetAboveArmGripper2 // MAX = ? = GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper2 // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit Y Front Location*) // Not used
+			IF GV_Tool_Magazine.lrYOffsetFrontLocation<GV_Tool_Magazine.lrMinYOffsetFrontLocation THEN
+				GV_Tool_Magazine.lrYOffsetFrontLocation:=GV_Tool_Magazine.lrMinYOffsetFrontLocation;
+			END_IF
+			IF GV_Tool_Magazine.lrYOffsetFrontLocation>GV_Tool_Magazine.lrMaxYOffsetFrontLocation THEN
+				GV_Tool_Magazine.lrYOffsetFrontLocation:=GV_Tool_Magazine.lrMaxYOffsetFrontLocation;
+			END_IF
+		(*Limit Z Above Location*)
+			IF GV_Tool_Magazine.lrZOffsetAboveLocation<GV_Tool_Magazine.lrMinZOffsetAboveLocation THEN
+				GV_Tool_Magazine.lrZOffsetAboveLocation:=GV_Tool_Magazine.lrMinZOffsetAboveLocation;
+			END_IF
+			IF GV_Tool_Magazine.lrZOffsetAboveLocation>GV_Tool_Magazine.lrMaxZOffsetAboveLocation THEN
+				GV_Tool_Magazine.lrZOffsetAboveLocation:=GV_Tool_Magazine.lrMaxZOffsetAboveLocation;
+			END_IF
+		(*Limit Z Above ArmGripper1*)
+			IF GV_Tool_Magazine.lrZOffsetAboveArmGripper1<GV_Tool_Magazine.lrMinZOffsetAboveArmGripper1 THEN
+				GV_Tool_Magazine.lrZOffsetAboveArmGripper1:=GV_Tool_Magazine.lrMinZOffsetAboveArmGripper1;
+			END_IF
+			IF GV_Tool_Magazine.lrZOffsetAboveArmGripper1>GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper1 THEN
+				GV_Tool_Magazine.lrZOffsetAboveArmGripper1:=GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper1;
+			END_IF
+		(*Limit Z Above ArmGripper2*)
+			IF GV_Tool_Magazine.lrZOffsetAboveArmGripper2<GV_Tool_Magazine.lrMinZOffsetAboveArmGripper2 THEN
+				GV_Tool_Magazine.lrZOffsetAboveArmGripper2:=GV_Tool_Magazine.lrMinZOffsetAboveArmGripper2;
+			END_IF
+			IF GV_Tool_Magazine.lrZOffsetAboveArmGripper2>GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper2 THEN
+				GV_Tool_Magazine.lrZOffsetAboveArmGripper2:=GV_Tool_Magazine.lrMaxZOffsetAboveArmGripper2;
+			END_IF
+		
+(** SETUP RACK **)
+	GV_Tool_Magazine.iMaxRelRackTop:=GV_HMI.stMagazineSettings.iMaxRelRackTop; // MAX = 5 = GV_Tool_Magazine.iMaxAbsRackTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.iMaxRelRackBottom:=GV_HMI.stMagazineSettings.iMaxRelRackBottom; // MAX = 3 = GV_Tool_Magazine.iMaxAbsRackBottom // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit Rack Top*)
+			IF GV_Tool_Magazine.iMaxRelRackTop<0 THEN
+				GV_Tool_Magazine.iMaxRelRackTop:=0;
+			END_IF
+			IF GV_Tool_Magazine.iMaxRelRackTop>GV_Tool_Magazine.iMaxAbsRackTop THEN
+				GV_Tool_Magazine.iMaxRelRackTop:=GV_Tool_Magazine.iMaxAbsRackTop;
+			END_IF
+		(*Limit Rack Bottom*)
+			IF GV_Tool_Magazine.iMaxRelRackBottom<0 THEN
+				GV_Tool_Magazine.iMaxRelRackBottom:=0;
+			END_IF
+			IF GV_Tool_Magazine.iMaxRelRackBottom>GV_Tool_Magazine.iMaxAbsRackBottom THEN
+				GV_Tool_Magazine.iMaxRelRackBottom:=GV_Tool_Magazine.iMaxAbsRackBottom;
+			END_IF	
+		(*Limit Rack*)
+			IF GV_Tool_Magazine.iMaxRelRack<0 THEN
+				GV_Tool_Magazine.iMaxRelRack:=0;
+			END_IF
+			IF GV_Tool_Magazine.iMaxRelRack>GV_Tool_Magazine.iMaxAbsRack THEN
+				GV_Tool_Magazine.iMaxRelRack:=GV_Tool_Magazine.iMaxAbsRack;
+			END_IF
+	GV_Tool_Magazine.iMaxRelRack:=GV_Tool_Magazine.iMaxRelRackTop+GV_Tool_Magazine.iMaxRelRackBottom; // MAX = 5+3 = 8 = GV_Tool_Magazine.iMaxAbsRackTop+GV_Tool_Magazine.iMaxAbsRackBottom = GV_Tool_Magazine.iMaxAbsRack
+	
+	GV_Tool_Magazine.lrZLowestRackTop:=GV_HMI.stMagazineSettings.lrZLowestRackTop; // MIN = ? = GV_Tool_Magazine.lrMinZLowestRackTop // MAX = ? = GV_Tool_Magazine.lrMaxZLowestRackTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZLowestRackBottom:=GV_HMI.stMagazineSettings.lrZLowestRackBottom; // MIN = ? = GV_Tool_Magazine.lrMinZLowestRackBottom // MAX = ? = GV_Tool_Magazine.lrMaxZLowestRackBottom // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit Z Lowest Rack Top*)
+			IF GV_Tool_Magazine.lrZLowestRackTop<GV_Tool_Magazine.lrMinZLowestRackTop THEN
+				GV_Tool_Magazine.lrZLowestRackTop:=GV_Tool_Magazine.lrMinZLowestRackTop;
+			END_IF
+			IF GV_Tool_Magazine.lrZLowestRackTop>GV_Tool_Magazine.lrMaxZLowestRackTop THEN
+				GV_Tool_Magazine.lrZLowestRackTop:=GV_Tool_Magazine.lrMaxZLowestRackTop;
+			END_IF
+		(*Limit Z Lowest Rack Bottom*)
+			IF GV_Tool_Magazine.lrZLowestRackBottom<GV_Tool_Magazine.lrMinZLowestRackBottom THEN
+				GV_Tool_Magazine.lrZLowestRackBottom:=GV_Tool_Magazine.lrMinZLowestRackBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrZLowestRackBottom>GV_Tool_Magazine.lrMaxZLowestRackBottom THEN
+				GV_Tool_Magazine.lrZLowestRackBottom:=GV_Tool_Magazine.lrMaxZLowestRackBottom;
+			END_IF
+			
+(** SETUP LOCATIONS IN RACK **)
+	GV_Tool_Magazine.iMaxRelRackLocationTop:=GV_HMI.stMagazineSettings.iMaxRelRackLocationTop; // MAX = 19 = GV_Tool_Magazine.iMaxAbsLocationRackTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.iMaxRelRackLocationBottom:=GV_HMI.stMagazineSettings.iMaxRelRackLocationBottom; // MAX = 15 = GV_Tool_Magazine.iMaxAbsLocationRackBottom // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit Location in Rack Top*)
+			IF GV_Tool_Magazine.iMaxRelRackLocationTop<0 THEN
+				GV_Tool_Magazine.iMaxRelRackLocationTop:=0;
+			END_IF
+			IF GV_Tool_Magazine.iMaxRelRackLocationTop>GV_Tool_Magazine.iMaxAbsLocationRackTop THEN
+				GV_Tool_Magazine.iMaxRelRackLocationTop:=GV_Tool_Magazine.iMaxAbsLocationRackTop;
+			END_IF
+		(*Limit Location in Rack Bottom*)
+			IF GV_Tool_Magazine.iMaxRelRackLocationBottom<0 THEN
+				GV_Tool_Magazine.iMaxRelRackLocationBottom:=0;
+			END_IF
+			IF GV_Tool_Magazine.iMaxRelRackLocationBottom>GV_Tool_Magazine.iMaxAbsLocationRackBottom THEN
+				GV_Tool_Magazine.iMaxRelRackLocationBottom:=GV_Tool_Magazine.iMaxAbsLocationRackBottom;
+			END_IF
+	GV_Tool_Magazine.lrXLocationOffsetTop:=GV_HMI.stMagazineSettings.lrXLocationOffsetTop; // MIN = ? = GV_Tool_Magazine.lrMinXLocationOffsetTop // MAX = ? = GV_Tool_Magazine.lrMaxXLocationOffsetTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrYLocationOffsetTop:=GV_HMI.stMagazineSettings.lrYLocationOffsetTop; // MIN = ? = GV_Tool_Magazine.lrMinYLocationOffsetTop // MAX = ? = GV_Tool_Magazine.lrMaxYLocationOffsetTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZLocationOffsetTop:=GV_HMI.stMagazineSettings.lrZLocationOffsetTop; // MIN = ? = GV_Tool_Magazine.lrMinZLocationOffsetTop // MAX = ? = GV_Tool_Magazine.lrMaxZLocationOffsetTop // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrXLocationOffsetBottom:=GV_HMI.stMagazineSettings.lrXLocationOffsetBottom; // MIN = ? = GV_Tool_Magazine.lrMinXLocationOffsetBottom // MAX = ? = GV_Tool_Magazine.lrMaxXLocationOffsetBottom // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrYLocationOffsetBottom:=GV_HMI.stMagazineSettings.lrYLocationOffsetBottom; // MIN = ? = GV_Tool_Magazine.lrMinYLocationOffsetBottom // MAX = ? = GV_Tool_Magazine.lrMaxYLocationOffsetBottom // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZLocationOffsetBottom:=GV_HMI.stMagazineSettings.lrZLocationOffsetBottom; // MIN = ? = GV_Tool_Magazine.lrMinZLocationOffsetBottom // MAX = ? = GV_Tool_Magazine.lrMaxZLocationOffsetBottom // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit Offset X between Location at the Top*)
+			IF GV_Tool_Magazine.lrXLocationOffsetTop<GV_Tool_Magazine.lrMinXLocationOffsetTop THEN
+				GV_Tool_Magazine.lrXLocationOffsetTop:=GV_Tool_Magazine.lrMinXLocationOffsetTop;
+			END_IF
+			IF GV_Tool_Magazine.lrXLocationOffsetTop>GV_Tool_Magazine.lrMaxXLocationOffsetTop THEN
+				GV_Tool_Magazine.lrXLocationOffsetTop:=GV_Tool_Magazine.lrMaxXLocationOffsetTop;
+			END_IF
+		(*Limit Offset Y between Location at the Top*)
+			IF GV_Tool_Magazine.lrYLocationOffsetTop<GV_Tool_Magazine.lrMinYLocationOffsetTop THEN
+				GV_Tool_Magazine.lrYLocationOffsetTop:=GV_Tool_Magazine.lrMinYLocationOffsetTop;
+			END_IF
+			IF GV_Tool_Magazine.lrYLocationOffsetTop>GV_Tool_Magazine.lrMaxYLocationOffsetTop THEN
+				GV_Tool_Magazine.lrYLocationOffsetTop:=GV_Tool_Magazine.lrMaxYLocationOffsetTop;
+			END_IF
+		(*Limit Offset Z between Location at the Top*)
+			IF GV_Tool_Magazine.lrZLocationOffsetTop<GV_Tool_Magazine.lrMinZLocationOffsetTop THEN
+				GV_Tool_Magazine.lrZLocationOffsetTop:=GV_Tool_Magazine.lrMinZLocationOffsetTop;
+			END_IF
+			IF GV_Tool_Magazine.lrZLocationOffsetTop>GV_Tool_Magazine.lrMaxZLocationOffsetTop THEN
+				GV_Tool_Magazine.lrZLocationOffsetTop:=GV_Tool_Magazine.lrMaxZLocationOffsetTop;
+			END_IF
+		(*Limit Offset X between Location at the Bottom*)
+			IF GV_Tool_Magazine.lrXLocationOffsetBottom<GV_Tool_Magazine.lrMinXLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrXLocationOffsetBottom:=GV_Tool_Magazine.lrMinXLocationOffsetBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrXLocationOffsetBottom>GV_Tool_Magazine.lrMaxXLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrXLocationOffsetBottom:=GV_Tool_Magazine.lrMaxXLocationOffsetBottom;
+			END_IF
+		(*Limit Offset Y between Location at the Bottom*)
+			IF GV_Tool_Magazine.lrYLocationOffsetBottom<GV_Tool_Magazine.lrMinYLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrYLocationOffsetBottom:=GV_Tool_Magazine.lrMinYLocationOffsetBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrYLocationOffsetBottom>GV_Tool_Magazine.lrMaxYLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrYLocationOffsetBottom:=GV_Tool_Magazine.lrMaxYLocationOffsetBottom;
+			END_IF
+		(*Limit Offset Z between Location at the Bottom*)
+			IF GV_Tool_Magazine.lrZLocationOffsetBottom<GV_Tool_Magazine.lrMinZLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrZLocationOffsetBottom:=GV_Tool_Magazine.lrMinZLocationOffsetBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrZLocationOffsetBottom>GV_Tool_Magazine.lrMaxZLocationOffsetBottom THEN
+				GV_Tool_Magazine.lrZLocationOffsetBottom:=GV_Tool_Magazine.lrMaxZLocationOffsetBottom;
+			END_IF
+			
+(** SETUP LOCATIONS **)
+	GV_Tool_Magazine.iMaxRelLocationTop:=GV_Tool_Magazine.iMaxRelRackTop*GV_Tool_Magazine.iMaxRelRackLocationTop; // MAX = 5*19 = 95 = GV_Tool_Magazine.iMaxAbsRackTop*GV_Tool_Magazine.iMaxAbsRackLocationTop = GV_Tool_Magazine.iMaxAbsLocationTop
+	GV_Tool_Magazine.iMaxRelLocationBottom:=GV_Tool_Magazine.iMaxRelRackBottom*GV_Tool_Magazine.iMaxRelRackLocationBottom; // MAX = 3*15 = 45 = GV_Tool_Magazine.iMaxAbsRackBottom*GV_Tool_Magazine.iMaxAbsRackLocationBottom = GV_Tool_Magazine.iMaxAbsLocationBottom
+	GV_Tool_Magazine.iMaxRelLocation:=GV_Tool_Magazine.iMaxRelLocationTop+GV_Tool_Magazine.iMaxRelLocationBottom; // MAX  = 95+45 = 140 = GV_Tool_Magazine.iMaxAbsLocationTop+GV_Tool_Magazine.iMaxAbsLocationBottom = GV_Tool_Magazine.iMaxAbsLocation
+	
+	GV_Tool_Magazine.lrZAbsCompensationLocationTop:=0;//GV_HMI.stMagazineSettings.lrZAbsCompensationLocationTop; // mm // MAX = 10 = GV_Tool_Magazine.lrMaxAbsCompensationLocationTop  // -> from HMI screen : Magazine Settings
+	GV_Tool_Magazine.lrZAbsCompensationLocationBottom:=0;//GV_HMI.stMagazineSettings.lrZAbsCompensationLocationBottom; // mm // MAX = 10 = GV_Tool_Magazine.lrMaxAbsCompensationLocationBottom // -> from HMI screen : Magazine Settings
+	(* Limit *)		
+		(*Limit Compensation Location Top*)
+			IF GV_Tool_Magazine.lrZAbsCompensationLocationTop<GV_Tool_Magazine.lrMinAbsCompensationLocationTop THEN
+				GV_Tool_Magazine.lrZAbsCompensationLocationTop:=GV_Tool_Magazine.lrMinAbsCompensationLocationTop;
+			END_IF
+			IF GV_Tool_Magazine.lrZAbsCompensationLocationTop>GV_Tool_Magazine.lrMaxAbsCompensationLocationTop THEN
+				 GV_Tool_Magazine.lrZAbsCompensationLocationTop:=GV_Tool_Magazine.lrMaxAbsCompensationLocationTop;
+			END_IF
+		(*Limit Compensation Location Bottom*)
+			IF GV_Tool_Magazine.lrZAbsCompensationLocationBottom<GV_Tool_Magazine.lrMinAbsCompensationLocationBottom THEN
+				GV_Tool_Magazine.lrZAbsCompensationLocationBottom:=GV_Tool_Magazine.lrMinAbsCompensationLocationBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrZAbsCompensationLocationBottom>GV_Tool_Magazine.lrMaxAbsCompensationLocationBottom THEN
+				 GV_Tool_Magazine.lrZAbsCompensationLocationBottom:=GV_Tool_Magazine.lrMaxAbsCompensationLocationBottom;
+			END_IF
+	IF GV_Tool_Magazine.iMaxRelRackLocationTop>1 THEN
+		GV_Tool_Magazine.lrZRelCompensationLocationTop:=GV_Tool_Magazine.lrZAbsCompensationLocationTop/(GV_Tool_Magazine.iMaxRelRackLocationTop-1);
+		GV_Tool_Magazine.lrZRelCompensationLocationTop:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.lrZRelCompensationLocationTop*1000.0))/1000.0; // Round 10e-3
+	ELSE
+		GV_Tool_Magazine.lrZRelCompensationLocationTop:=0;
+	END_IF
+	IF GV_Tool_Magazine.iMaxRelRackLocationBottom>1 THEN
+		GV_Tool_Magazine.lrZRelCompensationLocationBottom:=GV_Tool_Magazine.lrZAbsCompensationLocationBottom/(GV_Tool_Magazine.iMaxRelRackLocationBottom-1);
+		GV_Tool_Magazine.lrZRelCompensationLocationBottom:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.lrZRelCompensationLocationBottom*1000.0))/1000.0; // Round 10e-3
+	ELSE
+		GV_Tool_Magazine.lrZRelCompensationLocationBottom:=0;
+	END_IF	
+		GV_Tool_Magazine.lrXFirstLocationTop:=GV_HMI.stMagazineSettings.lrXFirstLocationTop; // MIN = ? = GV_Tool_Magazine.lrMinXFirstLocationTop // MAX = ? = GV_Tool_Magazine.lrMaxXFirstLocationTop // -> from HMI screen : Magazine Settings
+		GV_Tool_Magazine.lrXFirstLocationBottom:=GV_HMI.stMagazineSettings.lrXFirstLocationBottom; // MIN = ? = GV_Tool_Magazine.lrMinXFirstLocationBottom // MAX = ? = GV_Tool_Magazine.lrMaxXFirstLocationBottom // -> from HMI screen : Magazine Settings
+		GV_Tool_Magazine.lrYLocationTop:=GV_HMI.stMagazineSettings.lrYLocationTop; // MIN = ? = GV_Tool_Magazine.lrMinYLocationTop // MAX = ? = GV_Tool_Magazine.lrMaxYLocationTop // -> from HMI screen : Magazine Settings
+		GV_Tool_Magazine.lrYLocationBottom:=GV_HMI.stMagazineSettings.lrYLocationBottom; // MIN = ? = GV_Tool_Magazine.lrMinYLocationTop // MAX = ? = GV_Tool_Magazine.lrMaxYLocationTop // -> from HMI screen : Magazine Settings
+	(* Limit *)
+		(*Limit X First Location Top*)
+			IF GV_Tool_Magazine.lrXFirstLocationTop<GV_Tool_Magazine.lrMinXFirstLocationTop THEN
+				GV_Tool_Magazine.lrXFirstLocationTop:=GV_Tool_Magazine.lrMinXFirstLocationTop;
+			END_IF
+			IF GV_Tool_Magazine.lrXFirstLocationTop>GV_Tool_Magazine.lrMaxXFirstLocationTop THEN
+				GV_Tool_Magazine.lrXFirstLocationTop:=GV_Tool_Magazine.lrMaxXFirstLocationTop;
+			END_IF
+		(*Limit X First Location Bottom*)
+			IF GV_Tool_Magazine.lrXFirstLocationBottom<GV_Tool_Magazine.lrMinXFirstLocationBottom THEN
+				GV_Tool_Magazine.lrXFirstLocationBottom:=GV_Tool_Magazine.lrMinXFirstLocationBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrXFirstLocationBottom>GV_Tool_Magazine.lrMaxXFirstLocationBottom THEN
+				GV_Tool_Magazine.lrXFirstLocationBottom:=GV_Tool_Magazine.lrMaxXFirstLocationBottom;
+			END_IF
+		(*Limit Y Location Top*)
+			IF GV_Tool_Magazine.lrYLocationTop<GV_Tool_Magazine.lrMinYLocationTop THEN
+				GV_Tool_Magazine.lrYLocationTop:=GV_Tool_Magazine.lrMinYLocationTop;
+			END_IF
+			IF GV_Tool_Magazine.lrYLocationTop>GV_Tool_Magazine.lrMaxYLocationTop THEN
+				GV_Tool_Magazine.lrYLocationTop:=GV_Tool_Magazine.lrMaxYLocationTop;
+			END_IF
+		(*Limit Y Location Bottom*)
+			IF GV_Tool_Magazine.lrYLocationBottom<GV_Tool_Magazine.lrMinYLocationBottom THEN
+				GV_Tool_Magazine.lrYLocationBottom:=GV_Tool_Magazine.lrMinYLocationBottom;
+			END_IF
+			IF GV_Tool_Magazine.lrYLocationBottom>GV_Tool_Magazine.lrMaxYLocationBottom THEN
+				GV_Tool_Magazine.lrYLocationBottom:=GV_Tool_Magazine.lrMaxYLocationBottom;
+			END_IF
+			
+(** DATAS IN FUNCTION OF THE SETUP **)
+	
+	(* Infos Locations *) // aLocation
+		FOR iLocationLoop:=1 TO GV_Tool_Magazine.iMaxAbsLocation BY 1 DO
+			
+			(*Number of the location in absolute*) // iAbsLocationNumber
+				IF iLocationLoop<=GV_Tool_Magazine.iMaxRelLocation THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber:=iLocationLoop;
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber:=0;
+				END_IF
+			
+			(*Number of the location in relative*) // iRelLocationNumber
+				IF iLocationLoop>2 AND iLocationLoop<=GV_Tool_Magazine.iMaxRelLocation THEN
+					IF iLocationLoop<=GV_Tool_Magazine.iMaxRelLocationTop THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber:=iLocationLoop-2;
+					ELSE
+						IF iLocationLoop-GV_Tool_Magazine.iMaxRelLocationTop>1 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber:=iLocationLoop-3;					
+						ELSE
+							GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber:=0;
+						END_IF
+					END_IF
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber:=0;
+				END_IF	
+
+			(*Number of the rack*) // iRackNumber
+				IF iLocationLoop<=GV_Tool_Magazine.iMaxRelLocation THEN // same as : GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=0
+					FOR iRackLoop:=1 TO GV_Tool_Magazine.iMaxRelRack BY 1 DO			
+						(*Top*)
+							IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>GV_Tool_Magazine.iMaxRelRackLocationTop*(iRackLoop-1) AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelRackLocationTop*(iRackLoop) AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocationTop THEN
+								GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber:=iRackLoop;
+							END_IF
+						(*Bottom*)
+							IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>GV_Tool_Magazine.iMaxRelLocationTop AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocation THEN
+								IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber-GV_Tool_Magazine.iMaxRelLocationTop>GV_Tool_Magazine.iMaxRelRackLocationBottom*(iRackLoop-1) AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber-GV_Tool_Magazine.iMaxRelLocationTop<=GV_Tool_Magazine.iMaxRelRackLocationBottom*(iRackLoop) THEN
+									GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber:=iRackLoop+GV_Tool_Magazine.iMaxRelRackTop;
+								END_IF
+							END_IF
+					END_FOR	
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber:=0;
+				END_IF		
+			
+			(*Number of the location in the rack*) // iLocationRackNumber
+				(*Top*)
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=0 OR GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber=0 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber:=0;
+					END_IF
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber=1 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber:=GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber;
+					END_IF
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>1 AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRackTop THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber:=GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber-((GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber-1)*GV_Tool_Magazine.iMaxRelRackLocationTop);
+					END_IF
+				(*Bottom*)
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>GV_Tool_Magazine.iMaxRelRackTop AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRack THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber:=(GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber-GV_Tool_Magazine.iMaxRelLocationTop)-((GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber-GV_Tool_Magazine.iMaxRelRackTop-1)*GV_Tool_Magazine.iMaxRelRackLocationBottom);
+					END_IF		
+			
+			(*Position of the location*) // ePositionMag
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber=0 THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag:=ENUM_Position_Magazine.Unknow;			
+				END_IF
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRackTop THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag:=ENUM_Position_Magazine.Top;
+				END_IF
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>GV_Tool_Magazine.iMaxRelRackTop AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRack THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag:=ENUM_Position_Magazine.Bottom;		
+				END_IF
+			
+			(*Location enable*) // bEnable
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocation THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].bEnable:=TRUE;
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].bEnable:=FALSE;
+				END_IF
+	
+			(*Location used*) // bUsed
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocation THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].bUsed:=TRUE;
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].bUsed:=FALSE;
+				END_IF
+			
+			(*Location forbiden in absolute*) // bForbiden
+				(*Top*)
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=1 OR GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=2 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden:=TRUE;
+					ELSE
+						GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden:=FALSE;		
+					END_IF
+				(*Bottom*)
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>GV_Tool_Magazine.iMaxRelLocationTop THEN
+						IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber-GV_Tool_Magazine.iMaxRelLocationTop=1 THEN
+							GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden:=TRUE;
+						ELSE
+							GV_Tool_Magazine.aLocation[iLocationLoop].bForbiden:=FALSE;			
+						END_IF
+					END_IF
+			
+			(*Location Tool*)
+				(*Presence*) // bToolPresence (*Breakage ctrl*) // bBreakageOk
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iRelLocationNumber<>0 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence:=TRUE;
+						GV_Tool_Magazine.aLocation[iLocationLoop].bBreakageOk:=TRUE;
+					ELSE
+						GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence:=FALSE;
+						GV_Tool_Magazine.aLocation[iLocationLoop].bBreakageOk:=FALSE;
+					END_IF
+	
+					IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=0 THEN
+						GV_Tool_Magazine.aLocation[iLocationLoop].eToolType:=ENUM_Tool_Type.Unknow;
+						GV_Tool_Magazine.aLocation[iLocationLoop].bToolPresence:=FALSE;
+						
+						GV_Tool_Magazine.aLocation[iLocationLoop].stToolParam:=GV_Tool_Magazine.stEmptyToolParam;
+						GV_Tool_Magazine.aLocation[iLocationLoop].stToolName:=GV_Tool_Magazine.stEmptyToolName;
+					END_IF
+			
+			(*X,Y coordinate*) // lrXcoord and lrYcoord
+				//IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=0 THEN
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=0;
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=0;
+				//END_IF
+				(*Top*)
+					//IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocationTop THEN
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=GV_Tool_Magazine.lrXFirstLocationTop+(GV_Tool_Magazine.lrXLocationOffsetTop*(GV_Tool_Magazine.iMaxRelRackLocationTop-GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=GV_Tool_Magazine.lrYLocationOffsetTop;
+					//END_IF
+				(*Bottom*)
+					//IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber>GV_Tool_Magazine.iMaxRelLocationTop AND GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber<=GV_Tool_Magazine.iMaxRelLocation THEN
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=GV_Tool_Magazine.lrXFirstLocationBottom+(GV_Tool_Magazine.lrXLocationOffsetBottom*(GV_Tool_Magazine.iMaxRelRackLocationBottom-GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));			
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=GV_Tool_Magazine.lrYLocationOffsetBottom;
+					//END_IF 		
+			(*Z coordinate*) // lrZcoord
+				//IF GV_Tool_Magazine.aLocation[iLocationLoop].iAbsLocationNumber=0 THEN
+				//	GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=0;
+				//END_IF
+				(*Top*)
+					//IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>0 AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRackTop THEN
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.lrZLowestRackTop+(GV_Tool_Magazine.lrZLocationOffsetTop*(GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber-1));
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord-(GV_Tool_Magazine.lrZRelCompensationLocationTop*(GV_Tool_Magazine.iMaxRelRackLocationTop-GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));// Compensation
+					//END_IF			
+				(*Bottom*)
+					//IF GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber>GV_Tool_Magazine.iMaxRelRackTop AND GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber<=GV_Tool_Magazine.iMaxRelRack THEN
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.lrZLowestRackBottom+(GV_Tool_Magazine.lrZLocationOffsetBottom*(GV_Tool_Magazine.iMaxRelRack-GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber));
+					//	GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord-(GV_Tool_Magazine.lrZRelCompensationLocationBottom*(GV_Tool_Magazine.iMaxRelRackLocationBottom-GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));// Compensation
+					//END_IF
+			
+			(*X,Y,Z coordinate*) // lrXcoord lrYcoord lrZcoord
+				IF GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag=ENUM_Position_Magazine.Top THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=GV_Tool_Magazine.lrXFirstLocationTop+(GV_Tool_Magazine.lrXLocationOffsetTop*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber-1));
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord*1000.0))/1000.0; // Round 10e-3 (normally not usefull)
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=GV_Tool_Magazine.lrYLocationTop+(GV_Tool_Magazine.lrYLocationOffsetTop*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber-1));
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord*1000.0))/1000.0; // Round 10e-3 (normally not usefull)					
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.lrZLowestRackTop+(GV_Tool_Magazine.lrZLocationOffsetTop*(GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber-1));
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord-(GV_Tool_Magazine.lrZRelCompensationLocationTop*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));// Compensation
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord*1000.0))/1000.0; // Round 10e-3
+				ELSIF GV_Tool_Magazine.aLocation[iLocationLoop].ePositionMag=ENUM_Position_Magazine.Bottom THEN
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=GV_Tool_Magazine.lrXFirstLocationBottom+(GV_Tool_Magazine.lrXLocationOffsetBottom*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber-1));
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord*1000.0))/1000.0; // Round 10e-3 (normally not usefull)
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=GV_Tool_Magazine.lrYLocationBottom+(GV_Tool_Magazine.lrYLocationOffsetBottom*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber-1));
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord*1000.0))/1000.0; // Round 10e-3 (normally not usefull)					
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.lrZLowestRackBottom+(GV_Tool_Magazine.lrZLocationOffsetBottom*(GV_Tool_Magazine.iMaxRelRack-GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber));//(GV_Tool_Magazine.aLocation[iLocationLoop].iRackNumber-1));
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord-(GV_Tool_Magazine.lrZRelCompensationLocationBottom*(GV_Tool_Magazine.aLocation[iLocationLoop].iLocationRackNumber));// Compensation
+						GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=LINT_TO_LREAL(LREAL_TO_LINT(GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord*1000.0))/1000.0; // Round 10e-3
+				ELSE
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrXcoord:=0;
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrYcoord:=0;
+					GV_Tool_Magazine.aLocation[iLocationLoop].lrZcoord:=0;
+				END_IF
+			
+		END_FOR
+	]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

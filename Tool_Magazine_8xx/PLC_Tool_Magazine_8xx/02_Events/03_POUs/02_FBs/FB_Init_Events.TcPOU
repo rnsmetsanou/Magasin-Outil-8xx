@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Init_Events" Id="{be4d0837-2845-4305-ae50-edd47af7464f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Init_Events
+VAR_INPUT
+	(** STRING **)	
+	strEventType : STRING[20] ; // Type of the Event (ALARM or MESSAGE)
+	strEventGuid : STRING[36] ; // Guid of the Event
+	
+	(** INT **)
+	iEventGroup : INT ; // Event group number
+
+	(** TC **)
+	tcEventSeverity : TcEventSeverity ;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	(** UDINT **)
+	uEventLoop : UDINT ; // Use in a FOR Loop
+	uAlarmLength : UDINT ; // Alarm Length
+	uMessageLength : UDINT ; // Message Length	
+	uOpMessageLength : UDINT ; // Operator Message Length
+	uIdEventStart : UDINT; // Event number start
+	
+	(** INT **)
+	iIdStart : INT :=0 ; // Start number
+	iFctState : INT ; // State of the function
+	
+	(** FLAG **)
+	bError : BOOL ; // Error
+
+	(** TC **)
+	tcEventData : TcEventEntry ;		
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Init_Events
+//
+//					Gestion initialisation des évènements  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(* Initialized variables *)
+	bError:=FALSE;
+	iIdStart:=UDINT_TO_INT(uIdEventStart);
+	uAlarmLength:=INT_TO_UDINT(GV_Events.iMaxAlarms);
+	uMessageLength:=INT_TO_UDINT(GV_EVENTS.iMaxMessages);
+	uOpMessageLength:=INT_TO_UDINT(GV_EVENTS.iMaxOPMessages);
+	uIdEventStart:=1;
+
+(* Check EVENT GROUP, ID event, EVENT TYPE *)
+	IF (iEventGroup <=0 OR iEventGroup>GV_events.iMaxEventGroup) THEN
+		GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[5].fbMessage.Send(0); // Set MESSAGE 5 (FB_EVENT EVENT GROUP number error)
+		bError:=TRUE;
+	ELSE
+		IF  (strEventType<>'ALARM' AND strEventType<>'MESSAGE' AND strEventType<>'OpMESSAGE') THEN
+			GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[4].fbMessage.Send(0); // Set Message 4 (FB_EVENT Event type error)
+			bError:=TRUE;
+		ELSE
+			IF ((uIdEventStart<=0 OR iIdStart>GV_Events.iMaxAlarms) AND strEventType='ALARM') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[2].fbMessage.Send(0); // Set Message 2 (FB_EVENT Alarm number error)
+				bError:=TRUE;
+			END_IF
+			IF ((uIdEventStart<=0 OR iIdStart>GV_Events.iMaxMessages) AND strEventType='MESSAGE') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[3].fbMessage.Send(0); // Set Message 3 (FB_EVENT Message number error)
+				bError:=TRUE;
+			END_IF	
+			IF ((uIdEventStart<=0 OR iIdStart>GV_Events.iMaxOPMessages) AND strEventType='OpMESSAGE') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[6].fbMessage.Send(0); // Set Message 6 (FB_EVENT Operator Message number error)
+				bError:=TRUE;
+			END_IF
+		END_IF
+	END_IF
+
+(* No error *)
+	IF bError=FALSE THEN
+		(*Check if Alarm  to initialize*)
+		IF strEventType='ALARM' THEN
+			(*Alarm init loop*)
+			FOR uEventLoop:=1 TO uAlarmLength BY 1 DO
+				tcEventData.uuidEventClass:=STRING_TO_GUID(strEventGuid);
+				tcEventData.nEventId:=((uEventLoop+uIdEventStart)-1);
+				tcEventData.eSeverity:=tcEventSeverity;
+				GV_Events.aEVentGroup[iEventGroup].aAlarm[tcEventData.nEventId].fbAlarm.CreateEx(tcEventData,TRUE,0);
+			END_FOR
+		END_IF 
+		(*Check if Message  to initialize*)
+		IF strEventType='MESSAGE' THEN
+			(*Alarm init loop*)
+			FOR uEventLoop:=1 TO uMessageLength BY 1 DO
+				tcEventData.uuidEventClass:=STRING_TO_GUID(strEventGuid);
+				tcEventData.nEventId:=((uEventLoop+uIdEventStart)-1);
+				tcEventData.eSeverity:=tcEventSeverity;
+				GV_Events.aEVentGroup[iEventGroup].aMessage[tcEventData.nEventId].fbMessage.CreateEx(tcEventData,0);
+			END_FOR
+		END_IF 	
+		(*Check if OpMessage  to initialize*)
+		IF strEventType='OpMESSAGE' THEN
+			(*Alarm init loop*)
+			FOR uEventLoop:=1 TO uOpMessageLength BY 1 DO
+				tcEventData.uuidEventClass:=STRING_TO_GUID(strEventGuid);
+				tcEventData.nEventId:=((uEventLoop+uIdEventStart)-1);
+				tcEventData.eSeverity:=tcEventSeverity;
+				GV_Events.aEVentGroup[iEventGroup].aOpMessage[tcEventData.nEventId].fbAlarm.CreateEx(tcEventData,TRUE,0);
+			END_FOR
+		END_IF 
+	END_IF
+	]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

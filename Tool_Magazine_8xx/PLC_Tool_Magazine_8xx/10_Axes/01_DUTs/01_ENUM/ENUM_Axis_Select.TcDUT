@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Axis_Select" Id="{b181ade2-c241-4a2a-9254-0f17ef25c6c3}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Axis_Select
+//
+//							Enumération des Axes pour choix
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Axis_Select :
+(
+	None := 0 , // None Axis
+	X := 1 , // X Axis
+	Y := 2 , // Y Axis
+	Z := 3 , // Z Axis 
+	Arm := 4 // Changing Arm Axis 
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

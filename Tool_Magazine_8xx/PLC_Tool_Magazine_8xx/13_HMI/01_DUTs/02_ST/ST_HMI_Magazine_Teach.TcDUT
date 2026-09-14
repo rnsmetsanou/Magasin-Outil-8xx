@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Magazine_Teach" Id="{40ba6f48-a43d-485e-a25d-33af69bf53c9}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			ST_HMI_Magazine_Teach
+//
+//				Structure datas pour le teaching des emplacements du magasin			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 18.03.2026
+//Dernière modification : 18.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 18.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Magazine_Teach :
+STRUCT
+	
+	(** PROCESS STRING **)
+		sTeachLocationSelected : STRING ;  // Number of the selected Location
+
+	(** PROCESS INT **)
+		iTeachLocationSelected : INT ; // Number of the selected Location
+		
+	(** PROCESS FLAG + R_Trig **)
+		bVisuTeachRack : BOOL ; // Schow the Teach Rack button if the selected Location is the first of them
+		bVisuTeachAllTop : BOOL ; // Schow the Teach AllTop button if the selected Location is the first of them
+		bVisuTeachAllBottom : BOOL ; // Schow the Teach AllBottom button if the selected Location is the first of them
+	
+		bButtonTeachLocation : BOOL ; // Button for teach the selected Locaiton
+			rtTeachLocation : R_Trig ; // Trigger for teach the selected Locaiton
+		bButtonTeachRack : BOOL ; // Button for teach the Rack of the selected Location
+			rtTeachRack : R_Trig ; // Trigger for teach the Rack of the selected Location
+		bButtonTeachAllTop : BOOL ; // Button for teach AllTop Locaiton
+			rtTeachAllTop: R_Trig ; // Trigger for teach AllTop Locaiton	
+		bButtonTeachAllBottom : BOOL ; // Button for teach AllBottom Locaiton
+			rtTeachAllBottom: R_Trig ; // Trigger for teach AllBottom Locaiton	
+			
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

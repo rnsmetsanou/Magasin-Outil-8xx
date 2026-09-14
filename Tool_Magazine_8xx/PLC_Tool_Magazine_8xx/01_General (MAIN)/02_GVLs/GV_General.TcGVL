@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.2.0.0" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_General" Id="{d3cdf58c-82ed-4a82-bd3f-5be55c598b66}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_General
+//
+//								Variables génériques  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 09.01.2026
+//Dernière modification : 09.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+END_VAR
+
+VAR_GLOBAL
+
+	(** ARRAY ST **)
+		aExportData : ARRAY[0..udiMaxBackupRow] OF ST_Array_Data ;
+		aImportData : ARRAY[0..udiMaxBackupRow] OF ST_Array_Data ;
+		
+	(** DATE & TIME **)
+		dtCurrentDateTime : DATE_AND_TIME  ; // Date and TIME
+	
+	(** STRING **)
+		sDataDateTime : STRING ; // Date and TIME of the Backup data
+	
+	(** UINT **)
+		uiAdsPort : UINT ; // ADS Port of the Task
+	
+	(* INT *)
+		iExportAlarmsStatus : INT ;
+		iExportMessagesStatus : INT ;
+	
+	(** BLINK FLAG **)
+		bIsBlinking05s : BOOL ; // Blink 0.5S
+		bIsBlinking1s : BOOL ; // Blink 1S
+			
+	(** FLAG **)
+		bWatchDog : BOOL ;
+	
+	(** PROCESS FLAG **)
+		bFirstCycleTask : BOOL ; // Flag of the Task's first cycle
+		bSafety : BOOL ; // Safety 
+		bEmergencyStop : BOOL ; // Emergency Stop
+		bPower : BOOL ; // Electrical Power
+		bAir : BOOL ; // Air
+		bIsRodageActive : BOOL ; // Flag to activate the magazine break-in cycle
+		
+		bRebootAuthorization : BOOL := FALSE ; // Authorization for Reboot the PC 
+		bRebootRequest : BOOL := FALSE ; // Request for Reboot the PC 
+		bSaveDataRebootDone : BOOL ; // Data save is done and ready for Reboot
+				
+		bShutdownAuthorization : BOOL := FALSE ; // Authorization for Reboot the PC 
+		bShutdownRequest : BOOL := FALSE ; // Request for Shutdown the PC 
+		bSaveDataShutdownDone : BOOL ; // Data save is done and ready for Shutdown
+	
+		bSettingSaveAuthorization : BOOL ; // Refresh the settings and the magazine Authoriation
+	
+		bBackupProjectAuthorization : BOOL ; // Backup Project Authorization
+		bInitDataAuthorization : BOOL ; // Init Data Authorization
+		bExportDataAuthorization : BOOL ; // Backup Data Export Authorization
+		bImportDataAuthorization : BOOL ; // Backup Data Export Authorization
+		bImportDataDone : BOOL ; // Backup Data Import is Done
+		
+		bExportAlarmsAuthorization : BOOL ; // Alarms Export Authorization
+		bExportMessagesAuthorization : BOOL ; // Messages Export Authorization
+		
+	(** SIMU FLAG **)
+		bFirstCycleSimu : BOOL ; // Flag to simulate first cycle
+	
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+
+	(** CONSTANT TIME **)
+		tSavePersistentData : TIME := T#60S ; // Save Persistent Data every -> Xs
+		
+	(** CONSTANT STRING **)
+		sBackupEXE : STRING := 'C:\WM\Soft\Backup\Backup_Tool_Magazine_8xx.exe' ; // Path of the Backup project .exe
+		sDataName : STRING := 'PLC_Tool_Magazine' ; // Project name of the Backup data
+		sDataVersion : STRING := 'V1.0.0' ; // Version of the Backup data
+		
+	(** CONSTANT UDINT **)
+		udiMaxBackupRow : UDINT := 200 ;
+		udiMaxBackupColumn : UDINT := 3 ; // 0-1-2-3
+		udiMaxBackupFiledLength : UDINT := 100 ;
+	
+	(** CONSTANT FLAG **)
+		bIsAlwaysTrue : BOOL := TRUE ; // Always at true
+		bIsAlwaysFalse : BOOL := FALSE ; // Always at false
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

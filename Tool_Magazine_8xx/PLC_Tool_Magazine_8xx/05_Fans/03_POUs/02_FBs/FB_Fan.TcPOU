@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Fan" Id="{8b7ec8ff-e98f-4c7d-9cff-42665ebc7567}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Fan
+VAR_INPUT
+	(** INT **)
+	iFanNumber : INT ; // Number of the fan
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR_IN_OUT
+	(** ST **)
+	stFan : ST_Fan ;
+END_VAR
+VAR
+	(** FB **)
+	fbInitEvents : FB_Init_Events ;
+	fbEventHMI : FB_Event_HMI ;
+	
+	tonStartMin : TON ;
+	tonStartMax : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				FB_Fan
+//
+//							Gestion ventilateur(s)   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création	
+// 27.01.2026 (G.GOETZ) -> Ajout gestion des alarmes/messages
+//-----------------------------------------------------------------------------------------
+
+IF stFan.bPresence THEN
+		
+	(** EVENTS **)
+		IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+			(*Call first Event because we need to call one Event in the GUID to have it into .xml file*)
+			GV_Events.aEventGroup[GV_Fans.aId[iFanNumber].iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.FanAlarms.Alarm1,TRUE,0);
+			GV_Events.aEventGroup[GV_Fans.aId[iFanNumber].iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.FanOpMessages.Message1,TRUE,0);	
+			fbInitEvents(iEventGroup:=GV_Fans.aId[iFanNumber].iEventGroup,strEventType:='ALARM',strEventGuid:='77BDDCBB-B8DC-46C2-9AE2-0C0996835A2C',tcEventSeverity:=2);
+			fbInitEvents(iEventGroup:=GV_Fans.aId[iFanNumber].iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='7465A544-4166-4343-9B32-33A0414E8A0C',tcEventSeverity:=1);
+		END_IF
+
+	(** FAN TYPES MANAGEMENT **)
+
+	(* 1 With PWM type *) // WIth rampe
+		IF stFan.eFanType=ENUM_Fan_Type.PWM THEN
+
+			tonStartMin(PT:=T#3S);
+			tonStartMax(PT:=T#3S);
+			
+			(* Start Sequence *)
+			IF stFan.bStart AND GV_General.bSafety THEN
+				
+				tonStartMin(PT:=T#3S);
+				tonStartMax(PT:=T#3S);
+				
+				(*At Min*)
+				IF (NOT tonStartMin.Q) THEN
+					stFan.uPwmOutput:=0; // PWM output
+				END_IF
+				IF stFan.uPwmOutput=0 THEN
+					tonStartMin.IN:=TRUE;
+				END_IF
+				
+				(*At Max*)		
+				IF tonStartMin.Q THEN
+					stFan.uPwmOutput:=327; // PWM output 327*200=(0-65535)
+				END_IF
+				IF stFan.uPwmOutput=327 THEN
+					tonStartMax.IN:=TRUE;
+				END_IF
+				
+				(*Done*)
+				IF tonStartMax.Q THEN
+					tonStartMin.IN:=FALSE;
+					tonStartMax.IN:=FALSE;
+					stFan.bStart:=FALSE;
+				END_IF
+				
+			ELSE
+				stFan.bStart:=FALSE;
+
+				tonStartMin.IN:=FALSE;
+				tonStartMax.IN:=FALSE;
+				
+				(* Target *)
+				(*Min*)
+				IF stFan.uSpeedSet<=stFan.uMinSpeed THEN
+					stFan.uPwmTarget:=stFan.uMinPwm; // Min% PWM
+				END_IF
+				(*Max*)
+				IF stFan.uSpeedSet>=stFan.uMaxSpeed THEN
+					stFan.uPwmTarget:=stFan.uMaxPwm; // Max% PWM
+				END_IF
+				(*PWM = PWMmin + (Speed - MinSpeed) × (PWMmax - PWMmin) / (Speedmax - Speedmin)*)
+				IF stFan.uSpeedSet>stFan.uMinSpeed AND stFan.uSpeedSet<stFan.uMaxSpeed THEN
+					stFan.uPwmTarget:=(stFan.uMinPwm+((stFan.uSpeedSet-stFan.uMinSpeed)*(stFan.uMaxPwm-stFan.uMinPwm))/(stFan.uMaxSpeed-stFan.uMinSpeed)); // X% PWM at the speed command
+					stFan.uPwmTarget:=REAL_TO_UINT(stFan.uPwmTarget+0.5);
+				END_IF
+				IF (NOT GV_General.bSafety) THEN
+					stFan.uPwmTarget:=0; // 0% PWM
+				END_IF
+				
+				(* Command with ramp *)
+				(*Accel ramp*)
+				IF stFan.uPwmOutput<stFan.uPwmTarget THEN
+					stFan.uPwmOutput:=MIN(stFan.uPwmOutput+GV_Fans.uRampStep1,stFan.uPwmTarget);
+				END_IF
+				(*Decel ramp*)
+				IF stFan.uPwmOutput>stFan.uPwmTarget THEN
+					stFan.uPwmOutput:=MAX(stFan.uPwmOutput-GV_Fans.uRampStep1,stFan.uPwmTarget);
+				END_IF		
+		
+				(*Message 1 = Fan stopped*)
+				IF stFan.uPwmOutput=0 THEN // Fan setpoint at 0
+					GV_Events.aEventGroup[GV_Fans.aId[iFanNumber].iEventGroup].aOpMessage[1].fbAlarm.ipArguments.Clear().AddDInt(stFan.iIdHMI);
+					fbEventHMI(iEventGroup:=GV_Fans.aId[iFanNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=TRUE);
+				ELSE
+					fbEventHMI(iEventGroup:=GV_Fans.aId[iFanNumber].iEventGroup,iIdEvent:=1,strEventType:='OpMESSAGE',bEventSet:=FALSE);			
+				END_IF
+			END_IF
+			
+		END_IF
+	
+//ELSE
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

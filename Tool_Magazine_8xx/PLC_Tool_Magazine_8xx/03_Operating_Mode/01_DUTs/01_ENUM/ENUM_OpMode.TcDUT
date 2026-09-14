@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_OpMode" Id="{d51cc9f4-3fff-4691-a9e1-3b65480f9769}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_OpMode
+//
+//								Enumération op Mode		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 20.02.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_OpMode :
+(
+	None := 0 , // None mode
+	AUTO := 1 , // AUTO mode
+	MANU := 2 , // MANU mode
+	INIT := 3 // INIT mode
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

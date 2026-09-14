@@ -1,0 +1,255 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Write_DataToFile" Id="{9311b095-8a33-474a-97c6-5c2a005a7265}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Write_DataToFile
+VAR_INPUT
+	sFilePath: STRING;
+	DataToWrite: PVOID;
+	DataToWriteLen: UDINT;	
+	/// rising edge starts fb execution 
+	bExecute: BOOL;
+END_VAR
+VAR_IN_OUT
+	With_file_delete : BOOL; // File delete before writing
+END_VAR
+VAR_OUTPUT
+	bBusy: BOOL;
+	bError: BOOL;
+	nErrId: UDINT;
+END_VAR
+VAR
+	fbFileOpen: FB_FileOpen;
+	fbFileDelete: FB_FileDelete;
+	sNetID: STRING := '';
+	sPathName: STRING := '';
+	fbFileWrite: FB_FileWrite;
+	fbFileClose: FB_FileClose;
+	/// file handle of the destination file 
+	hDestFile: UINT := 0;
+	iSequence: INT := 0;
+	RisingEdge: R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Write_DataToFile
+//
+//							Fonction pour écrire les Log    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+RisingEdge(CLK:=bExecute);
+IF RisingEdge.Q THEN
+        IF NOT bBusy THEN
+                bBusy := TRUE;
+                bError:= FALSE;
+                nErrId:=0;
+                iSequence := 10;
+                sPathName:='';
+                hDestFile:=0;
+        END_IF
+END_IF
+
+CASE iSequence OF
+0:
+	; (* do nothing *)
+
+10:		// Reset Open block
+		sPathName := sFilePath;
+		fbFileOpen(	sNetId		:= sNetID,
+				sPathName	:= sPathName,
+				nMode		:=  FOPEN_MODEAPPEND OR FOPEN_MODEBINARY,
+				ePath		:= PATH_GENERIC,
+				bExecute	:= FALSE,
+				tTimeout		:= T#5S);
+		fbFileDelete(sNetId		:= sNetID,
+				sPathName	:= sPathName,
+				ePath		:= PATH_GENERIC,
+				bExecute	:= FALSE,
+				tTimeout		:= T#5S);
+		iSequence := iSequence + 10;
+		
+20: // Open file or create if do not exit
+		fbFileOpen(	sNetId		:= sNetID,
+					sPathName	:= sPathName,
+					nMode		:=  FOPEN_MODEAPPEND OR FOPEN_MODEBINARY,
+					ePath		:= PATH_GENERIC,
+					bExecute	:= TRUE,
+					tTimeout		:= T#5S);
+		iSequence := iSequence + 10;
+
+30: (* loop in this state until not bBusy *)
+	 fbFileOpen();
+	IF (NOT fbFileOpen.bBusy) AND (NOT fbFileOpen.bError) THEN
+		hDestFile	:= fbFileOpen.hFile;
+		fbFileOpen(	sNetId		:= sNetID,
+					sPathName	:= sPathName,
+					nMode		:= FOPEN_MODEAPPEND OR FOPEN_MODEBINARY,
+					ePath		:= PATH_GENERIC,
+					bExecute	:= FALSE,
+					tTimeout		:= T#5S);
+			iSequence := 60;
+		// Check if file delete need
+		// Closing file before delete
+		IF With_file_delete THEN
+			fbFileClose(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				bExecute	:= TRUE,
+				tTimeout		:=  T#5S);
+			iSequence := 40;
+		END_IF
+	ELSE	(* handle error *)
+		IF fbFileOpen.bError THEN
+		 	iSequence :=900;
+		END_IF
+	END_IF
+
+40:	// Delete file before writing
+	 fbFileClose();
+	IF (NOT fbFileClose.bBusy) AND (NOT fbFileClose.bError) THEN
+		fbFileClose(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				bExecute	:= FALSE,
+				tTimeout		:=  T#5S);
+		fbFileDelete(sNetId		:= sNetID,
+					sPathName	:= sPathName,
+					ePath		:= PATH_GENERIC,
+					bExecute	:= TRUE,
+					tTimeout		:= T#5S);
+		iSequence := iSequence + 10;
+	ELSE	(* handle error *)
+		IF fbFileClose.bError THEN
+		 	iSequence :=900;
+		END_IF
+	END_IF
+
+50:	// File deleted, create new
+	 fbFileDelete();
+	IF (NOT fbFileDelete.bBusy) AND (NOT fbFileDelete.bError) THEN
+		fbFileDelete(sNetId		:= sNetID,
+				sPathName	:= sPathName,
+				ePath		:= PATH_GENERIC,
+				bExecute	:= FALSE,
+				tTimeout		:= T#5s);
+		// File deleted
+		With_file_delete:=FALSE;
+		iSequence := 10;
+	ELSE	(* handle error *)
+		IF fbFileDelete.bError THEN
+		 	iSequence :=900;
+		END_IF
+	END_IF
+	
+60:	fbFileWrite(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				pWriteBuff	:= DataToWrite,
+				cbWriteLen	:= DataToWriteLen,
+				bExecute	:= FALSE,
+				tTimeout		:= T#5S  );
+	iSequence :=90;
+
+90:
+	fbFileWrite(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				pWriteBuff	:= DataToWrite,
+				cbWriteLen	:= DataToWriteLen,
+				bExecute	:= TRUE,
+				tTimeout		:= T#5S  );
+	iSequence := iSequence + 10;
+
+
+100: (* loop in this state until not bBusy *)
+	fbFileWrite();
+	IF (NOT fbFileWrite.bBusy) AND (NOT fbFileWrite.bError) THEN
+		fbFileWrite(	sNetId		:= sNetID,
+					hFile		:= hDestFile,
+					pWriteBuff	:= DataToWrite,
+					cbWriteLen	:= DataToWriteLen,
+					bExecute	:= FALSE,
+					tTimeout		:= T#5S  );
+		iSequence := 110;
+	ELSE	(* handle error *)
+		IF fbFileWrite.bError THEN
+		 	iSequence :=900;
+		END_IF
+	END_IF
+
+110:	fbFileClose(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				bExecute	:= FALSE,
+				tTimeout		:=  T#5S);
+	iSequence :=120;
+
+120:
+	fbFileClose(	sNetId		:= sNetID,
+				hFile		:= hDestFile,
+				bExecute	:= TRUE,
+				tTimeout		:=  T#5S);
+	iSequence := iSequence + 10;
+
+130: (* loop in this state until not bBusy *)
+	fbFileClose();
+	IF (NOT fbFileClose.bBusy) AND (NOT fbFileClose.bError) THEN
+		fbFileClose(	sNetId		:= sNetID,
+					hFile		:= hDestFile,
+					bExecute	:= FALSE,
+					tTimeout		:=  T#5S);
+		iSequence := 140;
+	ELSE	(* handle error *)
+		IF fbFileClose.bError THEN
+		 	iSequence :=900;
+		END_IF
+	END_IF
+
+140:
+		bBusy:=FALSE;
+		iSequence := 0;
+
+
+900:
+	(* additional code to log the error, either  fbFileOpen.bError,fbFileWrite.bError or  fbFileClose.bError *)
+	(* close the file if it is open *)
+	IF hDestFile<>0 THEN
+		fbFileClose(	sNetId		:= sNetID,
+					hFile		:= hDestFile,
+					bExecute	:= TRUE,
+					tTimeout		:=  T#5S);
+			iSequence := iSequence + 10;
+	ELSE
+		iSequence := 999;
+	END_IF
+
+910: (* loop in this state until not bBusy *)
+	IF (NOT fbFileClose.bBusy) AND (NOT fbFileClose.bError) THEN
+		fbFileClose(	sNetId		:= sNetID,
+					hFile		:= hDestFile,
+					bExecute	:= FALSE,
+					tTimeout		:=  T#5s);
+		iSequence := 999;
+	ELSE	(* handle error *)
+		IF fbFileClose.bError THEN
+		 	iSequence :=999;
+		END_IF
+	END_IF
+
+999:
+
+		bBusy:=FALSE;
+		iSequence := 0;
+
+
+END_CASE
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

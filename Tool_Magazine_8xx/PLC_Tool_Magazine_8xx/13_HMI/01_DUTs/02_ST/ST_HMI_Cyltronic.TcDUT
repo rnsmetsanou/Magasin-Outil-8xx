@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_HMI_Cyltronic" Id="{fc0626c1-49d6-4fd5-bea8-ea7162942e56}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_HMI_Cyltronic
+//
+//								Structure Cyltronic HMI			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 05.03.2026
+//Dernière modification : 05.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 05.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_HMI_Cyltronic :
+STRUCT
+	
+	(** PROCESS FLAG + R_TRIG **)
+		bButtonMoveWork : BOOL ; // Button for move to Work Position
+			rtButtonMoveWork : R_Trig ; // Trigger for move to Work Position
+		bButtonMoveRest : BOOL ; // Button for move to Rest Position
+			rtButtonMoveRest : R_Trig ; // Trigger for move to Rest Position
+				
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

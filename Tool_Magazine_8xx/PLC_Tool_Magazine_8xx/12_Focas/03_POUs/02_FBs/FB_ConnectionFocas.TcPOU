@@ -1,0 +1,234 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_ConnectionFocas" Id="{e9932c2d-4e18-457e-bc41-2e5c2d36497c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ConnectionFocas
+VAR_INPUT
+	(** STRING **)
+		sPathNameExe : STRING ; // Chemin du fichier CommunicationADS-TC3.exe
+		sDirName : STRING ; // Direction de l'emplacement de l'exécutable
+		sAdrCommFocas : STRING ; // Adresse de la CNC pour établir la communication FOCAS
+	
+	(** INT **)
+		iPortComm : INT ; // Port de communication
+		
+	(** FLAG **)	
+		bStartComm : BOOL ; // Start de la communication FOCAS
+		bStopComm : BOOL ; // Arrêt de la communication FOCAS
+		bHidePrgGate : BOOL ; // Cacher le programme passerelle au démarrage
+END_VAR
+VAR_OUTPUT
+	(** INT **)
+		iErreurID : INT ; // Error ID
+	
+	(** FLAG **)
+		bBusy : BOOL ; // Activer si le block fonction est en cours d'utilisation
+		bDone : BOOL ; // Activer si le block fonction a correctement éxecuter
+		bFocasAdsOk : BOOL ; // Commmunication ADS ok
+		bFocasOk : BOOL ; // Communication Focas ok
+END_VAR
+VAR
+	(** STRING **)
+		sPathNameCmd : STRING := 'C:\Windows\System32\cmd.exe' ; // Chemin du fichier CommunicationADS-TC3.exe
+		sCmdLine : STRING := 'C:\' ;
+	
+	(** BYTE **)
+		bStep : BYTE := 0 ;
+		bCptErrorOpenExe : BYTE := 0 ;
+	
+	(** FLAG **)
+		bStartTimeOutOn	: BOOL ; // Start de la temporisation 
+		bStartTimeOutOff : BOOL ; // Start de la temporisation 
+	
+	(** FB **)
+		tonTimeOutAdsOn: TON ; // Temporisation pour vérifier la communication ADS
+		tonTimeOutAdsOff : TON ; // Temporisation pour vérifier la communication ADS
+		tonWaitNextOpen : TON ;
+		ntStartCommAdsFocas	: NT_StartProcess ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_ConnectionFocas
+//
+//								Connection Focas		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+CASE bStep OF
+	
+	0:  // Ouverture automatique du programme passerelle
+		IF bStartComm AND iErreurID=0 THEN
+			// Build Command String
+			sCmdLine:='/C '; // Special command indicating command string input
+			sCmdLine:=CONCAT(sCmdLine,'start '); // Add start command
+			sCmdLine:=CONCAT(sCmdLine,sPathNameExe); // Add target file
+			bStep := 10;
+		ELSE
+			bBusy:=FALSE;
+			bDone:=FALSE;
+			sCmdLine:='';
+		END_IF
+		IF iErreurID<>0 AND (NOT bStartComm) THEN
+			iErreurID:=0;
+		END_IF
+		IF bFocasAdsOk THEN
+			bStep:=40;
+		END_IF
+	
+	10:
+		ntStartCommAdsFocas.START:=TRUE;
+		IF ntStartCommAdsFocas.BUSY THEN
+			bStep:=20;
+		END_IF		
+		IF ntStartCommAdsFocas.ERR THEN
+			bStep:=100;
+		END_IF
+	
+	20:
+		IF (NOT ntStartCommAdsFocas.BUSY) THEN
+			ntStartCommAdsFocas.START:=FALSE;
+			bStep:=30;
+		END_IF
+		IF ntStartCommAdsFocas.ERR THEN
+			bStep:=100;
+		END_IF
+
+	30:
+		IF GV_Focas.bLifeFlag THEN
+			bStep:=40;
+		END_IF
+		
+		IF ntStartCommAdsFocas.ERR THEN
+			bStep:=100;
+		END_IF
+
+	40:// Gestion de l'erreur lors de la communication ADS
+		IF (NOT bFocasAdsOk) THEN
+			bStep := 100;
+		ELSIF bFocasAdsOk THEN
+			iErreurID:=GV_Focas.iErrorAdsID;
+		ELSE
+			iErreurID:=0;
+		END_IF
+	
+	100:
+		tonWaitNextOpen.IN:=TRUE;
+		IF tonWaitNextOpen.Q THEN
+			tonWaitNextOpen.IN := FALSE;
+			IF bCptErrorOpenExe<3 THEN
+				bCptErrorOpenExe:=bCptErrorOpenExe+1;
+				ntStartCommAdsFocas.START:=FALSE;
+				bStep:=0;
+			ELSE
+				bCptErrorOpenExe:=0;
+				
+				iErreurID:=(-100);
+				ntStartCommAdsFocas.START:=FALSE;
+				bStep:=0;
+			END_IF
+		END_IF
+		
+END_CASE
+
+
+
+// Mappage des variables 
+	IF bFocasAdsOk THEN
+		GV_Focas.iFocasPort:=iPortComm;
+		GV_Focas.sFocasAdr:=sAdrCommFocas;
+		GV_Focas.bFocasStartComm:=bStartComm;
+		GV_Focas.bFocasStopComm:=bStopComm;
+		GV_Focas.bFocasAdsOK:=bFocasAdsOk;
+		
+		bBusy:=GV_Focas.bFocasBusy;
+		bDone:=GV_Focas.bFocasDone;
+		bFocasOk:=GV_Focas.bFocasOk;
+	ELSE
+		GV_Focas.iFocasPort:=0;
+		GV_Focas.sFocasAdr:='';
+		GV_Focas.bFocasStartComm:=FALSE;
+		GV_Focas.bFocasStopComm:=FALSE;
+		GV_Focas.bFocasAdsOK:=FALSE;
+		
+		GV_Focas.bFocasBusy:=FALSE;
+		GV_Focas.bFocasDone:=FALSE;
+		GV_Focas.bFocasOk:=FALSE;
+		
+		bFocasOk:=FALSE;
+	END_IF
+
+A_LifeFlag();
+
+ntStartCommAdsFocas(
+	NETID:= '', 
+	PATHSTR:= sPathNameCmd, 
+	DIRNAME:= sDirName, 
+	COMNDLINE:= sCmdLine, 
+	START:= , 
+	TMOUT:= , 
+	BUSY=> , 
+	ERR=> , 
+	ERRID=> );
+	
+tonWaitNextOpen(IN:=,PT:=T#1S,Q=>,ET=>);]]></ST>
+    </Implementation>
+    <Action Name="A_LifeFlag" Id="{2f2b6de3-ccea-4e1e-9e6e-27245fb9addf}">
+      <Implementation>
+        <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				A_LifeFlag
+//
+//								Action Bit de Vie Focas		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 19.02.2026
+//Dernière modification : 19.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+IF GV_Focas.bLifeFlag THEN
+	bStartTimeOutOn:=TRUE;
+	bStartTimeOutOff:=FALSE;
+	bFocasAdsOk:=TRUE;
+END_IF
+
+tonTimeOutAdsOn(IN := bStartTimeOutOn, pt := T#2S,);
+IF tonTimeOutAdsOn.Q THEN
+	bFocasAdsOk:=FALSE;
+	GV_Focas.bFocasOK:=FALSE;
+	bStartTimeOutOn:=FALSE;
+	GV_Focas.bLifeFlag:=FALSE;
+END_IF
+
+IF bFocasAdsOk AND NOT GV_Focas.bLifeFlag THEN
+	bStartTimeOutOff:=TRUE;
+	bStartTimeOutOn:=FALSE;
+END_IF
+
+tonTimeOutAdsOff(IN := bStartTimeOutOff, pt := T#2S,);
+IF tonTimeOutAdsOff.Q THEN
+	bFocasAdsOk:=FALSE;
+	bStartTimeOutOff:=FALSE;
+END_IF
+]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

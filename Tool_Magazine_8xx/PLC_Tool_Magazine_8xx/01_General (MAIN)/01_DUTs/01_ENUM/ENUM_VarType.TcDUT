@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_VarType" Id="{e807641b-6d17-4492-99d5-a37931e52d8f}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_VarType
+//
+//							Enumération Variables Types		
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 10.03.2026
+//Dernière modification : 10.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 10.03.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_VarType :
+(
+	bBOOL ,
+	iINT ,
+	uUINT ,
+	diDINT ,
+	udiUDINT ,
+	rREAL ,
+	lrREAL ,
+	sSTRING
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

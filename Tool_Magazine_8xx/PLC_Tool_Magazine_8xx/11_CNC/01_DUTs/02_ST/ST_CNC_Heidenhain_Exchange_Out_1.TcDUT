@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Heidenhain_Exchange_Out_1" Id="{4838a657-24c0-461d-83e9-8bc3fd439285}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Heidenhain_Exchange_Out
+//
+//								Structure Echange Magasin->CNC_Heidenhain 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (In agreement with ...)
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Heidenhain_Exchange_Out_1 : // 16 Bytes -> Start at X0.0 / End at X15.7 (X0.0+15.7)
+STRUCT
+	
+	(* Byte 0 *)
+		boLife : BIT ; // Magazine Life bit -> X0.0
+		boReserve01 : BIT ; // Reserve 01 -> X0.1
+		boReserve02 : BIT ; // Reserve 02 -> X0.2
+		boReserve03 : BIT ; // Reserve 03 -> X0.3
+		boReserve04 : BIT ; // Reserve 04 -> X0.4
+		boReserve05 : BIT ; // Reserve 05 -> X0.5
+		boLoadingArmInPosition : BIT ; // Loading Arm in position in the CNC -> X0.6
+		boNoFault : BIT ; // No Fault on the Magazine -> X0.7
+
+	(* Byte 1 *)
+		boReserve10 : BIT ; // Reserve 10 -> X1.0
+		boReserve11 : BIT ; // Reserve 11 -> X1.1
+		boReserve12 : BIT ; // Reserve 12 -> X1.2
+		boReserve13 : BIT ; // Reserve 13 -> X1.3
+		boReserve14 : BIT ; // Reserve 14 -> X1.4
+		boReserve15 : BIT ; // Reserve 15 -> X1.5
+		boReserve16 : BIT ; // Reserve 16 -> X1.6
+		boDoorClosed : BIT ; // Magazine Door closed (operator) -> X1.7
+
+	(* Byte 2 *)
+		boReserve20 : BIT ; // Reserve 20 -> X2.0
+		boReserve21 : BIT ; // Reserve 21 -> X2.1
+		boReserve22 : BIT ; // Reserve 22 -> X2.2
+		boReserve23 : BIT ; // Reserve 23 -> X2.3
+		boReserve24 : BIT ; // Reserve 24 -> X2.4
+		boReserve25 : BIT ; // Reserve 25 -> X2.5
+		boReserve26 : BIT ; // Reserve 26 -> X2.6
+		boReserve27 : BIT ; // Reserve 27 -> X2.7
+	
+	(* Byte 3 *)
+		boReserve30 : BIT ; // Reserve 30 -> X3.0
+		boReserve31 : BIT ; // Reserve 31 -> X3.1
+		boReserve32 : BIT ; // Reserve 32 -> X3.2
+		boReserve33 : BIT ; // Reserve 33 -> X3.3
+		boReserve34 : BIT ; // Reserve 34 -> X3.4
+		boReserve35 : BIT ; // Reserve 35 -> X3.5
+		boReserve36 : BIT ; // Reserve 36 -> X3.6
+		boReserve37 : BIT ; // Reserve 37 -> X3.7
+
+	(* Byte 4 *)
+		byoReserve40 : BYTE ; // Reserve 40 -> X4
+	
+	(* Byte 5 *)
+		byoReserve50 : BYTE ; // Reserve 50 -> X5
+	
+	(* Byte 6 *)
+		byoReserve60 : BYTE ; // Reserve 60 -> X6
+	
+	(* Byte 7 *)
+		byoReserve70 : BYTE ; // Reserve 70 -> X7
+	
+	(* Byte 8 *)
+		byoReserve80 : BYTE ; // Reserve 80 -> X8
+	
+	(* Byte 9 *)
+		byoReserve90 : BYTE ; // Reserve 90 -> X9
+		
+	(* Byte 10 *)
+		byoReserve100 : BYTE ; // Reserve 100 -> X10
+	
+	(* Byte 11 *)
+		byoReserve110 : BYTE ; // Reserve 110 -> X11
+	
+	(* Byte 12 *)
+		byoReserve120 : BYTE ; // Reserve 120 -> X12
+	
+	(* Byte 13 *)
+		byoReserve130 : BYTE ; // Reserve 130 -> X13
+	
+	(* Byte 14 *)
+		byoReserve140 : BYTE ; // Reserve 140 -> X14
+	
+	(* Byte 15 *)
+		byoReserve150 : BYTE ; // Reserve 150 -> X15
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

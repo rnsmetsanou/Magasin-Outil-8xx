@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Event_Group" Id="{d05658bd-7976-49dc-80b3-b89a69fcf429}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Event_Group
+//
+//								Variables groupe d'évènements 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Event_Group :
+STRUCT
+	
+	(** ARRAY ST **)
+	aAlarm : ARRAY[1..GV_Events.iMaxAlarms] OF ST_Alarm ; // Alarms
+	aMessage : ARRAY[1..GV_Events.iMaxMessages] OF ST_Message ; // Messages
+	aOpMessage : ARRAY[1..GV_Events.iMaxOPMessages] OF ST_Alarm ; // Operator Messages
+	
+	(** FLAG **)
+	bAlarmPresence : BOOL := FALSE ; // At last one alarm is present/activated
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

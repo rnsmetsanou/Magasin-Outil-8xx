@@ -1,0 +1,830 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_01_Action_PickToolMagazine" Id="{b113e189-735c-459c-acc2-4b7c0447c3ad}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_01_Action_PickToolMagazine
+VAR_INPUT
+	(** SETUP ST **)
+		stToolLocation : ST_Tool_Location ; // Tool_Location structure of the Tool to Pick
+		
+	(** SETUP TIME **)
+		(*Manipulator Gripper mvmnt*)
+			tMouvementGripperOpen : TIME ; // Value of the manipulator gripper open mouvement duration (fbGripper)
+			tMouvementGripperClose : TIME ; // Value of the manipulator gripper close mouvement duration (fbGripper)
+		(*Tunnel*)
+			tTunnelTimeout : TIME ; // Value of the timeout for travel the tunnel
+		(*Step 2*)
+			tMove2Timeout : TIME ; // Value of the timeout for Step 2
+		(*Step 4*)
+			tMove4Timeout : TIME ; // Value of the timeout for Step 4
+		(*Step 6*)
+			tMove6Timeout : TIME ; // Value of the timeout for Step 6
+		(*Step 8*)
+			tMove8Timeout : TIME ; // Value of the timeout for Step 8
+
+	(** SETUP LREAL **)
+		lrZToolOffset : LREAL ; // Z Offset above the tool
+
+	(** SETUP FLAG **)
+		bCheckSensorManipulatorGripper : BOOL ; // Check the manipulator gripper sensor at the beginning
+		(*Gripper*)
+			bCheckSensorGripperOpen : BOOL ; // Check the manipulator gripper sensor after open (fbGripper)
+			bCheckSensorGripperClose : BOOL ; // Check the manipulator gripper sensor after close (fbGripper)
+			
+	(** PROCESS FLAG **)
+		bInit : BOOL ;  // Init the Fb
+	    bStart : BOOL ; // Start the Fb
+END_VAR
+VAR_OUTPUT
+	(** PROCESS UUDINT **)
+		udiErrorID : UDINT ; // Fb Error ID
+		
+	(** PROCESS FLAG **)
+		bBusy  : BOOL ; // Fb is Busy
+		bDone  : BOOL ; // Fb is Done
+		bError : BOOL ; // Fb in Error
+END_VAR
+VAR_IN_OUT
+END_VAR	
+VAR
+	(** SETUP ENUM **)
+		(*Gripper*)
+			eGripperMode : ENUM_Gripper_Mode; // Gripper mode for gripper mouvement (fbGripper)
+		(*Tunnel*)
+			eTunnelMode : ENUM_Tunnel_Mode; // Tunnel mode for travel (fbTunnel)
+
+	(** SETUP TIME **)
+		(*Gripper*)
+			tGripperTime : TIME ; // Mouvement duration for gripper mouvement (fbGripper)
+	
+	(** SETUP FLAG **)
+		(*Gripper*)
+			bGripperSensor : BOOL ; // Sensor check for gripper mouvement (fbGripper)
+		
+	(** PROCESS STRING **)
+		strTextLog : STRING ; // Text to Log
+		
+	(** PROCESS LREAL **)
+		
+	(** PROCESS INT **)
+		iStep  : INT := 0 ; // Step of the Fb
+		iSubStep : INT := 0 ; // SubStep of the Fb
+		iPrevStep : INT := 0 ; // Previous Step of the Fb
+		iPrevSubStep : INT := 0 ; // Previous Subtep of the Fb
+		
+	(** PROCESS FLAG + R_TRIG **)
+		rtInit : R_TRIG ; // FB Init at rising edge
+		rtStart : R_TRIG ; // FB Start at rising edge
+		(*Tunnel*)
+			bTunnelTravel : BOOL ; // Need to travel the tunnel
+		bXError : BOOL ; // Axis X Error
+		bYError : BOOL ; // Axis Y Error
+		bZError : BOOL ; // Axis Z Error
+		bArmError : BOOL ; // Axis Arm Error
+		
+	(** FB **)
+		(*Gripper*)
+			fbGripper : FB_Manipulator_Gripper ;
+		(*Tunnel*)
+			fbTunnel : FB_Manipulator_Tunnel ;
+		(*Step 2*)
+			tonTimeoutMove2 : TON ; // TON timeout for the Step 2
+		(*Step 4*)
+			tonTimeoutMove4 : TON ; // TON timeout for the Step 4
+		(*Step 6*)
+			tonTimeoutMove6 : TON ; // TON timeout for the Step 6
+		(*Step 8*)
+			tonTimeoutMove8 : TON ; // TON timeout for the Step 8
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_01_Action_PickToolMagazine
+//
+//						Management of the pick tool on the magazine
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 04.02.2026
+//Dernière modification : 08.04.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création
+// 08.04.2026 (G.GOETZ) -> Ajout Init + Modification du cycle
+//-----------------------------------------------------------------------------------------
+
+(** FB CALL **)
+	rtInit(CLK:=bInit);
+	rtStart(CLK:=bStart);
+	
+	tonTimeoutMove2();
+	tonTimeoutMove4();
+	tonTimeoutMove6();
+	tonTimeoutMove8();
+	fbGripper( // Call Gripper mouvement
+			eGripperMode:=eGripperMode,
+			tMouvementDuration:=tGripperTime,
+			bSensorCheck:=bGripperSensor
+			);
+	fbTunnel( // Call Tunnel travel
+			eTunnelMode:=eTunnelMode,
+			tTimeout:=tTunnelTimeout
+			);
+
+(** AXIS ERRORS **)
+	bXError:=(GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bYError:=(GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bZError:=(GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+	bArmError:=(GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Error OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorStop OR GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.ErrorID<>0);
+
+(** INIT **)
+	IF (rtinit.Q OR bInit) AND (NOT bStart) THEN
+		iStep:=0;
+		bInit:=FALSE;
+	END_IF
+	
+(** STEPS **)
+    CASE iStep OF
+		
+        0: (* Step 0 = Idle + Check *)
+            bBusy:=FALSE;
+            bDone:=FALSE;
+			bError:=FALSE;
+			udiErrorID:=0;
+			iSubStep:=0;
+			
+			tonTimeoutMove2.IN:=FALSE;
+			tonTimeoutMove4.IN:=FALSE;
+			tonTimeoutMove6.IN:=FALSE;
+			tonTimeoutMove8.IN:=FALSE;
+			
+			GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+			GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+			
+			fbGripper.bInit:=TRUE;
+			fbTunnel.bInit:=TRUE;
+			
+			bTunnelTravel:=FALSE;
+			
+			(* Idle->Start *)
+				IF rtStart.Q AND (NOT bInit) THEN
+					bBusy:=TRUE;
+					(*Log*)
+						(*Location*)
+							strTextLog:=INT_TO_STRING(stToolLocation.iAbsLocationNumber);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Tool Location Abs = ',strTextLog));
+							strTextLog:=INT_TO_STRING(stToolLocation.iRelLocationNumber);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Tool Location Rel = ',strTextLog));
+							strTextLog:=DINT_TO_STRING(stToolLocation.stToolParam.Number);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Tool Number = ',strTextLog));
+						(*Sensor Check Manipulator*)
+							IF bCheckSensorManipulatorGripper THEN
+								strTextLog:='With';
+							ELSE
+								strTextLog:='Without';
+							END_IF
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Sensor Manipulator memory Check = ',strTextLog));
+						(*Z Tool Offset*)
+							strTextLog:=LREAL_TO_STRING(lrZToolOffset);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Z Tool Offset = ',strTextLog));
+						(*Timeout Step 2_AboveLocation*)
+							strTextLog:=TIME_TO_STRING(tMove2Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Timeout Step : 2_AboveLocation = ',strTextLog));
+						(*Timeout Step 4_Location*)
+							strTextLog:=TIME_TO_STRING(tMove4Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Timeout Step : 4_Location = ',strTextLog));
+						(*Timeout Step 6_FrontLocation*)
+							strTextLog:=TIME_TO_STRING(tMove6Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Timeout Step : 6_FrontLocation = ',strTextLog));
+						(*Timeout Step 8_PositionTransferArm*)
+							strTextLog:=TIME_TO_STRING(tMove8Timeout);
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Timeout Step : 8_PositionTransferArm = ',strTextLog));
+
+					(*Check Manipulator*)
+					IF (NOT GV_CNC.stFanucData.stMagazineCNC.boOpenManipulatorGripper) THEN // Gripper Close
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator Gripper Check = OK');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator Gripper = CLOSE');
+						IF (NOT GV_Tool_Magazine.stManipulator.bToolPresenceMemory) THEN // Gripper Memory
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator memory Check = OK');
+							IF bCheckSensorManipulatorGripper THEN
+								IF (NOT GV_IO.diToolPresenceCone) THEN // Gripper Sensor
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator sensor Check = FALSE = OK');
+								ELSE
+									bError:=TRUE;
+									udiErrorID:=003; // 003 = Step 0 Error Manipulator Sensor Check 03
+									(*Log*)
+										PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator sensor Check = TRUE = NOK');
+										PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle=Error');
+										PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+									iStep:=0; // Idle Step
+								END_IF
+							ELSE
+								(*Log*)
+									PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator sensor Check : Not controlled');
+							END_IF
+						ELSE
+							bError:=TRUE;
+							udiErrorID:=002; // 002 = Step 0 Error Manipulator Memory Check 02
+							(*Log*)
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator memory Check = NOK');
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator memory = Presence');
+								strTextLog:=INT_TO_STRING(GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory);
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator memory Location Number Abs = ',strTextLog));
+								strTextLog:=INT_TO_STRING(GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory);
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator memory Location Number Rel = ',strTextLog));
+								PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle=Error');
+								PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+							iStep:=0; // Idle Step
+						END_IF
+					ELSE
+						bError:=TRUE;
+						udiErrorID:=001; // 001 = Step 0 Error Manipulator Gripper Open 01
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator Gripper Check = NOK');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle : Manipulator Gripper = OPEN');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iStep:=0; // Idle Step
+					END_IF
+					
+					IF (NOT bError) THEN
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 0_Idle->1_Tunnel');
+						iStep:=1; // Next Step
+					END_IF
+					
+				END_IF
+				
+		1: (* Step 1 = Tunnel passage (if needed) *)
+			IF (NOT bTunnelTravel) THEN
+				IF (stToolLocation.ePositionMag=ENUM_Position_Magazine.Bottom AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom) OR (stToolLocation.ePositionMag=ENUM_Position_Magazine.Top AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top) THEN
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel : No Need to Travel');
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel->2_AboveLocation');
+					iStep:=2; // Next Step
+				END_IF	
+				IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Bottom AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+					eTunnelMode:=ENUM_Tunnel_MODE.TopToBottom;
+					bTunnelTravel:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel : Need to Travel Top->Bottom');
+				END_IF
+				IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Top AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+					eTunnelMode:=ENUM_Tunnel_MODE.BottomToTop;
+					bTunnelTravel:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel : Need to Travel Bottom->Top');
+				END_IF			
+				IF stToolLocation.ePositionMag<>ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // Manipulator Unknow position
+					bError:=TRUE;
+					udiErrorID:=101; // 101 = Step 1 Error Tunnel 01
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iStep:=0; // Idle Step
+				END_IF
+				IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag<>ENUM_Position_Magazine.Unknow THEN // ToolLocation Unknow position
+					bError:=TRUE;
+					udiErrorID:=102; // 102 = Step 1 Error Tunnel 02
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iStep:=0; // Idle Step
+				END_IF
+				IF stToolLocation.ePositionMag=ENUM_Position_Magazine.Unknow AND GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // ToolLocation AND Manipulator Unknow position
+					bError:=TRUE;
+					udiErrorID:=103; // 103 = Step 1 Error Tunnel 03
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iStep:=0; // Idle Step
+				END_IF
+			END_IF
+			
+			IF bTunnelTravel AND (NOT fbTunnel.bStart) AND (NOT fbTunnel.bInit) AND (NOT fbTunnel.bBusy) THEN // Tunnel Start
+				fbTunnel.bStart:=TRUE;
+			END_IF
+			IF fbTunnel.bDone AND (NOT fbTunnel.bError) THEN // Tunnel Done
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel->2_AboveLocation');
+				iStep:=2; // Next Step
+			ELSIF fbTunnel.bError THEN // Tunnel Error
+				bError:=TRUE;
+				udiErrorID:=100+fbTunnel.udiErrorID; // 1xx = Step 1 Error + Error xx fbTunnel
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 1_Tunnel=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0; // Idle Step
+			END_IF
+			
+		2: (* Step 2 = Move the manipulator above the tool/location (YHome->(XFirst)->ZOffset->X->Y) *)
+			tonTimeoutMove2.PT:=tMove2Timeout;
+			tonTimeoutMove2.IN:=TRUE;
+			
+			CASE iSubStep OF
+
+				0: (* Start YHome move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYHome;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 0 : Start YHome move');
+					iSubStep:=1; // Next SubStep
+
+				1: (* Wait YHome move done *)
+				   IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 1 : YHome move done');
+							(*Top*)
+								IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+									IF GV_Tool_Magazine.stManipulator.lrXPosition<GV_Tool_Magazine.lrXFirstLocationTop THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 1->2 : XFirstTop');
+										//iSubStep:=2; // Next SubStep // ICI ; revoir, peut-être même ajouter ZLowestRackTop avant le XFirst car si part direct en XFirst depuis la position transfer ver bras alors tape dans le bras !
+										iSubStep:=4; // Next SubStep
+									ELSE
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 1->4 : ZOffset');
+										iSubStep:=4; // Next SubStep
+									END_IF
+								END_IF
+							(*Bottom*)
+								IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+									IF GV_Tool_Magazine.stManipulator.lrXPosition<GV_Tool_Magazine.lrXFirstLocationBottom THEN
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 1->2 : XFirstBottom');
+										iSubStep:=2; // Next SubStep
+									ELSE
+										(*Log*)
+											PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 1->4 : ZOffset');
+										iSubStep:=4; // Next SubStep
+									END_IF
+								END_IF
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=211; // 211 = Step 2 SubStep 1 Error Axis Y 1
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				2: (* Start XFirst move *)
+					IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+						GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.lrXFirstLocationTop;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 2 : Start XFisrtTop move');
+					END_IF
+					IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+						GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.lrXFirstLocationBottom;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 2 : Start XFisrtBottom move');
+					END_IF
+					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+					iSubStep:=3; // Next SubStep
+
+				3: (* Wait XFirst move done *)
+				   IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 3 : XFirst move done');
+						iSubStep:=4; // Next SubStep
+					ELSIF bXError THEN
+						bError:=TRUE;
+						udiErrorID:=231; // 231 = Step 2 SubStep 3 Error Axis X 1
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				4: (* Start ZOffset move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=stToolLocation.lrZcoord+lrZToolOffset;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 4 : Start ZOffset move');
+					iSubStep:=5; // Next SubStep
+
+				5: (* Wait ZOffset move done *)
+				   IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 5 : ZOffset move done');
+						iSubStep:=6; // Next SubStep
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=251; // 251 = Step 2 SubStep 5 Error Axis Z 1
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+				6: (* Start X move *)
+					GV_Axes.stAxisX.lrAutoPosAbs:=stToolLocation.lrXcoord;
+					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 6 : Start X move');
+					iSubStep:=7; // Next SubStep
+
+				7: (* Wait X move done *)
+				   IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 7 : X move done');
+						iSubStep:=8; // Next SubStep
+					ELSIF bXError THEN
+						bError:=TRUE;
+						udiErrorID:=271; // 271 = Step 2 SubStep 7 Error Axis X 1
+						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+
+				8: (* Start Y move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=stToolLocation.lrYcoord;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 8 : Start Y move');
+					iSubStep:=9; // Next Step
+
+				9: (* Wait Y move done *)
+				   IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation : 9 : Y move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation->3_GripperUnclamp');
+						iSubStep:=0; // End SubStep
+						iStep:=3; // Next Step
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=291; // 291 = Step 2 SubStep 9 Error Axis Y 1
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove2.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+		
+			IF tonTimeoutMove2.Q AND tonTimeoutMove2.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=299; // 299 = Step 2 Error Timeout 99
+				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				tonTimeoutMove2.IN:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 2_AboveLocation=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0;
+				iStep:=0;
+			END_IF
+
+		3: (* Step 3 = Operate manipulator gripper to unclamp *)
+			eGripperMode:=ENUM_Gripper_Mode.Open; // Gripper mode
+			tGripperTime:=tMouvementGripperOpen; // Gripper mouvement time
+			bGripperSensor:=bCheckSensorGripperOpen; // Gripper check sensor
+			
+			IF (NOT fbGripper.bStart) AND (NOT fbGripper.bInit) AND (NOT fbGripper.bBusy) THEN // Gripper Start
+				fbGripper.bStart:=TRUE;
+			END_IF
+			IF fbGripper.bDone AND (NOT fbGripper.bError) THEN // Gripper Done
+				fbGripper.bStart:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 3_GripperUnclamp->4_Location');
+				iStep:=4; // Next Step
+			ELSIF fbGripper.bError THEN // Gripper Error
+				bError:=TRUE;
+				udiErrorID:=300+fbGripper.udiErrorID; // 3xx = Step 3 Error + Error xx fbGripper
+				fbGripper.bStart:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 3_GripperUnclamp=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0; // Idle Step
+			END_IF
+		
+		4: (* Step 4 = Move the manipulator on the tool/location (Z-1mm) *)
+			tonTimeoutMove4.PT:=tMove4Timeout;
+			tonTimeoutMove4.IN:=TRUE;
+			
+			CASE iSubStep OF
+        
+				0: (* Start Z-1 move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=stToolLocation.lrZcoord-1;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 4_Location : 0 : Start Z-1mm move');
+					iSubStep:=1; // Next SubStep
+
+				1: (* Wait Z-1 move done *)
+				   IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove4.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 4_Location : 1 : Z-1mm move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 4_Location->5_GripperClamp');
+						iSubStep:=0; // End SubStep
+						iStep:=5; // Next Step
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=411; // 411 = Step 4 SubStep 1 Error Axis Z 1
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove4.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 4_Location=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+		
+			IF tonTimeoutMove4.Q AND tonTimeoutMove4.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=499; // 499 = Step 4 Error Timeout 99
+				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				tonTimeoutMove4.IN := FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 4_Location=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0;
+				iStep:=0;
+			END_IF
+
+		5: (* Step 5 = Release manipulator gripper to clamp *)
+			eGripperMode:=ENUM_Gripper_Mode.Close;
+			tGripperTime:=tMouvementGripperClose; // Gripper mouvement time
+			bGripperSensor:=bCheckSensorGripperClose; // Gripper check sensor
+			
+			IF (NOT fbGripper.bStart) AND (NOT fbGripper.bInit) AND (NOT fbGripper.bBusy) THEN // Gripper Start
+				fbGripper.bStart:=TRUE;
+			END_IF
+			IF fbGripper.bDone AND (NOT fbGripper.bError) THEN // Gripper Done
+				fbGripper.bStart:=FALSE;
+				(*Memory*)
+					//stToolLocation.bToolPresence:=FALSE; // Transfer Memory from Magazine to Manipulator
+					IF stToolLocation.iAbsLocationNumber>0 AND stToolLocation.iAbsLocationNumber<=GV_Tool_Magazine.iMaxAbsLocation THEN
+						GV_Tool_Magazine.aLocation[stToolLocation.iAbsLocationNumber].bToolPresence:=FALSE; // Transfer Memory from Magazine to Manipulator
+					END_IF
+					GV_Tool_Magazine.stManipulator.iAbsLocationNumberMemory:=stToolLocation.iAbsLocationNumber; // Transfer Memory from Magazine to Manipulator
+					GV_Tool_Magazine.stManipulator.iRelLocationNumberMemory:=stToolLocation.iRelLocationNumber; // Transfer Memory from Magazine to Manipulator
+					
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 5_GripperClamp->6_FrontLocation');
+				iStep:=6; // Next Step
+			ELSIF fbGripper.bError THEN // Gripper Error
+				bBusy:=FALSE;
+				bError:=TRUE;
+				udiErrorID:=500+fbGripper.udiErrorID; // 5xx = Step 5 Error + Error xx fbGripper
+				fbGripper.bStart:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 5_GripperClamp=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0; // Idle Step
+			END_IF
+		
+		6: (* Step 6 = Move the manipulator in front of tool/location (Z->YHome) -> Pull the tool from the magazine *)
+			tonTimeoutMove6.PT:=tMove6Timeout;
+			tonTimeoutMove6.IN:=TRUE;
+			
+			CASE iSubStep OF
+        
+				0: (* Start Z move *)
+					GV_Axes.stAxisZ.lrAutoPosAbs:=stToolLocation.lrZcoord;
+					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation : 0 : Start Z');
+					iSubStep:=1; // Next SubStep
+
+				1: (* Wait Z move done *)
+				   IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation : 1 : Z move done');
+						iSubStep:=2; // Next SubStep
+					ELSIF bZError THEN
+						bError:=TRUE;
+						udiErrorID:=611; // 611 = Step 6 SubStep 1 Error Axis Z 1
+						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove6.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+		
+				2: (* Start YHome move *)
+					GV_Axes.stAxisY.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrYHome;
+					GV_Axes.stAxisY.bAutoCmdAbs:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation : 2 : Start YHome move');
+					iSubStep:=3; // Next SubStep
+
+				3: (* Wait YHome move done *)
+				   IF GV_Axes.stAxisY.bAutoDone AND (NOT bYError) THEN
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove6.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation : 3 : YHome move done');
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation->7_Tunnel');
+						iSubStep:=0; // End SubStep
+						iStep:=7; // Next Step
+					ELSIF bYError THEN
+						bError:=TRUE;
+						udiErrorID:=631; // 631 = Step 6 SubStep 3 Error Axis Y 1
+						GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+						tonTimeoutMove6.IN:=FALSE;
+						(*Log*)
+							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation=Error');
+							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+						iSubStep:=0; // Stop SubStep
+						iStep:=0; // Idle Step
+					END_IF
+					
+			END_CASE	
+		
+			IF tonTimeoutMove6.Q AND tonTimeoutMove6.PT<>T#0S THEN // Timeout 
+				bError:=TRUE;
+				udiErrorID:=699; // 699 = Step 6 Error Timeout 99
+				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+				tonTimeoutMove6.IN := FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 6_FrontLocation=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iSubStep:=0;
+				iStep:=0;
+			END_IF
+		
+		7: (* Step 7 = Tunnel passage (if needed) *)
+			IF (NOT bTunnelTravel) THEN
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Top THEN
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel->0_Idle');
+						//PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel->8_PositionTransferArm');
+					iSubStep:=0; // End SubStep
+					iStep:=0; // Idle Step
+					bDone:=TRUE;
+					bBusy:=FALSE;
+					 //iStep:=8; // Next Step
+				END_IF	
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Bottom THEN
+					eTunnelMode:=ENUM_Tunnel_MODE.BottomToTop;
+					bTunnelTravel:=TRUE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel : Need to Travel Bottom->Top');
+				END_IF			
+				IF GV_Tool_Magazine.stManipulator.ePositionMag=ENUM_Position_Magazine.Unknow THEN // Manipulator Unknow position
+					bError:=TRUE;
+					udiErrorID:=701; // 701 = Step 7 Error Tunnel 01
+					fbTunnel.bStart:=FALSE;
+					bTunnelTravel:=FALSE;
+					(*Log*)
+						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel=Error');
+						PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+					iStep:=0; // Idle Step
+				END_IF
+			END_IF
+			
+			IF bTunnelTravel AND (NOT fbTunnel.bStart) AND (NOT fbTunnel.bInit) AND (NOT fbTunnel.bBusy) THEN // Tunnel Start
+				fbTunnel.bStart:=TRUE;
+			END_IF
+			IF fbTunnel.bDone AND (NOT fbTunnel.bError) THEN // Tunnel Done
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel->0_Idle');
+					//PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel->8_PositionTransferArm');
+				iSubStep:=0; // End SubStep
+				iStep:=0; // Idle Step
+				bDone:=TRUE;
+				bBusy:=FALSE;
+				//iStep:=8; // Next Step
+			ELSIF fbTunnel.bError THEN // Tunnel Error
+				bError:=TRUE;
+				udiErrorID:=700+fbTunnel.udiErrorID; // 7xx = Step 7 Error + Error xx fbTunnel
+				fbTunnel.bStart:=FALSE;
+				bTunnelTravel:=FALSE;
+				(*Log*)
+					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 7_Tunnel=Error');
+					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+				iStep:=0; // Idle Step
+			END_IF
+			
+// 		8: (* Step 8 = Move the manipulator to be ready for the transfer to the Changing Arm (X->Z) *)
+// 			tonTimeoutMove8.PT:=tMove8Timeout;
+// 			tonTimeoutMove8.IN:=TRUE;
+// 			
+// 			CASE iSubStep OF
+//         
+// 				0: (* Start ZLowestRackTop move *)
+// 					GV_Axes.stAxisZ.lrAutoPosAbs:=GV_Tool_Magazine.lrZLowestRackTop+40;//GV_Tool_Magazine.stManipulator.lrZTunnelTop;
+// 					GV_Axes.stAxisZ.bAutoCmdAbs:=TRUE;
+// 					(*Log*)
+// 						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm : 0 : Start ZLowestRackTop move');
+// 					iSubStep:=1; // Next SubStep
+// 					
+// 				1: (* Wait ZLowestRackTop move done *)
+// 				   IF GV_Axes.stAxisZ.bAutoDone AND (NOT bZError) THEN
+// 						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+// 						(*Log*)
+// 							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm : 0 : ZLowestRackTop move done');
+// 						iSubStep:=2; // Next SubStep
+// 					ELSIF bZError THEN
+// 						bError:=TRUE;
+// 						udiErrorID:=811; // 811 = Step 8 SubStep 1 Error Axis Z 1
+// 						GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+// 						tonTimeoutMove2.IN:=FALSE;
+// 						(*Log*)
+// 							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm=Error');
+// 							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+// 						iSubStep:=0; // Stop SubStep
+// 						iStep:=0; // Idle Step
+// 					END_IF
+// 		
+// 				2: (* Start X move *)
+// 					GV_Axes.stAxisX.lrAutoPosAbs:=GV_Axes.stAxisX.lrAutoPosAbs:=GV_Tool_Magazine.stManipulator.lrXTransferGripper1;
+// 					GV_Axes.stAxisX.bAutoCmdAbs:=TRUE;
+// 					(*Log*)
+// 						PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm : 2 : Start X move');
+// 					iSubStep:=3; // Next SubStep
+// 
+// 				3: (* Wait X move done *)
+// 				   IF GV_Axes.stAxisX.bAutoDone AND (NOT bXError) THEN
+// 						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+// 						(*Log*)
+// 							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm : 3 : X move done');
+// 						iSubStep:=0; // End SubStep
+// 						iStep:=0; // Idle Step
+// 						bDone:=TRUE;
+// 						bBusy:=FALSE;
+// 					ELSIF bXError THEN
+// 						bError:=TRUE;
+// 						udiErrorID:=831; // 831 = Step 8 SubStep 3 Error Axis X 1
+// 						GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+// 						tonTimeoutMove8.IN:=FALSE;
+// 						(*Log*)
+// 							PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm=Error');
+// 							PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+// 						iSubStep:=0; // Stop SubStep
+// 						iStep:=0; // Idle Step
+// 					END_IF
+// 					
+// 			END_CASE	
+// 		
+// 			IF tonTimeoutMove8.Q AND tonTimeoutMove8.PT<>T#0S THEN // Timeout 
+// 				bError:=TRUE;
+// 				udiErrorID:=899; // 899 = Step 8 Error Timeout 99
+// 				GV_Axes.stAxisX.bAutoCmdAbs:=FALSE;
+// 				GV_Axes.stAxisY.bAutoCmdAbs:=FALSE;
+// 				GV_Axes.stAxisZ.bAutoCmdAbs:=FALSE;
+// 				tonTimeoutMove8.IN := FALSE;
+// 				(*Log*)
+// 					PRG_Log_WM.fbLogWM.M_Write_Log('FB_01_Action_PickToolMagazine : 8_PositionTransferArm=Error');
+// 					PRG_Log_WM.fbLogWM.M_Write_Log(CONCAT('FB_01_Action_PickToolMagazine : ErrorID=',UDINT_TO_STRING(udiErrorID)));
+// 				iSubStep:=0;
+// 				iStep:=0;
+// 			END_IF		
+
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

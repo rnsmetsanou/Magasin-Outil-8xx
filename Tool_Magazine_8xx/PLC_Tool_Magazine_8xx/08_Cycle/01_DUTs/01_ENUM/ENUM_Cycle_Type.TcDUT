@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ENUM_Cycle_Type" Id="{921fa638-f73b-4099-a6b4-de8ac0b9a9f0}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				ENUM_Cycle_Type
+//
+//							Enumération des types de cycle			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 24.02.2026
+//Dernière modification : 24.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 24.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ENUM_Cycle_Type :
+(
+	None := 0 , // None
+	LoadSmallBig := 1 , // Load only : small or big tool (A100=small / A200=big)
+	UnloadSmall := 2 , // Unload only : small tool (B100=small)
+	UnloadBig := 3 , // Unload only : big tool (B200=big)
+	LoadSmallUnloadSmall := 4 , // Load : small tool / Unload : small tool (C100=small/small)
+	
+	//LoadBigUnloadBig := 5 , // Load : big tool / Unload : big tool (D100=big/big)
+	//LoadBigUnloadSmall := 6 , // Load : big tool / Unload : small tool (D200=big/small)
+	//LoadSmallUnloadBig := 7 , // Load : small tool / Unload : big tool (D300=small/big)
+
+	// Dxxx = Cycle in two step -> "UnloadSmall/Big" and after "LoadSmallBig"
+
+	EssaiType1 := 101 , // EsaiType1
+
+	Essai_1 := 201 ,
+	Essai_1_2 := 202 ,
+	Essai_1_3 := 203 
+	
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

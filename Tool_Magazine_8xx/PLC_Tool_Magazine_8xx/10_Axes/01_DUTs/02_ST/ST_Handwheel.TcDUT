@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Handwheel" Id="{ae17f1af-478b-4e59-bec7-3ae8cec5cdc6}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Handwheel
+//
+//						Structure manivelle(s) déportée(s)			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 19.01.2026
+//Dernière modification : 19.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 19.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Handwheel :
+STRUCT
+
+	(** SETUP UDINT **)
+		udiCounterValue : UDINT ; // Counter Value
+		udiCounterValueSet : UDINT ; // Counter Value for set
+	
+	(** SETUP FLAG **)
+		bPresence : BOOL := FALSE ; // Handwheel presence or not
+		bEnable : BOOL := FALSE ; // Handwheel enable or not
+		
+		bAxisSelectorB0 : BOOL ; // Axis Selector Bit 0
+		bAxisSelectorB1 : BOOL ; // Axis Selector Bit 1	
+		bAxisSelectorB2 : BOOL ; // Axis Selector Bit 2
+	
+		bIncrSelectorB0 : BOOL ; // Incremental Selector Bit 0
+		bIncrSelectorB1 : BOOL ; // Incremental Selector Bit 1	
+		bIncrSelectorB2 : BOOL ; // Incremental Selector Bit 2	
+	
+		bTrackA : BOOL ; // Track A
+		bTrackB : BOOL ; // Track B	
+		
+		bButtonPlus : BOOL ; // Button Plus
+		bButtonMinus : BOOL ; // Button Minus
+		bButtonFast : BOOL ; // Button Fast
+	
+		bCounterUnderflow : BOOL ; // Counter underflow
+		bCounterOverflow : BOOL ; // Counter Overflow
+		bSoftwareGateValid : BOOL ; // Counter is allowed
+		bSetCounterDone : BOOL ; // Counter is Set
+		bSetCounter : BOOL ; // Set Counter Value
+		bSoftwareGateSet : BOOL ; // Set Counter is allowed
+
+	(** PROCESS ENUM **)
+		eAxisSelect : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Axis Select
+		eAxisSelectMemory : ENUM_Axis_Select := ENUM_Axis_Select.None ; // Memory of the state Axis Select
+		eIncrSelect : ENUM_Handwheel_Incr_Select := ENUM_Handwheel_Incr_Select.Unknow ; // Incremental Select
+		eIncrSelectMemory : ENUM_Handwheel_Incr_Select := ENUM_Handwheel_Incr_Select.Unknow ; // Memory of the state Incremental Select
+		eJogDirection : ENUM_Jog_Direction := ENUM_Jog_Direction.None ; // Direction for jog
+		eJogMode : ENUM_Jog_Mode := ENUM_Jog_Mode.None ; // Mode for jog	
+	
+	(** PROCESS REAL **)
+		lrJogIncrRequest : LREAL ; // Incremental of the Jog Request
+		lrJogVel : LREAL ; // Velocity for Jog in Continous Mode
+	
+	(** PROCESS FLAG **)	
+		bPower : BOOL ; // Power
+		bActivity : BOOL ; // Activity on the Handwheel
+	
+		bJogRequestRisingEdge : BOOL ; // Rising Edge for Jog Request	
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

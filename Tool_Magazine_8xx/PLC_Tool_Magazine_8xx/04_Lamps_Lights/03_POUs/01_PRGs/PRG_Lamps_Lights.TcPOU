@@ -1,0 +1,276 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Lamps_Lights" Id="{0e0c7591-fa37-4fc6-915a-b02572036ad2}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Lamps_Lights
+VAR
+	(** DINT **)
+	diLightsTimer : DINT ;  // Timer lights from HMI convert in DINT
+	
+	(** INT **)
+	iDoorLoop : INT := 0 ; // INT use in a FOR Loop
+	
+	(** FLAG**)
+	bLightsOut : BOOL := FALSE ; // Output to turn ON the lights
+	
+	(** FB **)
+	TonLights : TON ; // Lights timer
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Lamps_Lights
+//
+//							Gestion des voyants et lumières     			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 13.01.2026
+//Dernière modification : 20.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création		
+// 20.02.2026 (G.GOETZ) -> Ajout AUTO/MANU/INIT
+//-----------------------------------------------------------------------------------------
+
+(** LIGHTS **)
+	(* Timer lights from HMI *)
+		diLightsTimer:=INT_TO_DINT(GV_HMI.stLampsLights.iLightsTimer);
+		IF diLightsTimer<1 THEN // Mini = 1
+			diLightsTimer:=INT_TO_DINT(1);
+		END_IF
+	(* Light ON /OFF *)
+		FOR iDoorLoop:=1 TO GV_Doors.iMaxDoors BY 1 DO
+			IF GV_Doors.aId[iDoorLoop].rtButtonUnlockTrig.Q THEN //when door unlock request
+				GV_HMI.stLampsLights.bLightsButton:=TRUE;
+			END_IF
+		END_FOR
+		TonLights(IN:=(GV_HMI.stLampsLights.bLightsWithTimer AND bLightsOut),PT:=DINT_TO_TIME(diLightsTimer*60000)); // With timer and lights ON
+		IF TonLights.Q THEN
+			GV_HMI.stLampsLights.bLightsButton:=FALSE;
+		END_IF
+		IF GV_HMI.stLampsLights.bLightsButton THEN // Lights ON or OFF
+			bLightsOut:=TRUE;
+		ELSE
+			bLightsOut:=FALSE;	
+		END_IF
+		GV_IO.doMagazineLight:=bLightsOut; // Lights output
+		
+(** LAMPS **)
+	(* Init *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.INIT THEN // InProgress
+			GV_HMI.stLampsLights.bLampInit:=TRUE;
+		ELSIF GV_OpMode.eOpModeRequest=ENUM_OpMode.INIT THEN // Request
+			GV_HMI.stLampsLights.bLampInit:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampInit:=FALSE;
+		END_IF
+	(* Auto *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.AUTO THEN // InProgress
+			GV_HMI.stLampsLights.bLampAuto:=TRUE;
+		ELSIF GV_OpMode.eOpModeRequest=ENUM_OpMode.AUTO THEN // Request
+			GV_HMI.stLampsLights.bLampAuto:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampAuto:=FALSE;
+		END_IF
+	(* Manu *)
+		IF GV_OpMode.eOpMode=ENUM_OpMode.MANU THEN // InProgress
+			GV_HMI.stLampsLights.bLampManu:=TRUE;
+		ELSIF GV_OpMode.eOpModeRequest=ENUM_OpMode.MANU THEN // Request
+			GV_HMI.stLampsLights.bLampManu:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampManu:=FALSE;
+		END_IF
+		
+	(* Acknowledgement *)
+		IF GV_HMI.bAlarm THEN
+			GV_HMI.stLampsLights.bLampAck:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampAck:=FALSE;
+		END_IF
+		
+	(* Start *)
+		IF GV_Cycle.bStartStop THEN // InProgress
+			GV_HMI.stLampsLights.bLampStartCycle:=TRUE;
+		//ELSIF GV_Cycle.bStartRequest THEN // Request
+		//	GV_HMI.stLampsLights.bLampStartCycle:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampStartCycle:=FALSE;
+		END_IF
+	(* Stop *)
+		IF (NOT GV_Cycle.bStartStop) THEN // InProgress
+			GV_HMI.stLampsLights.bLampStopCycle:=TRUE;
+		//ELSIF GV_Cycle.bStopRequest THEN // Request
+		//	GV_HMI.stLampsLights.bLampStopCycle:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampStopCycle:=FALSE;
+		END_IF
+	
+	(* Manipulator Gripper Close Manual Enable *)
+		GV_HMI.stLampsLights.bLampManuManipGripperCloseEnable:=GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperClose;
+	(* Manipulator Gripper Open Manual Enable *)
+		GV_HMI.stLampsLights.bLampManuManipGripperOpenEnable:=GV_Tool_Magazine.stManipulator.bAuthorizationManuGripperOpen;
+
+	(* Intermediate door *)
+		(*Cyltronic Rest Manual Enable*)
+			GV_HMI.stLampsLights.bLampManuCyltronicRestEnable:=GV_Cyltronic.aId[1].bAuthorizationManuCyltronicRest;
+		(*Cyltronic Work Manual Enable*)
+			GV_HMI.stLampsLights.bLampManuCyltronicWorkEnable:=GV_Cyltronic.aId[1].bAuthorizationManuCyltronicWork;
+	
+	(*Axis X Operationnal*)
+		GV_HMI.stLampsLights.bLampAxisXOperationnal:=GV_Axes.stAxisX.stDriveAx8206.AxisRef.Status.Operational;
+	(*Axis Y Operationnal*)
+		GV_HMI.stLampsLights.bLampAxisYOperationnal:=GV_Axes.stAxisY.stDriveAx8206.AxisRef.Status.Operational;
+	(*Axis Z Operationnal*)
+		GV_HMI.stLampsLights.bLampAxisZOperationnal:=GV_Axes.stAxisZ.stDriveAx8206.AxisRef.Status.Operational;
+	(*Axis Arm Operationnal*)
+		GV_HMI.stLampsLights.bLampAxisArmOperationnal:=GV_Axes.stAxisArm.stDriveAx8206.AxisRef.Status.Operational;
+		
+	(*Choice Axis X*)
+		IF GV_Axes.eJogAxisSelect=ENUM_Axis_Select.X THEN // InProgress
+			GV_HMI.stLampsLights.bLampJogAxisX:=TRUE;
+		ELSIF GV_Axes.eJogAxisRequest=ENUM_Axis_Select.X THEN // Request
+			GV_HMI.stLampsLights.bLampJogAxisX:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampJogAxisX:=FALSE;
+		END_IF
+	(*Choice Axis Z*)
+		IF GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Z THEN // InProgress
+			GV_HMI.stLampsLights.bLampJogAxisZ:=TRUE;
+		ELSIF GV_Axes.eJogAxisRequest=ENUM_Axis_Select.Z THEN // Request
+			GV_HMI.stLampsLights.bLampJogAxisZ:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampJogAxisZ:=FALSE;
+		END_IF
+	(*Choice Axis Y*)
+		IF GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Y THEN // InProgress
+			GV_HMI.stLampsLights.bLampJogAxisY:=TRUE;
+		ELSIF GV_Axes.eJogAxisRequest=ENUM_Axis_Select.Y THEN // Request
+			GV_HMI.stLampsLights.bLampJogAxisY:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampJogAxisY:=FALSE;
+		END_IF
+	(*Choice Axis Arm*)
+		IF GV_Axes.eJogAxisSelect=ENUM_Axis_Select.Arm THEN // InProgress
+			GV_HMI.stLampsLights.bLampJogAxisArm:=TRUE;
+		ELSIF GV_Axes.eJogAxisRequest=ENUM_Axis_Select.Arm THEN // Request
+			GV_HMI.stLampsLights.bLampJogAxisArm:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampJogAxisArm:=FALSE;
+		END_IF
+		
+	(*Referencing Axis None*)
+		IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.None THEN // InProgress
+			GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=FALSE;
+			GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=FALSE;
+		END_IF
+	(*Referencing Axis X*)
+		IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.X THEN // InProgress
+			GV_HMI.stLampsLights.bLampRefAxisX:=TRUE;
+			IF GV_Axes.stAxisX.bReadEnMinSoftPosLimit THEN // Min Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=FALSE;
+			END_IF
+			IF GV_Axes.stAxisX.bReadEnMaxSoftPosLimit THEN // Max Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=FALSE;
+			END_IF
+		ELSIF GV_Axes.eRefAxisRequest=ENUM_Axis_Select.X THEN // Request
+			GV_HMI.stLampsLights.bLampRefAxisX:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampRefAxisX:=FALSE;
+		END_IF
+	(*Referencing Axis Y*)
+		IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Y THEN // InProgress
+			GV_HMI.stLampsLights.bLampRefAxisY:=TRUE;
+			IF GV_Axes.stAxisY.bReadEnMinSoftPosLimit THEN // Min Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=FALSE;
+			END_IF
+			IF GV_Axes.stAxisY.bReadEnMaxSoftPosLimit THEN // Max Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=FALSE;
+			END_IF
+		ELSIF GV_Axes.eRefAxisRequest=ENUM_Axis_Select.Y THEN // Request
+			GV_HMI.stLampsLights.bLampRefAxisY:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampRefAxisY:=FALSE;
+		END_IF
+	(*Referencing Axis Z*)
+		IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Z THEN // InProgress
+			GV_HMI.stLampsLights.bLampRefAxisZ:=TRUE;
+			IF GV_Axes.stAxisZ.bReadEnMinSoftPosLimit THEN // Min Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=FALSE;
+			END_IF
+			IF GV_Axes.stAxisZ.bReadEnMaxSoftPosLimit THEN // Max Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=FALSE;
+			END_IF
+		ELSIF GV_Axes.eRefAxisRequest=ENUM_Axis_Select.Z THEN // Request
+			GV_HMI.stLampsLights.bLampRefAxisZ:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampRefAxisZ:=FALSE;
+		END_IF
+	(*Referencing Axis Arm*)
+		IF GV_Axes.eRefAxisSelect=ENUM_Axis_Select.Arm THEN // InProgress
+			GV_HMI.stLampsLights.bLampRefAxisArm:=TRUE;
+			IF GV_Axes.stAxisArm.bReadEnMinSoftPosLimit THEN // Min Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMinSoftPosLimit:=FALSE;
+			END_IF
+			IF GV_Axes.stAxisArm.bReadEnMaxSoftPosLimit THEN // Max Soft Limit Enable
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=TRUE;
+			ELSE
+				GV_HMI.stLampsLights.bLampEnMaxSoftPosLimit:=FALSE;
+			END_IF
+		ELSIF GV_Axes.eRefAxisRequest=ENUM_Axis_Select.Arm THEN // Request
+			GV_HMI.stLampsLights.bLampRefAxisArm:=GV_General.bIsBlinking05s;
+		ELSE
+			GV_HMI.stLampsLights.bLampRefAxisArm:=FALSE;
+		END_IF
+		
+	(*Project Backup Enable*)
+		GV_HMI.stLampsLights.bLampBackupProjectEnable:=GV_General.bBackupProjectAuthorization;
+	(*Init Data Enable*)
+		GV_HMI.stLampsLights.bLampDataInitEnable:=GV_General.bInitDataAuthorization;			
+	(*Export Data Enable*)
+		GV_HMI.stLampsLights.bLampDataExportEnable:=GV_General.bExportDataAuthorization;	
+	(*Import Data Enable*)
+		GV_HMI.stLampsLights.bLampDataImportEnable:=GV_General.bImportDataAuthorization;	
+	(*Export Alarms Enable*)
+		GV_HMI.stLampsLights.bLampAlarmsExportEnable:=GV_General.bExportAlarmsAuthorization;	
+	(*Export Messages Enable*)
+		GV_HMI.stLampsLights.bLampMessagesExportEnable:=GV_General.bExportMessagesAuthorization;
+	(* Save Settings Enable *)
+		GV_HMI.stLampsLights.bLampSettingsSaveEnable:=GV_General.bSettingSaveAuthorization;
+		
+	(*Teach Location Enable*)
+		GV_HMI.stLampsLights.bLampTeachLocationEnable:=GV_Tool_Magazine.bAuthorizationTeachLocation;
+	(*Teach Line Enable*)
+		GV_HMI.stLampsLights.bLampTeachRackEnable:=GV_Tool_Magazine.bAuthorizationTeachRack;
+	(*Teach AllTop Enable*)
+		GV_HMI.stLampsLights.bLampTeachAllTopEnable:=GV_Tool_Magazine.bAuthorizationTeachAllTop;
+	(*Teach AllBottom Enable*)
+		GV_HMI.stLampsLights.bLampTeachAllBottomEnable:=GV_Tool_Magazine.bAuthorizationTeachAllBottom;
+	(*Teach Positions Enable *)
+		GV_HMI.stLampsLights.bLampTeachPositionsEnable:=GV_Tool_Magazine.bAuthorizationTeachPositions;
+		
+	(*Reboot Enable*)
+		GV_HMI.stLampsLights.bLampRebootEnable:=GV_General.bRebootAuthorization;
+	(*Shutdown Enable*)
+		GV_HMI.stLampsLights.bLampShutdownEnable:=GV_General.bShutdownAuthorization;
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

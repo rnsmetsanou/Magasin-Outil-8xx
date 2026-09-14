@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_Cycle" Id="{6a8d7c22-ceec-42ee-9ae7-83dfd6e94d36}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_Cycle
+//
+//								Variables cycle 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 02.02.2026
+//Dernière modification : 02.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 02.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+	
+	(** PROCESS ARRAY ENUM **)
+		aSequence  : ARRAY[1..iMaxActions] OF ENUM_Cycle_Action ; // Sequence in Actions of the Cycle
+	
+	(** PROCESS ENUM **)
+		eCycleStep : ENUM_Cycle_Step ; // Steps for the cycle
+		eCyclePrevStep : ENUM_Cycle_Step ; // Previous Step of the cycle in progress
+		eCycleType : ENUM_Cycle_Type ; // Type of th cycle
+	
+	(** PROCESS UDINT **)
+		udiErrorID : UDINT ; // ErrorID Cycle
+	
+	(** PROCESS INT **)
+		iSeqLength : INT ; // Number of Actions in the Sequence
+		iSeqIndex : INT ; // Action in progress in the Sequence
+		
+		iArmGripperLoad : INT ; // Gripper number to load on the changing arm
+		iArmGripperUnload : INT ; // Gripper number to unload on the changing arm
+
+		iGripperArmToCncNumber : INT ; // Gripper number to transfer from changing arm to cnc spindle
+		iGripperCncToArmNumber : INT ; // Gripper number to transfer from cnc spindle to changing arm
+		
+		iSpindleToolLocation : INT ; // Spindle Tool Location for the cycle (memory at the beggining, can't change durnig the cycle)
+		iToolToLoadLocationRel : INT ; // Relative Tool To Load Location for the cycle (memory at the beggining, can't change durnig the cycle)
+		iToolToLoadLocationAbs : INT ; // Absolute Tool To Load Location for the cycle (memory at the beggining, can't change durnig the cycle)
+		iToolToUnloadLocationRel : INT ; // Relative Tool To UnLoad Location for the cycle (memory at the beggining, can't change durnig the cycle)
+		iToolToUnloadLocationAbs : INT ; // Absolute Tool To UnLoad Location for the cycle (memory at the beggining, can't change durnig the cycle)
+	
+		iToolToCheckLocationAbs : INT ; // Absolute Tool To Check Location
+	
+	(** PROCESS FLAG **)
+		bStartStop : BOOL ; // Start/Stop Cycle
+		
+		bInitSet : BOOL ; // fb_Init.bInit is Set
+		
+		bInitRequest : BOOL ; // InitRequest
+		bInitCycleDone : BOOL ; // InitCycle is Done
+	
+		bCycleInProgress: BOOL ; // Cycle in progress
+		bActionRunning : BOOL ; // Action is Running
+		bActionError : BOOL ; // Action in Error
+		bResetError : BOOL ; // Reset Error
+		
+		bAnticipateLoadRequest1 : BOOL ; // Request to anticipate the Pick Tool in Magazine
+		bAnticipateLoadRequest2 : BOOL ; // Request to anticipate the Manipulator to Arm
+		bAnticipateLoadDone : BOOL ; // Anticipate the Pick Tool in Magazine is Done
+
+		bAnticipateUnloadRequest3 : BOOL ; // Request to anticipate the Arm to Manipulator
+		bAnticipateUnloadRequest4 : BOOL ; // Request to anticipate the Place Tool in Magazine
+		//bAnticipateUnloadDone : BOOL ; // Anticipate the Palce Tool in Magazine is Done
+		
+		bSpindleToolLocationCheck : BOOL ; // Check of the Spindle Tool Location Done and OK
+		bToolToLoadLocationCheck : BOOL ; // Check of the Tool To Load Location Done and OK
+		
+		bTransferCncToArm : BOOL ; // Transfer from changing arm to cnc spindle
+		bTransferArmToCnc : BOOL ; // Transfer from cnc spindle to changing arm
+		
+		bOpenIntermediateDoorRequest : BOOL ; // Request for open the Intermediate Door
+		bCloseIntermediateDoorRequest : BOOL ; // Request for close the Intermediate Door
+		
+END_VAR
+
+VAR_GLOBAL
+
+	(** SETUP INT **)
+		iEventGroup : INT := 0 ; // Group for events
+		iIdHMI : INT := 0 ; // Number for events on HMI
+		
+	(** SETUP FLAG **)
+		bEventAck : BOOL := FALSE ; // Events Acknowledgement
+
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT INT **)
+		iMaxActions : INT := 12 ; // Number Max of actions in a Sequence
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <EnumerationTextList Name="teCTCEvent" Id="{09772d6b-33b3-4495-b7cf-3fb878e5632f}">
+    <Declaration><![CDATA[TYPE teCTCEvent :
+(
+	CTC_NO_EVENT 					:= 0,
+	CTC_EVENT_UNDERTEMP_MC 			:= 6210,
+	CTC_EVENT_OVERTEMP_MC 			:= 6211,
+	CTC_EVENT_UNDERTEMP_CB 			:= 6212,
+	CTC_EVENT_OVERTEMP_CB 			:= 6213,
+	CTC_EVENT_UNDERTEMP_EB 			:= 6214,
+	CTC_EVENT_OVERTEMP_EB 			:= 6215,
+	CTC_EVENT_OVERTEMP_PS_PHASE_U 	:= 6216,
+	CTC_EVENT_OVERTEMP_PS_PHASE_V 	:= 6217,
+	CTC_EVENT_OVERTEMP_PS_PHASE_W 	:= 6218,
+	CTC_EVENT_OVERTEMP_MOT_PHASE_U 	:= 6219,
+	CTC_EVENT_OVERTEMP_MOT_PHASE_V 	:= 6220,
+	CTC_EVENT_OVERTEMP_MOT_PHASE_W 	:= 6221,
+	CTC_EVENT_CONTROLLER_ERROR 		:= 6222,
+	CTC_EVENT_INTERNAL_ERROR 		:= 6223,
+	CTC_EVENT_TRACKING_ERROR 		:= 6224,
+	CTC_EVENT_INVALID_SETPOINTS 	:= 6225,
+	CTC_EVENT_OVERVOLTAGE_LOGIC 	:= 20752,
+	CTC_EVENT_UNDERVOLTAGE_LOGIC 	:= 20753,
+	CTC_EVENT_OVERVOLTAGE_POWER 	:= 20754,
+	CTC_EVENT_HOMING_FAILED 		:= 6226
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"CTC_NO_EVENT"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_UNDERTEMP_MC"</v>
+              <v n="TextDefault">"6210"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_MC"</v>
+              <v n="TextDefault">"6211"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_UNDERTEMP_CB"</v>
+              <v n="TextDefault">"6212"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_CB"</v>
+              <v n="TextDefault">"6213"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_UNDERTEMP_EB"</v>
+              <v n="TextDefault">"6214"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_EB"</v>
+              <v n="TextDefault">"6215"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_PS_PHASE_U"</v>
+              <v n="TextDefault">"6216"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_PS_PHASE_V"</v>
+              <v n="TextDefault">"6217"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_PS_PHASE_W"</v>
+              <v n="TextDefault">"6218"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_MOT_PHASE_U"</v>
+              <v n="TextDefault">"6219"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_MOT_PHASE_V"</v>
+              <v n="TextDefault">"6220"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERTEMP_MOT_PHASE_W"</v>
+              <v n="TextDefault">"6221"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_CONTROLLER_ERROR"</v>
+              <v n="TextDefault">"6222"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_INTERNAL_ERROR"</v>
+              <v n="TextDefault">"6223"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_TRACKING_ERROR"</v>
+              <v n="TextDefault">"6224"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_INVALID_SETPOINTS"</v>
+              <v n="TextDefault">"6225"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERVOLTAGE_LOGIC"</v>
+              <v n="TextDefault">"20752"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_UNDERVOLTAGE_LOGIC"</v>
+              <v n="TextDefault">"20753"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_OVERVOLTAGE_POWER"</v>
+              <v n="TextDefault">"20754"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CTC_EVENT_HOMING_FAILED"</v>
+              <v n="TextDefault">"6226"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{d478a1de-ac13-456b-bf12-d891ea5f983b}</v>
+          <v n="GuidReInit">{4ff51232-bb8b-420c-a015-68538cb9e9a2}</v>
+          <v n="GuidExitX">{9f6cb921-690f-483a-97cf-0c7ecf2dc82e}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

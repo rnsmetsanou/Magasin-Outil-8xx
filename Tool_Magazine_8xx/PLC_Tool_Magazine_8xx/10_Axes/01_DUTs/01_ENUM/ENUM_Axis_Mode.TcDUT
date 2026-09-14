@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ENUM_Axis_Mode" Id="{e81355a6-e94e-4d6b-a3a4-6647e8a3472d}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  			ENUM_Axis_Mode
+//
+//						Enumération des Modes des Axes			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 29.01.2026
+//Dernière modification : 29.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 29.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+
+TYPE ENUM_Axis_Mode :
+(
+	Disabled := 0 , // Disable
+	Manual := 1 , // Manual - Jog
+	Auto := 2 , // AUTO
+	Home := 3 // Home
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

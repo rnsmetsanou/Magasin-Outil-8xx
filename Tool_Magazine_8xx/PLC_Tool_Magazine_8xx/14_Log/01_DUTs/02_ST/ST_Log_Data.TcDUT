@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="ST_Log_Data" Id="{d613aee0-9883-497d-af4a-5f8dbc67bde1}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Log_Data
+//
+//								Structure Log Data			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 04.02.2026
+//Dernière modification : 04.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 04.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Log_Data :
+STRUCT
+
+	(** ARRAY ST **)
+	aBufferLog	: ARRAY[1..GV_log.iMaxLog] OF ST_Log ; // Buffer log	
+	
+	(** DATE & TIME **)
+	dtLastLogDateTimeNewFile : DATE_AND_TIME  ; // Date and TIME
+	
+	(** INT **)
+	iLineIndex : INT := 1 ;
+	iFileNumber : INT := 0 ;
+
+	(** FLAG **)	
+	bBufferFull : BOOL ;
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

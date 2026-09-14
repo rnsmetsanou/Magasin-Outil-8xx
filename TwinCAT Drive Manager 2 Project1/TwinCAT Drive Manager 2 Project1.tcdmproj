@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Name>Drive Manager 2</Name>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{6f6a5ea6-6038-44f5-8ff2-46fa94db1259}</ProjectGuid>
+    <TcPath>..\Tool_Magazine_8xx\TwinCAT Tool_Magazine_8xx.tsproj</TcPath>
+    <AssemblyName>TwinCAT Drive Manager 2 Project1</AssemblyName>
+    <RootNamespace>TwinCAT Drive Manager 2 Project1</RootNamespace>
+    <SaveDriveDataAsFiles>False</SaveDriveDataAsFiles>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="A64 (AX8620-0000-0105).tcdmdrv">
+      <SubType>Content</SubType>
+      <IoItemPathName>TIID^Device 2 (EtherCAT)^U101.1 (EK1200)^A270.1^A64 (AX8620-0000-0105)</IoItemPathName>
+    </Content>
+    <Content Include="A64 (AX8620-0000-0105)\A64.1 (AX8206-0200-0107).tcdmdrv">
+      <SubType>Content</SubType>
+      <DependentUpon>A64 (AX8620-0000-0105).tcdmdrv</DependentUpon>
+      <IoItemPathName>TIID^Device 2 (EtherCAT)^U101.1 (EK1200)^A270.1^A64 (AX8620-0000-0105)^A64.1 (AX8206-0200-0107)</IoItemPathName>
+    </Content>
+    <Content Include="A64 (AX8620-0000-0105)\A64.2 (AX8206-0200-0107).tcdmdrv">
+      <SubType>Content</SubType>
+      <DependentUpon>A64 (AX8620-0000-0105).tcdmdrv</DependentUpon>
+      <IoItemPathName>TIID^Device 2 (EtherCAT)^U101.1 (EK1200)^A270.1^A64 (AX8620-0000-0105)^A64.2 (AX8206-0200-0107)</IoItemPathName>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_ArrayToolLocation_Reverse" Id="{049cfb58-6cd8-478e-9045-74efd4c4e8e1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ArrayToolLocation_Reverse
+VAR_INPUT
+	(** SETUP INT **)
+		iHighSize : INT ;
+		iLowSize : INT ;
+		
+	(** SETUP BOOL **)
+		bReverseHigh : BOOL ;
+		bReverseLow : BOOL ;
+		bReverseRowHigh : BOOL ;
+		bReverseRowLow  : BOOL ;
+END_VAR
+VAR_IN_OUT
+	(** ARRAY ST **)
+	aArray : ARRAY[*] OF ST_Tool_Location ;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	(** PROCESS INT **)
+	    i : INT ;
+		iRack : INT ;
+		iStart : INT ;
+		iEnd : INT ;
+	
+	(** PROCESS ST **)
+    	stTemp : ST_Tool_Location ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_ArrayToolLocation_Reverse
+//
+//						Inversion ordre tableau  de type stToolLocation 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 16.02.2026
+//Dernière modification : 16.02.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 16.02.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** REVERSE TOP **)
+	IF bReverseHigh AND (iHighSize>1) THEN
+		iStart:=1;
+		iEnd:=iHighSize;
+		FOR i:=0 TO (iHighSize/2)-1 DO
+			stTemp := aArray[iStart+i];
+			aArray[iStart+i]:=aArray[iEnd-i];
+			aArray[iEnd-i]:=stTemp;
+		END_FOR
+	END_IF
+
+(** REVERSE BOTTOM **)
+	IF bReverseLow AND (iLowSize>1) THEN
+		iStart:=iHighSize+1;
+		iEnd:=iHighSize+iLowSize;
+		FOR i:=0 TO (iLowSize/2)-1 DO
+			stTemp:=aArray[iStart+i];
+			aArray[iStart+i]:=aArray[iEnd-i];
+			aArray[iEnd-i]:=stTemp;
+		END_FOR
+	END_IF
+	
+(** REVERSE INSIDE TOP RACK **)
+	IF bReverseRowHigh AND (iHighSize>1) THEN
+		iStart:=1;
+		WHILE iStart<=iHighSize DO
+			iRack:=aArray[iStart].iRackNumber;
+			iEnd:=iStart;
+			WHILE (iEnd+1<=iHighSize) AND
+				  (aArray[iEnd+1].iRackNumber=iRack) DO
+				iEnd:=iEnd+1;
+			END_WHILE
+			//Impair
+			IF (iRack MOD 2)<>(GV_Tool_Magazine.iMaxRelRackTop MOD 2) THEN
+				FOR i:=0 TO ((iEnd-iStart+1)/2)-1 DO
+					stTemp:=aArray[iStart+i];
+					aArray[iStart+i]:=aArray[iEnd-i];
+					aArray[iEnd-i]:=stTemp;
+				END_FOR
+			END_IF
+			iStart:=iEnd+1;
+		END_WHILE
+	END_IF
+
+(** REVERSE INSIDE TOP BOTTOM **)
+	IF bReverseRowLow AND (iLowSize>1) THEN
+		iStart:=iHighSize+1;
+		WHILE iStart<=(iHighSize+iLowSize) DO
+			iRack:=aArray[iStart].iRackNumber;
+			iEnd:=iStart;
+			WHILE (iEnd+1<=(iHighSize+iLowSize)) AND
+				(aArray[iEnd+1].iRackNumber=iRack) DO
+				iEnd:=iEnd+1;
+			END_WHILE
+			//Pair
+			IF (iRack MOD 2)=(GV_Tool_Magazine.iMaxRelRackBottom MOD 2) THEN
+				FOR i:=0 TO ((iEnd-iStart+1)/2)-1 DO
+					stTemp:=aArray[iStart+i];
+					aArray[iStart+i]:=aArray[iEnd-i];
+					aArray[iEnd-i]:=stTemp;
+				END_FOR
+			END_IF
+			iStart:=iEnd+1;
+		END_WHILE
+	END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

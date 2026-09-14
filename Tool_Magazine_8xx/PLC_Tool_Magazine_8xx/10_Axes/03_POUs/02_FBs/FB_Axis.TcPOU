@@ -1,0 +1,382 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Axis" Id="{73cf938b-be25-497a-941a-617ad6b569ec}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Axis
+VAR_INPUT	
+END_VAR
+VAR_OUTPUT
+	(** PROCESS ENUM **)
+	 	eStatus   : ENUM_Axis_Status ; // Status
+END_VAR
+VAR_IN_OUT
+	(** AXIS_REF **)
+		stAxis : ST_Axis ; // Axis structure
+END_VAR	
+VAR
+	(** PROCESS LREAL **)
+	
+	(** PROCESS UDINT **)	
+		(* mcPower *)
+			udiPowerErrorId : UDINT ; // mcPower Error ID
+		(* mcStop *)
+			udiStopErrorId : UDINT ; // mcStop Error ID
+		(* mcJog *)
+			udiJogErrorId : UDINT ; // mcJog Error ID
+		(* mcMoveAbs *)
+			udiAutoErrorId : UDINT ; // mcMoveAbs Error ID
+		(* mcReset *)
+			udiResetErrorId : UDINT ; // mcReset Error ID
+		(* mcReadbParameter*)
+			udiReadbErrorId : UDINT ; // mcReadbParameter Error ID
+		(* mcReadlrParameter*)
+			udiReadlrErrorId : UDINT ; // mcReadlrParameter Error ID
+		(* mcWritebParameter*)
+			udiWritebErrorId : UDINT ; // mcWritebParameter Error ID
+		(* mcWritelrParameter*)
+			udiWritelrErrorId : UDINT ; // mcWritelrParameter Error ID
+		(* fbSetPositionOffset*)
+			udiSetPositionOffsetErrorId : UDINT ; // fbSetPositionOffset Error ID
+		(* fbDeletePositionOffset*)
+			udiDeletePositionOffsetErrorId : UDINT ; // fbDeletePositionOffset Error ID
+			
+	(** PROCESS FLAG **)
+		bError : BOOL ; // Error
+		bErrorParameter : BOOL ; // Error with mc parameter
+		bErrorReferencing : BOOL ; // Error with fb referencing
+		(* mcPower *)
+			bPowered : BOOL ; // is Powered
+			bPowerBusy : BOOL ; // mcPower Busy
+			bPowerError : BOOL ; // mcPower Error
+		(* mcStop *)
+			bStopBusy : BOOL ; // mcStop Busy
+			bStoping : BOOL ; // is Stoping
+			bStopCmdAbort : BOOL ; // Stop Command Abort
+			bStopError : BOOL ; // mcStop Error
+		(* mcHalt *)
+			bHaltBusy : BOOL ; // mcHalt Busy
+			bHalting : BOOL ; // is Halting
+			bHaltCmdAbort : BOOL ; // Halt Command Abort
+			bHaltError : BOOL ; // mcHalt Error
+		(* mcJog *)
+			bJogBusy : BOOL ; // mcJog Busy
+			bJogging : BOOL ; // is Moving in Jog
+			bJogCmdAbort : BOOL ; // Jog Command Abort
+			bJogError : BOOL ; // mcJog Error
+		(* mcMoveAbs *)
+			bAutoEnable : BOOL ; // Auto Enable
+			//bAutoDone : BOOL ; // mcMoveAbs Done
+			bAutoBusy : BOOL ; // mcMoveAbs Busy
+			bAutoError : BOOL ; // mcMoveAbs Error
+		(* mcReset *)
+			bResetDone : BOOL ; // mcReset is Done
+			bResetBusy : BOOL ; // mcReset is Busy
+			bResetError : BOOL ; // mcReset Error
+		(* mcReadbParameter*)
+			bReadbBusy : BOOL ; // mcReadbParameter is Busy
+			bReadbError : BOOL ; // mcReadbParameter Error
+		(* mcReadlrParameter*)
+			bReadlrBusy : BOOL ; // mcReadlPrarameter is Busy
+			bReadlrError : BOOL ; // mcReadlrParameter Error
+		(* mcWritebParameter*)
+			//bWritebDone : BOOL ; // mcWritebParameter is Done
+			//bWritebBusy : BOOL ; // mcWritebParameter is Busy
+			bWritebError : BOOL ; // mcWritebParameter Error
+		(* mcWritelrParameter*)
+			//bWritelrDone : BOOL ; // mcWritelrParameter is Done
+			//bWritelrBusy : BOOL ; // mcWritelrParameter is Busy
+			bWritelrError : BOOL ; // mcWritelrParameter Error
+		(* fbSetPositionOffset *)
+			bSetPositionOffsetBusy : BOOL ;  // fbSetPositionOffset is Busy
+			bSetPositionOffsetError : BOOL ;  // fbSetPositionOffset Error
+		(* fbDeletePositionOffset *)
+			bDeletePositionOffsetBusy : BOOL ;  // fbDeletePositionOffset is Busy
+			bDeletePositionOffsetError : BOOL ;  // fbDeletePositionOffset Error
+			
+	(** MC **)
+		mcAxisPower: MC_Power ; // Bloc fonction, gère la mise sous puissance
+		mcAxisStop : MC_Stop ; // Bloc fonction, gère le stop en cas de besoin
+		mcAxisHalt : MC_Halt ; // Bloc fonction, gère le halt en cas de besoin
+		mcAxisReset : MC_Reset ; // Bloc fonction, gère le reset 
+		mcAxisJog : MC_Jog ; // Bloc fonction, déplacement manuel
+		mcAxisMoveAbs : MC_MoveAbsolute ; // Bloc fonction, gère un déplacement absolue en position
+
+		mcReadbParameter : MC_ReadBoolParameter ; // Bloc fondtion, lecture d'un parametre BOOL		
+		mcReadlrParameter : MC_ReadParameter ; // Bloc fondtion, lecture d'un parametre LREAL
+			//mcAxisReadParameter : MC_AxisParameter ; // Bloc fonction, choix paramètre de l'axe
+		mcWritebParameter : MC_WriteBoolParameter ; // Bloc fondtion, écriture d'un parametre BOOL
+		mcWritelrParameter : MC_WriteParameter ; // Bloc fondtion, écriture d'un parametre LREAL
+			//mcAxisWriteParameter : MC_AxisParameter ; // Bloc fonction, choix paramètre de l'axe
+		
+	(** FB **)
+		fbInitEvents : FB_Init_Events ;
+		fbEventHMI : FB_Event_HMI ;
+		
+		fbSetPositionOffset : FB_CoEAX8000SetPositionOffset; // Bloc fonction, pour mise à 0 d'un Axe
+		fbDeletePositionOffset : FB_CoEAX8000DeletePositionOffset; // Bloc fonction, pour enlever la mise à 0 d'un Axe
+		
+		tonPower : TON ; // Mise sous puissance retardé 
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  					FB_Axis
+//
+//						Gestion générique d'un Axe avec codeur Absolu			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 29.01.2026
+//Dernière modification : 29.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 29.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+// « FB_Axis est l’unique propriétaire de l’axe et gère tous les mouvements »
+
+(** EVENTS **)
+	IF GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu THEN
+		GV_Events.aEventGroup[stAxis.iEventGroup].aAlarm[1].fbAlarm.CreateEx(TC_Events.AxisAlarms.Alarm1,TRUE,0);
+		GV_Events.aEventGroup[stAxis.iEventGroup].aOpMessage[1].fbAlarm.CreateEx(TC_Events.AxisOpMessages.Message1,TRUE,0);	
+		fbInitEvents(iEventGroup:=stAxis.iEventGroup,strEventType:='ALARM',strEventGuid:='40E67F82-65D4-40BA-B0A0-D5A8CC414B5C',tcEventSeverity:=2);
+		fbInitEvents(iEventGroup:=stAxis.iEventGroup,strEventType:='OpMESSAGE',strEventGuid:='3D8607F0-0CB9-481C-A2EA-25B5E2E7FECD',tcEventSeverity:=1);
+	END_IF	
+		
+(** ALARMS **)
+	(* Axis fault *)
+		(*Reset fault*)
+			IF stAxis.bEventAck THEN
+				stAxis.bAlAxisFault:=FALSE;
+			END_IF
+		(*Set fault*)
+			IF stAxis.stDriveAx8206.AxisRef.NcToPlc.ErrorCode<>0 THEN
+				stAxis.bAlAxisFault:=TRUE;
+			END_IF
+		(*Alarm 1 = Axis in fault*)
+			IF stAxis.bAlAxisFault THEN
+				GV_Events.aEventGroup[stAxis.iEventGroup].aAlarm[1].fbAlarm.ipArguments.Clear().AddString(stAxis.strIdHMI);
+				fbEventHMI(iEventGroup:=stAxis.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=TRUE);
+			ELSE
+				fbEventHMI(iEventGroup:=stAxis.iEventGroup,iIdEvent:=1,strEventType:='ALARM',bEventSet:=FALSE);			
+			END_IF
+			
+(** MESSAGES **)
+
+
+
+
+(** STATUS **)
+	stAxis.stDriveAx8206.AxisRef.ReadStatus();
+
+(** POWER **)
+	(* tonPower *)
+		tonPower(IN:=stAxis.bPowerEnable,PT:=T#250MS,Q=>,ET=>);
+	(* mcPower *)
+		mcAxisPower(
+					// IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Enable:=stAxis.bPowerEnable AND tonPower.Q,
+					Enable_positive:=TRUE,
+					Enable_negative:=TRUE,
+					Override:=100, // = 100%
+					BufferMode:=, // Not used
+					Options:=, // Not used
+					// OUT
+					Status=>bPowered,
+					Busy=>bPowerBusy,
+					Error=>bPowerError,
+					ErrorID=>udiPowerErrorId
+					);
+
+(** STOP **)
+	(* mcStop *)
+		mcAxisStop(
+					//IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Execute:=stAxis.bStopExecute,
+					//Deceleration:=, // see the Axis Configuration in the System Manager
+					//Jerk:=, // see the Axis Configuration in the System Manager
+					Options:=, // Not used
+					//OUT
+					Done=>stAxis.bStopDone,
+					Busy=>bStopBusy,
+					Active=>bStoping,
+					CommandAborted=>bStopCmdAbort,
+					Error=>bStopError,
+					ErrorID=>udiStopErrorId,
+					);
+
+(** HALT **)
+	(* mcHalt *)
+		mcAxisHalt(
+ 					//IN
+ 					Axis:=stAxis.stDriveAx8206.AxisRef,
+ 					Execute:=stAxis.bHaltExecute,
+ 					//Deceleration:=, // see the Axis Configuration in the System Manager
+ 					//Jerk:=, // see the Axis Configuration in the System Manager
+ 					Options:=, // Not used
+ 					//OUT
+ 					Done=>stAxis.bHaltDone,
+ 					Busy=>bHaltBusy,
+ 					Active=>bHalting,
+ 					CommandAborted=>bHaltCmdAbort,
+ 					Error=>bHaltError,
+ 					ErrorID=>udiStopErrorId,
+					);
+
+(** JOG **)
+	(* mcJog *)
+		mcAxisJog(
+				// IN
+				Axis:=stAxis.stDriveAx8206.AxisRef,
+				JogForward:=(stAxis.bJogPlus AND stAxis.bJogEnable),
+				JogBackwards:=(stAxis.bJogMinus AND stAxis.bJogEnable),
+				Mode:=stAxis.eJogMode,
+				Position:=stAxis.lrJogPos, // only in Mode INCHING
+				Velocity:=stAxis.lrJogVel,
+				//Acceleration:=stAxis.rJogAcc, // see the Axis Configuration in the System Manager
+				//Deceleration:=stAxis.rJogDec, // see the Axis Configuration in the System Manager
+				//Jerk:=rJogJerk, // see the Axis Configuration in the System Manager
+				// OUT
+				Done=>stAxis.bJogDone,
+				Busy=>bJogBusy,
+				Active=>bJogging,
+				CommandAborted=>bJogCmdAbort,
+				Error=>bJogError,
+				ErrorID=>udiJogErrorId,
+				);
+
+(** AUTO **)
+	(* mcMoveAbs *)	
+		mcAxisMoveAbs(
+					// IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Execute:=(stAxis.bAutoCmdAbs AND stAxis.bAutoEnable),
+					Position:=stAxis.lrAutoPosAbs,
+					Velocity:=stAxis.lrAutoVelAbs,
+					//Acceleration:=stAxis.rAutoAccAbs,
+					//Deceleration:=stAxis.rAutoDecAbs,
+					//Jerk:=stAxis.rAutoJerkAbs,
+					//BufferMode:=mcAborting,
+					// OUT
+					Done=>stAxis.bAutoDone,
+					Busy=>bAutoBusy,
+					Error=>bAutoError,
+					ErrorID=>udiAutoErrorId
+					);
+
+(** RESET **)
+	IF stAxis.bEventAck AND stAxis.bAlAxisFault THEN
+		stAxis.bResetCmd:=TRUE;
+	END_IF
+	(* mcReset *)
+		mcAxisReset(	
+					// IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Execute:=stAxis.bResetCmd,
+					// OUT
+					Done=>bResetDone,
+					Busy=>bResetBusy,
+					Error=>bResetError,
+					ErrorID=>udiResetErrorId,
+					);
+	IF bResetDone OR bResetError THEN
+		stAxis.bResetCmd:=FALSE;
+	END_IF
+	
+(** READ BOOL PARAMETER **)	
+	mcReadbParameter(
+					// IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Enable:=stAxis.bReadbEnable,
+					ParameterNumber:=stAxis.mcAxisReadParameterb,
+					ReadMode:=E_ReadMode.READMODE_CYCLIC,
+					// OUT
+					Value=>stAxis.bReadbValue,
+					Valid=>stAxis.bReadbValid,
+					Busy=>bReadbBusy,
+					Error=>bReadbError,
+					ErrorID=>udiReadbErrorId
+					);
+
+(** READ LREAL PARAMETER **)	
+	mcReadlrParameter(
+					// IN
+					Axis:=stAxis.stDriveAx8206.AxisRef,
+					Enable:= stAxis.bReadlrEnable,
+					ParameterNumber:=stAxis.mcAxisReadParameterlr,
+					ReadMode:=E_ReadMode.READMODE_CYCLIC,
+					// OUT
+					Value=>stAxis.lrReadlrValue,
+					Valid=>stAxis.bReadlrValid,
+					Busy=>bReadlrBusy,
+					Error=>bReadlrError,
+					ErrorID=>udiReadlrErrorId
+					);
+
+(** WRITE BOOL PARAMETER **)
+	mcWritebParameter(
+					 // IN
+					 Axis:=stAxis.stDriveAx8206.AxisRef,
+					 Execute:=stAxis.bWritebExecute,
+					 ParameterNumber:=stAxis.mcAxisWriteParameterb,
+					 Value:=stAxis.bWritebValue,
+					 // OUT
+					 Done=>stAxis.bWritebDone,
+					 Busy=>stAxis.bWritebBusy,
+					 Error=>bWritebError,
+					 ErrorID=>udiWritebErrorId
+					 );
+	
+(** WRITE LREAL PARAMETER **)
+	mcWritelrParameter(
+					 // IN
+					 Axis:=stAxis.stDriveAx8206.AxisRef,
+					 Execute:=stAxis.bWritelrExecute,
+					 ParameterNumber:=stAxis.mcAxisWriteParameterlr,
+					 Value:=stAxis.lrWritelrValue,
+					 // OUT
+					 Done=>stAxis.bWritelrDone,
+					 Busy=>stAxis.bWritelrBusy,
+					 Error=>bWritelrError,
+					 ErrorID=>udiWritelrErrorId
+					 );
+
+(** SET POSITION OFFSET (Referencing) **)
+	fbSetPositionOffset(
+						//IN
+						Axis:=stAxis.stDriveAx8206.AxisRef,
+						Execute:=stAxis.bSetOffsetExecute,
+						Position:=0,
+						Relative:=FALSE, // Relative is to add the position at the actual offset (offset=offset+position), but we want to set a new position (offset=position)
+						Memory:=E_PositionOffsetMemory.ePositionOffsetMemory_Encoder, // Offset is Set in the Motor Encoder and not in the Drive
+						Feedback:=,
+						//OUT
+						Busy=>bSetPositionOffsetBusy,
+						Error=>bSetPositionOffsetError,
+						ErrorID=>udiSetPositionOffsetErrorId
+						);
+ 
+ (** DELETE POSITION OFFSET (Referencing) **) 
+	fbDeletePositionOffset( // = Factory reset of the Axis position 
+							//IN
+							Axis:=stAxis.stDriveAx8206.AxisRef,
+							Execute:=stAxis.bDeleteOffsetExecute,
+							Memory:=E_PositionOffsetMemory.ePositionOffsetMemory_Encoder, // Offset is Set in the Motor Encoder and not in the Drive
+							Feedback:=,							
+							//OUT
+							Busy=>bDeletePositionOffsetBusy,
+							Error=>bDeletePositionOffsetError,
+							ErrorID=>udiDeletePositionOffsetErrorId
+							);
+ 
+(** ERROR **)
+	bError:=(bPowerError OR bStopError OR bJogError OR bAutoError OR bResetError);
+	bErrorParameter:=(bReadlrError OR bReadbError OR bWritelrError OR bWritebError);
+	bErrorReferencing:=(bDeletePositionOffsetError OR bSetPositionOffsetError);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

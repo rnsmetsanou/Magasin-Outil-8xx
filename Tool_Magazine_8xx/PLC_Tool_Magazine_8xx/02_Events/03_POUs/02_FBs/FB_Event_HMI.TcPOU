@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Event_HMI" Id="{c2be8175-f699-4676-905a-b9c8a49a5058}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Event_HMI
+VAR_INPUT
+	(** STRING **)	
+	strEventType : STRING[20] ; // Type of the Event (ALARM or MESSAGE)
+	
+	(** INT **)
+	iEventGroup : INT ; // Event group number
+	iIdEvent : INT ; // Event Number
+
+	(** FLAG **)
+	bEventSet : BOOL ; // True to set the Event
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	(** FLAG **)
+	bError : BOOL ; // Error
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			FB_Event_HMI
+//
+//						Gestion évènements pour HMI  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(* Initialized variables *)
+	bError:=FALSE;
+
+(* Check EVENT GROUP, ID event, EVENT TYPE *)
+	IF (iEventGroup<=0 OR iEventGroup>GV_Events.iMaxEventGroup) THEN
+		GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[5].fbMessage.Send(0); // Set Message 5 (FB_EVENT EVENT GROUP number error)
+		bError:=TRUE;
+	ELSE
+		IF  (strEventType<>'ALARM' AND strEventType<>'MESSAGE' AND strEventType<>'OpMESSAGE') THEN
+			GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[4].fbMessage.Send(0); // Set Message 4 (FB_EVENT Event type error)
+			bError:=TRUE;
+		ELSE
+			IF ((iIdEvent<=0 OR iIdEvent>GV_Events.iMaxAlarms) AND strEventType='ALARM') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[2].fbMessage.Send(0); // Set Message 2 (FB_EVENT Alarm number error)
+				bError:=TRUE;
+			END_IF
+			IF ((iIdEvent<=0 OR iIdEvent>GV_Events.iMaxMessages) AND strEventType='MESSAGE') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[3].fbMessage.Send(0); // Set Message 3 (FB_EVENT Message number error)
+				bError:=TRUE;
+			END_IF	
+			IF ((iIdEvent<=0 OR iIdEvent>GV_Events.iMaxOPMessages) AND strEventType='OpMESSAGE') THEN
+				GV_Events.aEventGroup[GV_Events.iEventGroupCallEvent].aMessage[6].fbMessage.Send(0); // Set Message 6 (FB_EVENT Operator Message number error)
+				bError:=TRUE;
+			END_IF		
+		END_IF
+	END_IF
+
+(* No error *)
+	IF bError=FALSE THEN
+		(*Event : Alarm*)
+		IF strEventType='ALARM' THEN
+			(*Set Alarm*)
+			IF bEventSet=TRUE THEN
+				GV_Events.aEventGroup[iEventGroup].aAlarm[iIdEvent].fbAlarm.Raise(0);
+			ELSE
+				GV_Events.aEventGroup[iEventGroup].aAlarm[iIdEvent].fbAlarm.Confirm(0);
+				GV_Events.aEventGroup[iEventGroup].aAlarm[iIdEvent].fbAlarm.Clear(0,FALSE);
+			END_IF
+		END_IF
+		(*Event : Message*)
+		IF strEventType='MESSAGE' THEN
+			GV_Events.aEventGroup[iEventGroup].aMessage[iIdEvent].fbMessage.Send(0);
+		END_IF
+		(*Event : OpMessage*)
+		IF strEventType='OpMESSAGE' THEN
+			(*Set Alarm*)
+			IF bEventSet=TRUE THEN
+				GV_Events.aEventGroup[iEventGroup].aOpMessage[iIdEvent].fbAlarm.Raise(0);
+			ELSE
+				GV_Events.aEventGroup[iEventGroup].aOpMessage[iIdEvent].fbAlarm.Confirm(0);
+				GV_Events.aEventGroup[iEventGroup].aOpMessage[iIdEvent].fbAlarm.Clear(0,FALSE);
+			END_IF
+		END_IF
+	END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="M_Event_Group_State" Id="{489cfe25-f0db-49d1-91ed-87fa069143c5}">
+      <Declaration><![CDATA[METHOD M_Event_Group_State
+VAR_INPUT
+	(** INT **)
+	iEventGroup : INT ;
+END_VAR
+VAR_OUTPUT
+	(** FLAG **)
+	bEventPresence : BOOL ;
+END_VAR
+VAR
+	(** INT **)
+	iLoop : INT ;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  			M_Event_Group_State
+//
+//							Etat du groupe d'évènements  			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 23.01.2026
+//Dernière modification : 23.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 23.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(* Initialized variables *)
+bEventPresence:=FALSE;
+
+(*Check if alarm activated in Group xx*)
+FOR iLoop:=1 TO GV_Events.iMaxAlarms BY 1 DO
+	IF GV_Events.aEventGroup[iEventGroup].aAlarm[iLoop].fbAlarm.eConfirmationState=2 THEN
+		bEventPresence:=TRUE;
+	END_IF;
+END_FOR;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

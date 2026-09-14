@@ -1,0 +1,356 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="PRG_Backup" Id="{cc8cd072-d941-4edd-a49e-bc2dd7d01e72}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_Backup
+VAR
+	
+	pIntTest : POINTER TO INT ;
+
+	(** STRING **)
+		sFileDataName : STRING ;
+		sCmdLine : STRING := '' ;
+		
+		sAlarmsPathName : STRING ;
+		sAlarmsFileName : STRING  ;
+		sMessagesPathName : STRING ;
+		sMessagesFileName : STRING ;
+		sHeader : STRING ;
+		
+	(** UDINT **)
+		udiLoopInit : UDINT ;
+		udiLoop1 : UDINT ;
+		udiLoop2 : UDINT ;
+		
+	(** INT **)
+		iDataIndex  : INT ;
+		iLoop : INT ;
+		iFind : INT ;
+		
+	(** FLAG + R_TRIG **)
+		bRestoreData : BOOL ;
+		rtBackupProjectEnd : R_TRIG ; // Rising edge of the end of the Backup Project
+		
+	(** FB **)
+		fbBackupExport : FB_BackupExport ;
+		fbBackupImport : FB_BackupImport ;
+		
+		ntBackupProject	: NT_StartProcess ;
+		
+		fbAlarmsExportEventsSettings : FB_TcEventCsvExportSettings;
+		fbAlarmsEventsFilter : FB_TcEventFilter;
+		fbAlarmsEventLogger	: FB_TcEventLogger;
+		fbMessagesExportEventsSettings : FB_TcEventCsvExportSettings;
+		fbMessagesEventsFilter : FB_TcEventFilter;
+		fbMessagesEventLogger	: FB_TcEventLogger;
+		
+		tonBackupProject : TON ;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				PRG_Backup
+//
+//				Programme de gestion des Backup des datas au format .CSV    			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by Beckhoff -> https://infosys.beckhoff.com/english.php?content=../content/1033/tcplclib_tc2_utilities/35419787.html&id=)
+//Création: 09.03.2026
+//Dernière modification : 09.03.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 09.03.2026 (G.GOETZ) -> Création	
+//-----------------------------------------------------------------------------------------
+			
+(** BACKUP AUTHORIZATION **)
+	(* Project *)
+		IF (NOT GV_Cycle.bCycleInProgress) AND tonBackupProject.Q AND (NOT ntBackupProject.BUSY) THEN
+			GV_General.bBackupProjectAuthorization:=TRUE;
+		ELSE
+			GV_General.bBackupProjectAuthorization:=FALSE;
+		END_IF
+	(* Init Data *)
+		IF GV_Axes.bAxisAllNotMoving AND (NOT GV_Cycle.bCycleInProgress) AND (NOT bRestoreData) AND (NOT fbBackupExport.bBusy) AND (NOT fbBackupImport.bBusy) THEN
+			GV_General.bInitDataAuthorization:=TRUE;
+		ELSE
+			GV_General.bInitDataAuthorization:=FALSE;
+		END_IF
+	(* Export Data*)
+		IF GV_Axes.bAxisAllNotMoving AND (NOT GV_Cycle.bCycleInProgress) AND (NOT bRestoreData) AND (NOT fbBackupExport.bBusy) AND (NOT fbBackupImport.bBusy) THEN
+			GV_General.bExportDataAuthorization:=TRUE;
+		ELSE
+			GV_General.bExportDataAuthorization:=FALSE;
+		END_IF
+	(* Import Data *)
+		IF GV_Axes.bAxisAllNotMoving AND (NOT GV_Cycle.bCycleInProgress) AND (NOT bRestoreData) AND (NOT fbBackupExport.bBusy) AND (NOT fbBackupImport.bBusy) THEN
+			GV_General.bImportDataAuthorization:=TRUE;
+		ELSE
+			GV_General.bImportDataAuthorization:=FALSE;
+		END_IF
+	(* Export Alarms *)
+		IF (NOT GV_Cycle.bCycleInProgress) AND GV_General.iExportAlarmsStatus=0 AND GV_General.iExportMessagesStatus=0 THEN
+			GV_General.bExportAlarmsAuthorization:=TRUE;
+		ELSE
+			GV_General.bExportAlarmsAuthorization:=FALSE;
+		END_IF
+	(* Export Messages *)
+		IF (NOT GV_Cycle.bCycleInProgress) AND GV_General.iExportAlarmsStatus=0 AND GV_General.iExportMessagesStatus=0 THEN
+			GV_General.bExportMessagesAuthorization:=TRUE;
+		ELSE
+			GV_General.bExportMessagesAuthorization:=FALSE;
+		END_IF
+		
+(** BACKUP PROJECT **)
+	IF GV_HMI.stBackup.rtButtonProject.Q AND GV_General.bBackupProjectAuthorization THEN
+		sCmdLine:='';
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('START : Backup Project');
+	END_IF
+	tonBackupProject(IN:=(NOT GV_HMI.stBackup.rtButtonProject.Q),PT:=T#30S);
+	rtBackupProjectEnd(CLK:=tonBackupProject.Q);
+	IF rtBackupProjectEnd.Q THEN
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('END : Backup Project');
+	END_IF
+	
+(** FB BACKUP PROJECT **)
+	ntBackupProject(
+					START:=GV_HMI.stBackup.rtButtonProject.Q AND GV_General.bBackupProjectAuthorization, 
+					NETID:='', 
+					PATHSTR:=GV_General.sBackupEXE, 
+					DIRNAME:='C:\', 
+					COMNDLINE:=sCmdLine, 
+					TMOUT:=, 
+					BUSY=>, 
+					ERR=>, 
+					ERRID=>
+					);
+
+(** BACKUP DATA EXPORT **)
+	IF (GV_General.bFirstCycleTask OR GV_General.bFirstCycleSimu) OR (*GV_General.bIsBlinking1s OR*) (GV_HMI.stBackup.rtButtonExportData.Q AND GV_General.bExportDataAuthorization) THEN
+		iDataIndex:=0;
+		(* GV_General *)
+			(*Project*) // 0-200
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.sDataName';
+				GV_General.aExportData[iDataIndex].sType:='STRING';
+				GV_General.aExportData[iDataIndex].sValue:=GV_General.sDataName;
+				GV_General.aExportData[iDataIndex].pString:=ADR(GV_General.sDataName);
+				iDataIndex:=iDataIndex+1;
+			(*Version*) // 1-200
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.sDataVersion';
+				GV_General.aExportData[iDataIndex].sType:='STRING';
+				GV_General.aExportData[iDataIndex].sValue:=GV_General.sDataVersion;
+				GV_General.aExportData[iDataIndex].pString:=ADR(GV_General.sDataVersion);
+				iDataIndex:=iDataIndex+1;
+			(*DateTime*) // 2-200
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.sDataDateTime:=DT_TO_STRING(GV_General.dtCurrentDateTime);
+				GV_General.sDataDateTime:=DELETE(GV_General.sDataDateTime,3,1);
+				FOR iLoop:=1 TO 3 BY 1 DO
+					iFind:=FIND(GV_General.sDataDateTime,'-');
+					GV_General.sDataDateTime:=DELETE(GV_General.sDataDateTime,1,iFind);
+				END_FOR
+				FOR iLoop:=1 TO 3 BY 1 DO
+					iFind:=FIND(GV_General.sDataDateTime,':');
+					GV_General.sDataDateTime:=DELETE(GV_General.sDataDateTime,1,iFind);
+				END_FOR
+				GV_General.sDataDateTime:=INSERT(GV_General.sDataDateTime,'_',8);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.sDataDateTime';
+				GV_General.aExportData[iDataIndex].sType:='STRING';
+				GV_General.aExportData[iDataIndex].sValue:=GV_General.sDataDateTime;
+				GV_General.aExportData[iDataIndex].pString:=ADR(GV_General.sDataDateTime);
+				iDataIndex:=iDataIndex+1;
+			(*stMisc*) // 3,4,5,6-200
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.stMisc.sString1';
+				GV_General.aExportData[iDataIndex].sType:='STRING';
+				GV_General.aExportData[iDataIndex].sValue:=GV_General.stMisc.sString1;
+				GV_General.aExportData[iDataIndex].pString:=ADR(GV_General.stMisc.sString1);
+				iDataIndex:=iDataIndex+1;
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.stMisc.lrReal1';
+				GV_General.aExportData[iDataIndex].sType:='LREAL';
+				GV_General.aExportData[iDataIndex].sValue:=LREAL_TO_STRING(GV_General.stMisc.lrReal1);
+				GV_General.aExportData[iDataIndex].pLreal:=ADR(GV_General.stMisc.lrReal1);
+				iDataIndex:=iDataIndex+1;
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.stMisc.iInt1';
+				GV_General.aExportData[iDataIndex].sType:='INT';
+				GV_General.aExportData[iDataIndex].sValue:=INT_TO_STRING(GV_General.stMisc.iInt1);
+				GV_General.aExportData[iDataIndex].pInt:=ADR(GV_General.stMisc.iInt1);
+				iDataIndex:=iDataIndex+1;
+				GV_General.aExportData[iDataIndex].sIndex:=INT_TO_STRING(iDataIndex);
+				GV_General.aExportData[iDataIndex].sName:='GV_General.stMisc.bFlag1';
+				GV_General.aExportData[iDataIndex].sType:='BOOL';
+				GV_General.aExportData[iDataIndex].sValue:=BOOL_TO_STRING(GV_General.stMisc.bFlag1);
+				GV_General.aExportData[iDataIndex].pBool:=ADR(GV_General.stMisc.bFlag1);
+				iDataIndex:=iDataIndex+1;
+		//...
+			//...
+				//...
+	END_IF
+	
+(** BACKUP DATA IMPORT **)
+	IF GV_General.bImportDataDone AND (NOT fbBackupExport.bBusy) AND (NOT fbBackupImport.bBusy) THEN
+		IF GV_General.aImportData[0].sValue='PLC_Tool_Magazine' AND GV_General.aImportData[1].sValue='V1.0.0' THEN
+			bRestoreData:=TRUE;	
+		END_IF
+		GV_General.bImportDataDone:=FALSE;
+	END_IF
+	IF bRestoreData THEN
+		FOR udiLoop1:=0 TO GV_General.udiMaxBackupRow BY 1 DO
+			FOR udiLoop2:=0 TO GV_General.udiMaxBackupRow BY 1 DO
+		
+				IF GV_General.aImportData[udiLoop1].sName<>'' AND GV_General.aImportData[udiLoop1].sName<>'GV_General.sDataName' AND GV_General.aImportData[udiLoop1].sName<>'GV_General.sDataVersion' AND GV_General.aImportData[udiLoop1].sType<>'' THEN
+					IF GV_General.aImportData[udiLoop1].sName=GV_General.aExportData[udiLoop2].sName AND GV_General.aImportData[udiLoop1].sType=GV_General.aExportData[udiLoop2].sType THEN
+						
+						IF GV_General.aImportData[udiLoop1].sType='STRING' THEN
+							IF GV_General.aExportData[udiLoop2].pString>0 THEN
+								GV_General.aExportData[udiLoop2].pString^:=GV_General.aImportData[udiLoop1].sValue;
+							END_IF
+							
+						ELSIF GV_General.aImportData[udiLoop1].sType='LREAL' THEN
+							IF GV_General.aExportData[udiLoop2].pLreal>0 THEN
+								GV_General.aExportData[udiLoop2].pLreal^:=STRING_TO_LREAL(GV_General.aImportData[udiLoop1].sValue);
+							END_IF
+							
+						ELSIF GV_General.aImportData[udiLoop1].sType='INT' AND (STRING_TO_LINT(GV_General.aImportData[udiLoop1].sValue)>=-32768 AND STRING_TO_LINT(GV_General.aImportData[udiLoop1].sValue)<=32767) THEN
+							IF GV_General.aExportData[udiLoop2].pInt>0 THEN
+								GV_General.aExportData[udiLoop2].pInt^:=STRING_TO_INT(GV_General.aImportData[udiLoop1].sValue);
+							END_IF
+							
+						ELSIF GV_General.aImportData[udiLoop1].sType='BOOL' AND (GV_General.aImportData[udiLoop1].sValue='TRUE' OR GV_General.aImportData[udiLoop1].sValue='FALSE') THEN
+							IF GV_General.aExportData[udiLoop2].pBool>0 THEN
+								GV_General.aExportData[udiLoop2].pBool^:=STRING_TO_BOOL(GV_General.aImportData[udiLoop1].sValue);
+							END_IF
+							
+						ELSE
+							EXIT;
+						END_IF
+						
+						EXIT;
+					
+					END_IF
+				ELSE
+					EXIT;
+				END_IF
+		
+			END_FOR
+		END_FOR
+		bRestoreData:=FALSE;
+	END_IF
+		
+(** FB BACKUP DATA EXPORT **)
+	IF GV_HMI.stBackup.rtButtonExportData.Q AND GV_General.bExportDataAuthorization  THEN
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('Export Data');
+	END_IF
+	fbBackupExport(
+					bStart:=GV_HMI.stBackup.rtButtonExportData.Q AND GV_General.bExportDataAuthorization,
+					aData:=GV_General.aExportData
+					);
+(** FB BACKUP DATA IMPORT **)
+	IF GV_HMI.stBackup.rtButtonImportData.Q AND GV_General.bImportDataAuthorization  THEN
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('Import Data');
+	END_IF
+	fbBackupImport(
+					bStart:=GV_HMI.stBackup.rtButtonImportData.Q AND GV_General.bImportDataAuthorization,
+					aData:=GV_General.aImportData,
+					sFileIn:=GV_HMI.sSelectBackupFile,
+					sFileOut=>sFileDataName
+					);
+
+(** EVENTS EXPORT **)
+	(* Alarms *)
+		sAlarmsPathName:='C:\WM\Events\';
+		sAlarmsFileName:='AlarmsToolMagazine_';
+		sAlarmsFileName:=CONCAT(sAlarmsFileName,DT_TO_STRING(GV_General.dtCurrentDateTime));
+		sAlarmsFileName:=DELETE(sAlarmsFileName,3,20);
+		FOR iLoop:=1 TO 3 BY 1 DO
+			iFind:=FIND(sAlarmsFileName,'-');
+			sAlarmsFileName:=DELETE(sAlarmsFileName,1,iFind);
+		END_FOR
+		FOR iLoop:=1 TO 3 BY 1 DO
+			iFind:=FIND(sAlarmsFileName,':');
+			sAlarmsFileName:=DELETE(sAlarmsFileName,1,iFind);
+		END_FOR
+		sAlarmsFileName:=INSERT(sAlarmsFileName,'_',27);
+		sAlarmsFileName:=CONCAT(sAlarmsPathName,sAlarmsFileName);
+		sAlarmsFileName:=CONCAT(sAlarmsFileName,'.csv');
+
+	IF GV_HMI.stBackup.rtButtonExportAlarms.Q AND GV_General.bExportAlarmsAuthorization THEN
+		GV_General.iExportAlarmsStatus:=1;
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('START : Export Alarms');
+	END_IF
+	IF GV_General.iExportAlarmsStatus=1 THEN
+		GV_General.iExportAlarmsStatus:=2;
+		fbAlarmsEventsFilter .Clear();
+		fbAlarmsEventsFilter .Clear();
+		fbAlarmsEventsFilter .Severity.EqualTo(2);
+		fbAlarmsExportEventsSettings.AddFilter(fbAlarmsEventsFilter );
+		fbAlarmsExportEventsSettings.AddLanguage(nLangID:=4108,sHeader:=sHeader); // French
+		fbAlarmsExportEventsSettings.AddLanguage(nLangID:=1033,sHeader:=sHeader); // English
+		fbAlarmsExportEventsSettings.AddLanguage(nLangID:=1031,sHeader:=sHeader); // German
+		fbAlarmsExportEventsSettings.AddLanguage(nLangID:=1040,sHeader:=sHeader); // Italian
+		GV_General.iExportAlarmsStatus:=3;		
+	END_IF	
+	IF GV_General.iExportAlarmsStatus=3 THEN
+		 IF fbAlarmsEventLogger.ExportLoggedEvents(sAlarmsFileName,fbAlarmsExportEventsSettings) THEN
+			 GV_General.iExportAlarmsStatus:=0;
+			 (*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('END : Export Alarms ');
+		 END_IF
+	END_IF
+	
+	(* Messages *)
+		sMessagesPathName:='C:\WM\Events\';
+		sMessagesFileName:='MessagesToolMagazine_';
+		sMessagesFileName:=CONCAT(sMessagesFileName,DT_TO_STRING(GV_General.dtCurrentDateTime));
+		sMessagesFileName:=DELETE(sMessagesFileName,3,22);
+		FOR iLoop:=1 TO 3 BY 1 DO
+			iFind:=FIND(sMessagesFileName,'-');
+			sMessagesFileName:=DELETE(sMessagesFileName,1,iFind);
+		END_FOR
+		FOR iLoop:=1 TO 3 BY 1 DO
+			iFind:=FIND(sMessagesFileName,':');
+			sMessagesFileName:=DELETE(sMessagesFileName,1,iFind);
+		END_FOR
+		sMessagesFileName:=INSERT(sMessagesFileName,'_',29);
+		sMessagesFileName:=CONCAT(sMessagesPathName,sMessagesFileName);
+		sMessagesFileName:=CONCAT(sMessagesFileName,'.csv');
+		
+	IF GV_HMI.stBackup.rtButtonExportMessages.Q AND GV_General.bExportMessagesAuthorization THEN
+		GV_General.iExportMessagesStatus:=1;
+		(*Log*)
+			PRG_Log_WM.fbLogWM.M_Write_Log('START : Export Messages');
+	END_IF
+	IF GV_General.iExportMessagesStatus=1 THEN
+		GV_General.iExportMessagesStatus:=2;
+		fbMessagesEventsFilter .Clear();
+		fbMessagesEventsFilter .Clear();
+		fbMessagesEventsFilter .Severity.EqualTo(1);
+		fbMessagesExportEventsSettings.AddFilter(fbMessagesEventsFilter );
+		fbMessagesExportEventsSettings.AddLanguage(nLangID:=4108,sHeader:=sHeader); // French
+		fbMessagesExportEventsSettings.AddLanguage(nLangID:=1033,sHeader:=sHeader); // English
+		fbMessagesExportEventsSettings.AddLanguage(nLangID:=1031,sHeader:=sHeader); // German
+		fbMessagesExportEventsSettings.AddLanguage(nLangID:=1040,sHeader:=sHeader); // Italian
+		GV_General.iExportMessagesStatus:=3;		
+	END_IF	
+	IF GV_General.iExportMessagesStatus=3 THEN
+		 IF fbMessagesEventLogger.ExportLoggedEvents(sMessagesFileName,fbMessagesExportEventsSettings) THEN
+			 GV_General.iExportMessagesStatus:=0;
+			 (*Log*)
+				PRG_Log_WM.fbLogWM.M_Write_Log('END : Export Messages ');
+		 END_IF
+	END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

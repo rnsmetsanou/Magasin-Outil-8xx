@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_Tool_Corrector_T" Id="{5eeba413-cb4d-4aab-949f-3a91a55d45d3}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_Tool_Corrector_T
+//
+//								Structure correcteur T outil 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.FLEURY)
+//Création: 20.01.2026
+//Dernière modification : 20.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 20.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_Tool_Corrector_T :
+STRUCT
+	
+	(** SETUP DINT **)
+		Longueur : DINT ;
+		UsureLongueur : DINT ;
+		Rayon : DINT ;
+		PositionW : DINT ;
+		LongY : DINT ;
+		UsureY : DINT ;
+		LontZ : DINT ;
+		UsureZ : DINT ;
+		Quadrant : DINT ;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

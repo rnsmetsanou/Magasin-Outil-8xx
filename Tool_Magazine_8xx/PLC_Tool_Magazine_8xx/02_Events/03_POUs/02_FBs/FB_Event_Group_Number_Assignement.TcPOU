@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <POU Name="FB_Event_Group_Number_Assignement" Id="{61e642ac-6927-40e9-88cd-1d4b9a7b74f3}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Event_Group_Number_Assignement
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+END_VAR
+VAR_IN_OUT
+	(** INT **)
+	iEventGroup : INT ; // Number of event group
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  	FB_Event_Group_Number_Assignement
+//
+//				Gestion assignement numéro de groupe d'évènements   			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ (inspired by S.MANTZER)
+//Création: 21.01.2026
+//Dernière modification : 21.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 21.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+(** Automatic event group number assignement **)
+	IF GV_General.bFirstCycleTask THEN
+		iEventGroup:=0;
+		iEventGroup:=GV_Events.iEventGroupNumberAssignement;
+		GV_Events.iEventGroupNumberAssignement:=GV_Events.iEventGroupNumberAssignement+1;
+	ELSE
+		IF iEventGroup=0 THEN
+			iEventGroup:=GV_Events.iEventGroupNumberAssignement;
+			GV_Events.iEventGroupNumberAssignement:=GV_Events.iEventGroupNumberAssignement+1;
+		END_IF
+	END_IF
+	]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

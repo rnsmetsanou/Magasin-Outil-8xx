@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <GVL Name="GV_HMI" Id="{80c3676e-0030-4826-9b17-838da9fec2ae}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+
+//-----------------------------------------------------------------------------------------
+//
+//                  				GV_HMI
+//
+//								Variables porte(s) 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ 
+//Création: 13.01.2026
+//Dernière modification : 13.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 13.01.2026 (G.GOETZ) -> Création
+//-----------------------------------------------------------------------------------------
+
+VAR_GLOBAL PERSISTENT
+
+	(** STRING **)
+		sCurrentUserName : STRING ; // Current user name
+		sUserMessage : STRING ; // Message for the user
+		
+	(** INT **)
+		iCurrentScreenNumber : INT ; // Number of the current screen
+		iCurrentLanguage : INT ; // Current language (1=FRENCH / 2=ENGLISH / 3=GERMAN / 4=ITALIAN)
+		iCurrentUserLevel : INT ; // Current user level
+	
+	(** FLAG **)
+		bAlarm : BOOL ; // a Alarm is available
+		bMessage : BOOL ; // a Message is available
+		
+	(** ST **)
+		stMagazineSettings : ST_HMI_Magazine_Settings ; // Structure for the magazine settings
+		stMagazineTeach : ST_HMI_Magazine_Teach ; // Structure for teach the magazine
+		
+		stLampsLights : ST_HMI_Lamps_Lights ; // Structure for lamps and lights
+		stDoors : ST_HMI_Doors ; // Structure for doors
+		stCyltronic : ST_HMI_Cyltronic ; // Structure for Cyltronic // Devrait etre un tableau de taille comme dans GV_Cyltronic
+		stAxes : ST_HMI_Axes ; // Structure for Axes
+		stCycle : ST_HMI_Cycle ; // Structure for Cycle
+		stManipulatorGripper : ST_HMI_Manipulator_Gripper ; // Structure for the manipulator gripper
+		stManipulatorTunnel : ST_HMI_Manipulator_Tunnel ; // Structure for the manipulator tunnel
+		stManipulatorBreakage : ST_HMI_Manipulator_Breakage ; // Structure for the manipulator breakage
+		
+		stMagazineCheck : ST_HMI_Magazine_Check ; // Structure for the magazine check
+		
+		stPickToolMagazine : ST_HMI_Pick_Tool_Magazine ; // Structure for pick tool in magazine
+		stTransferManipulatorToArm : ST_HMI_Transfer_ManipulatorToArm ; // Structure for transfert manipulator to arm
+		stTransferArmCnc : ST_HMI_Transfer_ArmCnc ; // Structure for transfert between arm and cnc
+		stTransferArmToManipulator : ST_HMI_Transfer_ArmToManipulator ; // Structure for transfert arm to manipulator
+		
+		stBackup : ST_HMI_Backup ; // STructure for Backup
+		
+END_VAR
+
+VAR_GLOBAL
+
+	(** STRING **)
+		sSelectBackupFile : STRING ; // Name of the selected Backup File choose by the user
+
+	(** FLAG + R_Trig **)
+		bButtonEventAck : BOOL ; // Button for Events Acknowledgement
+			rtEventAck : R_Trig ; // Trigger for Events Acknowledgement
+		bEventAck : BOOL ; // Events Acknowledgement
+
+		bButtonINIT : BOOL ; // Button INIT
+			rtINIT : R_Trig ; // Trigger for INIT
+		bButtonAUTO : BOOL ; // Button AUTO
+			rtAUTO : R_Trig ; // Trigger for AUTO
+		bButtonMANU : BOOL ; // Button MANU
+			rtMANU : R_Trig ; // Trigger for MANU
+			
+		bButtonHandwheelEnable : BOOL ; // Button for enable the Handwheel
+			rtHandwheelEnable : R_Trig ; // Trigger for enable the Handwheel
+			bStateHandwheelEnable : BOOL ; // State button for enable the Handwheel
+
+		bButtonHandwheelIncr : BOOL ; // Button for handwhell in Incr mode
+			rtHandwheelIncr : R_Trig ; // Trigger for handwhell in Incr mode
+		bButtonHandwheelJog : BOOL ; // Button for handwhell in Jog mode
+			rtHandwheelJog : R_Trig ; // Trigger for handwhell in Jog mode
+		bStateHandwheelMode : BOOL ; // State of the Handwheel mode
+			
+		bEnableResetManipulatorMemory : BOOL ; // Enable to reset the Manipulator memory
+		bEnableResetArmGripper1Memory : BOOL ; // Enable to reset the Changing Arm Gripper 1 memory
+		bEnableResetArmGripper2Memory : BOOL ; // Enable to reset the Changing Arm Gripper 2 memory
+		bEnableResetSpindleMemory : BOOL ; // Enable to reset the CNC Spindle memory
+
+		bButtonRefreshToolMagazine : BOOL ; // Button for refresh the tool Magazine
+			rtRefreshToolMagazine : R_Trig ; // Trigger for refresh the tool Magazine
+		bButtonResetDataManipulator : BOOL ; // Button for reset the Mnipulator Head data
+			rtResetDataManipulator : R_Trig ; // Trigger for reset the Mnipulator Head data
+		bButtonResetDataChangingGripper1 : BOOL ; // Button for reset the Gripper 1 data of the Changing Arm
+			rtResetDataChangingGripper1 : R_Trig ; // Trigger for reset the Gripper 1 data of the Changing Arm
+		bButtonResetDataChangingGripper2 : BOOL ; // Button for reset the Gripper 2 data of the Changing Arm
+			rtResetDataChangingGripper2 : R_Trig ; // Trigger for reset the Gripper 2 data of the Changing Arm
+		bButtonResetDataSpindle : BOOL ; // Button for reset the Spindle data in CNC
+			rtResetDataSpindle : R_Trig ; // Trigger for reset the Spindle data in CNC
+
+		bButtonCncEnable : BOOL ; // Button for enable CNC
+			rtCncEnable : R_TRIG ; // Trigger for enable CNC
+			bStateCncEnable : BOOL ; // State button for enable CNC
+
+		bButtonReboot : BOOL ; // Button for reboot the Magazine PC
+			rtReboot : R_Trig ; // Trigger for reboot the Magazine PC
+		bButtonShutdown : BOOL ; // Button for shutdown the Magazine PC
+			rtShutdown : R_Trig ; // Trigger for shutdown the Magazine PC
+			
+	(** ST **)
+		stMisc : ST_Miscellaneous ; // Miscellaneous if need	
+		
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	(** CONSTANT INT **)
+		iMaxScreenNumber : INT := 999 ; // Max Screen Number
+	
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

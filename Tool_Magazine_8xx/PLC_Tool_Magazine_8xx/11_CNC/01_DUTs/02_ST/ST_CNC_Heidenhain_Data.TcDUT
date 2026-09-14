@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.17">
+  <DUT Name="ST_CNC_Heidenhain_Data" Id="{6b330874-090a-41c5-b377-255de4f093ed}">
+    <Declaration><![CDATA[//-----------------------------------------------------------------------------------------
+//
+//                  				ST_CNC_Heidenhain_Data
+//
+//								Structure CNC_Heidenhain Data 			
+//-----------------------------------------------------------------------------------------
+//
+//Auteur: G.GOETZ
+//Création: 27.01.2026
+//Dernière modification : 27.01.2026 (G.GOETZ)
+//       			
+//-----------------------------------------------------------------------------------------
+//
+//     							Liste des modifications  	
+//
+// 27.01.2026 (G.GOETZ) -> Création		
+//-----------------------------------------------------------------------------------------
+
+TYPE ST_CNC_Heidenhain_Data :
+STRUCT
+
+	(** ST **)	
+		stCncMagazine : ST_CNC_Heidenhain_Exchange_In_1 ; // Structure Exchange CNC -> Magazine
+		stMagazineCNC : ST_CNC_Heidenhain_Exchange_Out_1 ; // Structure Exchange Magzine -> CNC
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
