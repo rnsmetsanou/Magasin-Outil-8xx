@@ -22,16 +22,19 @@ public sealed class MainWindow : Window
     private readonly StackPanel _left = new() { Spacing = 10 };
     private readonly StackPanel _detail = new() { Spacing = 10 };
     private readonly TextBlock _notice = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly Image _logo = new() { Width = 120, Height = 48, Stretch = Stretch.Uniform };
+    private readonly Image _logo = new() { Width = 156, Height = 62, Stretch = Stretch.Uniform };
     private readonly TextBox _search = new() { PlaceholderText = "Nom, T12 ou place 27", MinHeight = 44 };
     private readonly StackPanel _rackArea = new() { Spacing = 8 };
     private readonly WrapPanel _slots = new() { Orientation = Orientation.Horizontal };
+    private readonly WrapPanel _legend = new();
     private readonly TextBlock _rackTitle = new();
     private readonly Button _spindle;
     private readonly Button _prepared;
     private int _selected = 27, _rack = 2, _page;
     private bool _dark, _review, _offsets;
     private EditTool? _draft;
+    private SimulatedTransfer? _transfer;
+    private bool IsBusy => _draft is not null || _transfer is not null;
     private string _draftName = "", _draftWear = "";
     private TextBox? _wearInput;
     private readonly List<Border> _panels = [];
@@ -48,13 +51,15 @@ public sealed class MainWindow : Window
         Title = "Gestion des outils — WM — Simulation";
         Width = 1024; Height = 768; MinWidth = 1024; MinHeight = 768;
         CanResize = true;
+        UseLayoutRounding = true;
+        RenderOptions.SetBitmapInterpolationMode(_logo, BitmapInterpolationMode.HighQuality);
         FontSize = 16;
         // Poppins is used when bundled; this explicit fallback keeps offline startup usable.
         FontFamily = AssetLoader.Exists(new Uri("avares://MagasinOutil.Desktop/Assets/Poppins-Regular.ttf"))
             ? new FontFamily("avares://MagasinOutil.Desktop/Assets#Poppins") : Avalonia.Media.FontFamily.Default;
         var header = new Grid { ColumnDefinitions = new("Auto,*,Auto"), Margin = new(16, 8) };
         // The clear space is based on the original monogram/name separation (X).
-        var logoSpace = new Border { Child = _logo, Padding = new(20, 14), Margin = new(0, 0, 12, 0) };
+        var logoSpace = new Border { Child = _logo, Padding = new(26, 14), Margin = new(0, 0, 12, 0) };
         Put(header, logoSpace, 0, 0);
         var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 3 };
         title.Children.Add(Label("Gestion des outils", 23));
@@ -66,8 +71,8 @@ public sealed class MainWindow : Window
         Put(header, themes, 0, 2);
         Put(_shell, header, 0, 0);
         var current = new Grid { ColumnDefinitions = new("*,*"), Margin = new(16, 0, 16, 10) };
-        _spindle = Action("", () => Select(12));
-        _prepared = Action("", () => Select(34));
+        _spindle = Action("", () => SelectPosition(ToolPosition.Spindle));
+        _prepared = Action("", () => SelectPosition(ToolPosition.Prepared));
         _spindle.Margin = new(0, 0, 6, 0); _prepared.Margin = new(6, 0, 0, 0);
         Put(current, _spindle, 0, 0); Put(current, _prepared, 0, 1);
         Put(_shell, current, 1, 0);
@@ -81,8 +86,8 @@ public sealed class MainWindow : Window
         Put(_shell, footer, 3, 0);
         _left.Children.Add(Label("Magasin · 137 places physiques", 18));
         _left.Children.Add(_search); _left.Children.Add(_rackArea);
-        _left.Children.Add(_rackTitle); _left.Children.Add(_slots);
-        _left.Children.Add(Label("● Présent   ↗ Hors magasin   ! À contrôler   × Indisponible   — Vide", 12));
+        _left.Children.Add(_rackTitle); _left.Children.Add(_slots); _left.Children.Add(_legend);
+
         _search.TextChanged += (_, _) => { _page = 0; RenderLocations(); };
         KeyDown += (_, e) => { if (e.Key == Key.F11) { WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen; e.Handled = true; } };
         Closed += (_, _) => { _blueLogo.Dispose(); _whiteLogo.Dispose(); };
@@ -121,25 +126,36 @@ public sealed class MainWindow : Window
         l.Present ? "Présent" : PositionLabel(l.Tool.Position);
     private void Select(int location)
     {
-        if (_draft is not null) return;
+        if (IsBusy) return;
         var item = _service.Read().Single(l => l.Number == location);
         _selected = location; _rack = item.Rack; _notice.Text = ""; Render();
     }
     private void Render()
     {
         var locations = _service.Read();
-        foreach (var pair in new[] { (_spindle, 12, "En broche"), (_prepared, 34, "Préparé") })
+        foreach (var pair in new[] { (_spindle, ToolPosition.Spindle, "En broche"), (_prepared, ToolPosition.Prepared, "Préparé") })
         {
-            var tool = locations.Single(l => l.Number == pair.Item2).Tool!;
-            pair.Item1.Content = $"{pair.Item3} · T{tool.Id} · place fixe {pair.Item2}";
-            pair.Item1.IsEnabled = _draft is null;
+            var item = locations.FirstOrDefault(l => l.Tool?.Position == pair.Item2);
+            pair.Item1.Content = pair.Item3 + (item?.Tool is {} t ? $" · T{t.Id} · consulter" : " · Aucun outil");
+            pair.Item1.IsEnabled = !IsBusy && item is not null;
+            pair.Item1.HorizontalAlignment = HorizontalAlignment.Stretch;
+            pair.Item1.HorizontalContentAlignment = HorizontalAlignment.Left;
         }
-        _search.IsEnabled = _draft is null;
+        _search.IsEnabled = !IsBusy;
         RenderLocations(); RenderDetail();
     }
     private void RenderLocations()
     {
         var locations = _service.Read(); _rackArea.Children.Clear(); _slots.Children.Clear();
+        _legend.Children.Clear();
+        foreach (var entry in new[] { ("Present", "● Présent"), ("Outside", "↗ Hors magasin"),
+            ("Defective", "! Défectueux"), ("EndOfLife", "! Fin de vie"), ("Neutral", "× Indisponible / — Vide") })
+        {
+            var palette = StatusPalette(entry.Item1);
+            _legend.Children.Add(new Border { Background = palette.Background, CornerRadius = new(4),
+                Padding = new(6, 4), Margin = new(0, 0, 5, 5), Child = new TextBlock
+                { Text = entry.Item2, FontSize = 12, Foreground = palette.Foreground } });
+        }
         var query = (_search.Text ?? "").Trim();
         if (query.Length > 0)
         {
@@ -151,11 +167,11 @@ public sealed class MainWindow : Window
             foreach (var l in found.Skip(_page * 4).Take(4))
             {
                 var button = Action($"Place {l.Number} · " + (l.Tool is {} t ? $"T{t.Id} · {t.Name}" : State(l)), () => Select(l.Number));
-                button.IsEnabled = _draft is null; _rackArea.Children.Add(button);
+                button.IsEnabled = !IsBusy; _rackArea.Children.Add(button);
             }
             var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            var prev = Action("Précédent", () => { _page--; RenderLocations(); }); prev.IsEnabled = _page > 0 && _draft is null;
-            var next = Action("Suivant", () => { _page++; RenderLocations(); }); next.IsEnabled = (_page + 1) * 4 < found.Length && _draft is null;
+            var prev = Action("Précédent", () => { _page--; RenderLocations(); }); prev.IsEnabled = _page > 0 && !IsBusy;
+            var next = Action("Suivant", () => { _page++; RenderLocations(); }); next.IsEnabled = (_page + 1) * 4 < found.Length && !IsBusy;
             pages.Children.Add(prev); pages.Children.Add(next); _rackArea.Children.Add(pages);
         }
         else
@@ -166,8 +182,13 @@ public sealed class MainWindow : Window
                 var row = new WrapPanel();
                 foreach (var rack in group)
                 {
+                    var range = locations.Where(l => l.Rack == rack).ToArray();
                     var button = Action($"Rack {rack}", () => Select(locations.First(l => l.Rack == rack).Number));
-                    button.Width = 84; button.Margin = new(0, 0, 5, 5); button.IsEnabled = _draft is null;
+                    var rackText = new StackPanel { Spacing = 2 };
+                    rackText.Children.Add(Label($"Rack {rack}", 15));
+                    rackText.Children.Add(Label($"Places {range.First().Number}–{range.Last().Number}", 11));
+                    button.Content = rackText;
+                    button.Width = 88; button.Padding = new(6); button.Margin = new(0, 0, 5, 5); button.IsEnabled = !IsBusy;
                     if (rack == _rack) { button.Background = Selected; button.Foreground = Ink; }
                     row.Children.Add(button);
                 }
@@ -180,9 +201,12 @@ public sealed class MainWindow : Window
         {
             var mark = l.Forbidden || l.Blocked ? "×" : l.Tool is null ? "—" : l.Tool.Condition != ToolCondition.Available ? "!" : l.Present ? "●" : "↗";
             var button = Action($"{l.Number}  {mark}", () => Select(l.Number));
-            button.Width = 70; button.MinHeight = 48; button.Margin = new(0, 0, 5, 5); button.IsEnabled = _draft is null;
+            button.Width = 70; button.MinHeight = 48; button.Margin = new(0, 0, 5, 5); button.IsEnabled = !IsBusy;
             Avalonia.Automation.AutomationProperties.SetName(button, $"Place {l.Number}, {State(l)}");
-            if (_selected == l.Number) { button.Background = Selected; button.Foreground = Ink; }
+            var colors = StatusColors(l);
+            button.Background = colors.Background; button.Foreground = colors.Foreground;
+            button.BorderThickness = new(_selected == l.Number ? 3 : 0);
+            button.BorderBrush = Ink;
             _slots.Children.Add(button);
         }
     }
@@ -190,9 +214,30 @@ public sealed class MainWindow : Window
     {
         _detail.Children.Clear(); _wearInput = null;
         var location = _service.Read().Single(l => l.Number == _selected);
-        _detail.Children.Add(Label($"PLACE {location.Number} · RACK {location.Rack} · {State(location)}", 13));
+        var heading = new Grid { ColumnDefinitions = new("*,Auto") };
+        Put(heading, Label($"PLACE {location.Number} · RACK {location.Rack}", 13), 0, 0);
+        var colors = StatusColors(location);
+        Put(heading, new Border { Background = colors.Background, CornerRadius = new(6), Padding = new(8, 4),
+            Child = new TextBlock { Text = State(location), Foreground = colors.Foreground, FontSize = 12 } }, 0, 1);
+        _detail.Children.Add(heading);
         if (location.Tool is not { } tool) { _detail.Children.Add(Label("Aucun outil modifiable à cet emplacement.")); return; }
         _detail.Children.Add(Label($"Outil T{tool.Id}", 22));
+        if (_transfer is not null)
+        {
+            _detail.Children.Add(Label(_transfer.Destination == ToolPosition.Prepared ? "Préparer cet outil ?" : "Charger cet outil en broche ?", 19));
+            _detail.Children.Add(Label(tool.Name));
+            _detail.Children.Add(Label("Simulation uniquement · aucun mouvement machine.", 13));
+            if (_transfer.ExpectedOccupantId is int occupant)
+                _detail.Children.Add(Label($"T{occupant} sera replacé à sa place fixe dans le simulateur.", 14));
+            _detail.Children.Add(Action("Annuler", () => { _transfer = null; Render(); }));
+            _detail.Children.Add(Action("Confirmer la simulation", () =>
+            {
+                if (_transfer is null) return;
+                var result = _service.Transfer(_transfer); _transfer = null;
+                _notice.Text = result.Message; Render();
+            }));
+            return;
+        }
         if (_draft is not null)
         {
             if (_review)
@@ -222,17 +267,83 @@ public sealed class MainWindow : Window
             actions.Children.Add(Action("Vérifier", Review)); _detail.Children.Add(actions); return;
         }
         _detail.Children.Add(Label(tool.Name, 18));
-        _detail.Children.Add(Label($"Place fixe : {location.Number}\nPosition actuelle : {PositionLabel(tool.Position)}\nPrésence à la place : {(location.Present ? "Oui" : "Non")}"));
-        var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        tabs.Children.Add(Action("Données", () => { _offsets = false; RenderDetail(); }));
-        tabs.Children.Add(Action("Correcteurs", () => { _offsets = true; RenderDetail(); })); _detail.Children.Add(tabs);
-        _detail.Children.Add(Label($"Longueur : {Number(tool.Length)} mm"));
-        if (_offsets) _detail.Children.Add(Label($"Usure longueur : {Number(tool.Wear)} mm\nCorrecteur de fraisage fictif n° 1"));
+        var summary = new Grid { ColumnDefinitions = new("*,*"), Margin = new(0, 4, 0, 6) };
+        Put(summary, ValueTile("Place affectée", location.Number.ToString()), 0, 0);
+        Put(summary, ValueTile("Position actuelle", PositionLabel(tool.Position)), 0, 1);
+        _detail.Children.Add(summary);
+        var tabs = new Grid { ColumnDefinitions = new("*,*") };
+        var dataTab = Action("Vue d’ensemble", () => { _offsets = false; RenderDetail(); });
+        var offsetTab = Action("Correcteurs", () => { _offsets = true; RenderDetail(); });
+        foreach (var tab in new[] { dataTab, offsetTab }) tab.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var activeTab = _offsets ? offsetTab : dataTab; activeTab.Background = Selected; activeTab.Foreground = Ink;
+        Put(tabs, dataTab, 0, 0); Put(tabs, offsetTab, 0, 1); _detail.Children.Add(tabs);
+        _detail.Children.Add(ValueRow("Longueur", Number(tool.Length) + " mm"));
+        if (_offsets)
+        {
+            _detail.Children.Add(ValueRow("Usure longueur", Number(tool.Wear) + " mm"));
+            _detail.Children.Add(Label("Correcteur de fraisage fictif n° 1", 12));
+        }
+        else _detail.Children.Add(ValueRow("Présence à la place", location.Present ? "Oui" : "Non"));
         _detail.Children.Add(Action("Modifier les données", () =>
         {
             _draft = new(location.Number, tool.Id, tool.Revision, tool.Name, tool.Wear);
             _draftName = tool.Name; _draftWear = Number(tool.Wear); _review = false; _notice.Text = "Brouillon · aucune écriture machine"; Render();
         }));
+        _detail.Children.Add(new Separator { Margin = new(0, 8) });
+        _detail.Children.Add(Label("Actions sur cet outil", 17));
+        _detail.Children.Add(Label("Simulation · avec confirmation", 12));
+        var transferActions = new Grid { ColumnDefinitions = new("*,*") };
+        var prepare = Action("Préparer", () => BeginTransfer(ToolPosition.Prepared));
+        var load = Action("Charger en broche", () => BeginTransfer(ToolPosition.Spindle));
+        prepare.IsEnabled = tool.Condition == ToolCondition.Available && tool.Position == ToolPosition.Magazine;
+        load.IsEnabled = tool.Condition == ToolCondition.Available && tool.Position != ToolPosition.Spindle;
+        prepare.HorizontalAlignment = load.HorizontalAlignment = HorizontalAlignment.Stretch;
+        prepare.Margin = new(0, 0, 4, 0); load.Margin = new(4, 0, 0, 0);
+        Put(transferActions, prepare, 0, 0); Put(transferActions, load, 0, 1); _detail.Children.Add(transferActions);
+        if (tool.Condition != ToolCondition.Available)
+            _detail.Children.Add(Label("Actions indisponibles : outil défectueux ou en fin de vie.", 13));
+        else if (tool.Position != ToolPosition.Magazine)
+            _detail.Children.Add(Label(tool.Position == ToolPosition.Spindle ? "Cet outil est déjà en broche." : "Cet outil est déjà préparé.", 13));
+    }
+    private Control ValueTile(string title, string value)
+    {
+        var panel = new StackPanel { Spacing = 4, Margin = new(0, 0, 8, 0) };
+        panel.Children.Add(Label(title, 12)); panel.Children.Add(Label(value, 17)); return panel;
+    }
+    private static Control ValueRow(string title, string value)
+    {
+        var grid = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(0, 7) };
+        Put(grid, Label(title, 14), 0, 0); Put(grid, Label(value), 0, 1); return grid;
+    }
+    private (IBrush Background, IBrush Foreground) StatusColors(MagasinOutil.Core.Location l)
+        => StatusPalette(l.Forbidden || l.Blocked || l.Tool is null ? "Neutral" :
+            l.Tool.Condition == ToolCondition.Defective ? "Defective" :
+            l.Tool.Condition == ToolCondition.EndOfLife ? "EndOfLife" : l.Present ? "Present" : "Outside");
+    private (IBrush Background, IBrush Foreground) StatusPalette(string state)
+    {
+        if (state == "Neutral")
+            return (Brush(_dark ? "#343E50" : "#EAECF0"), Brush(_dark ? "#DCE1EB" : "#485366"));
+        if (state == "Defective")
+            return (Brush(_dark ? "#582C36" : "#FCE8EB"), Brush(_dark ? "#FFB6C1" : "#972B42"));
+        if (state == "EndOfLife")
+            return (Brush(_dark ? "#4D3D22" : "#FFF1D7"), Brush(_dark ? "#FFDA96" : "#78500C"));
+        if (state == "Outside")
+            return (Brush(_dark ? "#273F67" : "#E5EDFF"), Brush(_dark ? "#B9D1FF" : "#264D91"));
+        return (Brush(_dark ? "#23443E" : "#E5F4ED"), Brush(_dark ? "#A2E4C8" : "#205F49"));
+    }
+    private void SelectPosition(ToolPosition position)
+    {
+        var item = _service.Read().FirstOrDefault(l => l.Tool?.Position == position);
+        if (item is not null) Select(item.Number);
+    }
+    private void BeginTransfer(ToolPosition destination)
+    {
+        if (IsBusy) return;
+        var snapshot = _service.Read(); var location = snapshot.Single(l => l.Number == _selected);
+        if (location.Tool is not {} tool) return;
+        var occupant = snapshot.FirstOrDefault(l => l.Tool?.Position == destination)?.Tool;
+        _transfer = new(location.Number, tool.Id, tool.Revision, destination, occupant?.Id, occupant?.Revision);
+        _notice.Text = ""; Render();
     }
     private void Keypad(string key)
     {

@@ -9,6 +9,8 @@ public sealed record Location(int Number, int Rack, bool Forbidden, bool Blocked
     public bool Present => Tool?.Position == ToolPosition.Magazine;
 }
 public sealed record EditTool(int Location, int ToolId, long ExpectedRevision, string Name, decimal Wear);
+public sealed record SimulatedTransfer(int Location, int ToolId, long ExpectedRevision,
+    ToolPosition Destination, int? ExpectedOccupantId, long? ExpectedOccupantRevision);
 public enum EditOutcome { AppliedInSimulation, Rejected, Conflict }
 public sealed record EditResult(EditOutcome Outcome, string Message);
 
@@ -18,6 +20,7 @@ public interface IMagazineService
 {
     IReadOnlyList<Location> Read();
     EditResult Apply(EditTool edit);
+    EditResult Transfer(SimulatedTransfer request);
 }
 
 public sealed class SimulatedMagazine : IMagazineService
@@ -42,6 +45,35 @@ public sealed class SimulatedMagazine : IMagazineService
         }).ToList();
     }
     public IReadOnlyList<Location> Read() { lock (_gate) return _locations.ToArray(); }
+    public EditResult Transfer(SimulatedTransfer request)
+    {
+        lock (_gate)
+        {
+            if (request.Destination is not (ToolPosition.Prepared or ToolPosition.Spindle))
+                return new(EditOutcome.Rejected, "Destination non prise en charge.");
+            var index = _locations.FindIndex(l => l.Number == request.Location);
+            if (index < 0 || _locations[index] is { Forbidden: true } or { Blocked: true } || _locations[index].Tool is null)
+                return new(EditOutcome.Rejected, "Emplacement indisponible.");
+            var location = _locations[index];
+            var tool = location.Tool!;
+            if (tool.Id != request.ToolId || tool.Revision != request.ExpectedRevision)
+                return new(EditOutcome.Conflict, "L’outil a changé. Relire avant de confirmer.");
+            if (tool.Condition != ToolCondition.Available || tool.Position == request.Destination ||
+                (request.Destination == ToolPosition.Prepared && tool.Position != ToolPosition.Magazine))
+                return new(EditOutcome.Rejected, "Action indisponible pour cet outil dans le simulateur.");
+            var occupantIndex = _locations.FindIndex(l => l.Tool?.Position == request.Destination);
+            var occupant = occupantIndex < 0 ? null : _locations[occupantIndex].Tool;
+            if (occupant?.Id != request.ExpectedOccupantId || occupant?.Revision != request.ExpectedOccupantRevision)
+                return new(EditOutcome.Conflict, "L’occupation de destination a changé. Relire avant de confirmer.");
+            // A simulation transaction only: this is NOT a physical movement/completion protocol.
+            if (occupantIndex >= 0)
+                _locations[occupantIndex] = _locations[occupantIndex] with
+                { Tool = occupant! with { Position = ToolPosition.Magazine, Revision = occupant!.Revision + 1 } };
+            _locations[index] = location with { Tool = tool with { Position = request.Destination, Revision = tool.Revision + 1 } };
+            return new(EditOutcome.AppliedInSimulation, $"Simulation confirmée : T{tool.Id} " +
+                (request.Destination == ToolPosition.Spindle ? "en broche." : "préparé."));
+        }
+    }
     public EditResult Apply(EditTool edit)
     {
         lock (_gate)

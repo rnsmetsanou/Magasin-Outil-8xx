@@ -28,7 +28,7 @@ La fenêtre démarre avec Width=1024 et Height=768 ; elle est redimensionnable. 
 - Contrôle de l’identité et de la révision côté service, sans écriture complète de structure.
 - Thème clair au démarrage, thème sombre sélectionnable ; logos WM originaux adaptés au fond.
 
-La position « préparé » du simulateur ne prouve aucune position physique réelle. Les trois décimales et trente caractères sont des règles du jeu simulé, pas des facteurs d’échelle ou une validation d’encodage automate. Les boutons broche/préparé naviguent vers les outils : ils ne commandent aucun mouvement. Les blocages et occupations sont fictifs.
+La position « préparé » du simulateur ne prouve aucune position physique réelle. Les trois décimales et trente caractères sont des règles du jeu simulé, pas des facteurs d’échelle ou une validation d’encodage automate. Les boutons du bandeau broche/préparé consultent les occupants actuels, sans identifiants codés en dur. Les actions de la fiche changent uniquement le simulateur après confirmation ; elles ne commandent aucun mouvement machine. Les blocages et occupations sont fictifs.
 
 ## Structure et migration
 
@@ -77,3 +77,16 @@ Le journal Windows du 14 septembre montre NU1301 / HTTP 401 sur les sources priv
 Cette correction ne modifie aucune configuration utilisateur ou machine et n'affecte pas les projets TwinCAT. Ne pas désactiver les sources privées globalement : elles restent utiles aux autres projets. Lors de l'ajout futur de packages privés de plateforme, réviser cette configuration explicitement avec leur authentification.
 
 Après récupération de la branche, la commande ordinaire `dotnet run --project .\src\MagasinOutil.Desktop\MagasinOutil.Desktop.csproj` utilise cette configuration. Le workflow ajoute une source héritée volontairement inaccessible, puis restaure sans option `--source` ni `--configfile`, afin de vérifier le comportement du projet. Le résultat de ce contrôle doit être consulté dans GitHub Actions ; cette configuration ne constitue pas une preuve de démarrage graphique Windows.
+
+## Révision ergonomique — 14 septembre 2026
+
+- Logo original affiché sur 156 × 62 unités logiques avec interpolation haute qualité pour la réduction, sans modifier le PNG source.
+- Chaque rack indique sa plage de **places physiques**, distincte des identifiants T des outils.
+- États : vert présent, bleu hors magasin, rouge défectueux, ambre fin de vie, gris vide/indisponible. Les symboles, libellés et la légende complètent les couleurs, en clair comme en sombre. Une bordure indique la sélection indépendamment de l’état.
+- Fiche : identité et état, place affectée et position, onglets vue d’ensemble/correcteurs, puis actions. Les champs d’édition restent dans un parcours séparé.
+- « Préparer » et « Charger en broche » ouvrent une confirmation sur l’outil choisi. L’occupant précédent est annoncé et rendu à sa place fixe dans le simulateur. La sélection est suspendue pendant cette confirmation.
+- Le service vérifie l’identité/révision de l’outil et de l’occupant de destination avant une mutation atomique ; un conflit exige une nouvelle confirmation. Les outils défectueux/en fin de vie sont refusés.
+
+Cette règle de remplacement instantané est propre au simulateur. Elle ne définit ni le séquencement Beckhoff, ni les interverrouillages, ni l’acquittement d’un mouvement réel. Le contrat `SimulatedTransfer` reste provisoire : l’intégration plateforme nécessitera les opérations asynchrones et preuves métier décrites plus haut.
+
+Recette Windows complémentaire : préparer un outil du magasin, vérifier le retour du précédent et le bandeau ; charger cet outil, vérifier la broche et la préparation libérée ; annuler une autre confirmation ; vérifier les mêmes parcours et la légende dans les deux thèmes aux deux résolutions. La compilation et les contrôles métier ne valident pas le rendu graphique Windows.
