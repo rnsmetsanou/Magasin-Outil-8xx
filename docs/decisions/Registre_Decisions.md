@@ -40,11 +40,11 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Destination externe des sauvegardes, responsabilité d’exploitation et restauration produit complète : à définir ; les paramètres pilotes de fréquence/rétention sont acquis pour la qualification.
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
-- T2.2-B : bibliothèque de dérivation de mot de passe Argon2id et paramètres de coût à qualifier avant stockage de mots de passe produit ; ne pas inventer de cryptographie maison.
+- T2.2 : le seuil de temporisation progressive après cinq échecs est acquis, mais la courbe/durée exacte reste à définir et qualifier ; commissioning du premier administrateur, secret temporaire et récupération signée restent à implémenter.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A est maintenant implémenté et en attente de qualification locale** ; aucun PASS n’est déclaré avant exécution de `Test-T22.ps1`. Les mots de passe, licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A est PASS LOCAL. T2.2-B est implémenté et en attente de qualification locale.** Les licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -77,10 +77,16 @@ Le journal reçu le 15 septembre 2026 confirme simultanément :
 
 Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. T2.1 est clôturé ; aucune qualification Beckhoff réelle n’en découle.
 
-## T2.2-A — noyau d’autorité implémenté, qualification locale requise
+## T2.2-A — noyau d’autorité des identités et sessions : PASS LOCAL
 
-La première micro-tranche T2.2 est implémentée dans `Platform.Poc.Identity.Runtime` et décrite dans le [dossier T2.2-A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md). Elle introduit deux identités nominatives possibles, références de session opaques, liaison sujet/client/cible, délais d’inactivité local/distant, activité humaine explicite, révocation, désactivation et reconstruction des permissions à chaque résolution.
+Le journal reçu le 15 septembre 2026 confirme la totalité des contrôles T2.2-A : deux identités nominatives, sessions opaques liées au client et à la cible, délais 30/10 minutes, activité humaine explicite, non-prolongation par refresh automatique, retrait de permission immédiatement effectif, révocation, désactivation, durée absolue de 8 heures et réauthentification après recréation du Core. La régression T0/T1 + T2.1 reste verte.
 
-La recette `eng/Test-T22.ps1` rejoue T0/T1 + T2.1 avant les contrôles T2.2-A. **État : implémenté/en qualification, pas PASS.**
+Voir le [dossier T2.2-A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md). **État : PASS LOCAL.**
 
-Le stockage des mots de passe, le commissioning du premier administrateur, les secrets temporaires et la récupération signée restent volontairement hors de T2.2-A et appartiennent à T2.2-B après qualification Argon2id.
+## T2.2-B — comptes locaux durables et authentification Argon2id
+
+La micro-tranche B est implémentée sur la branche T2.2 et décrite dans le [dossier T2.2-B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md).
+
+Le choix de qualification est `Konscious.Security.Cryptography.Argon2` 1.3.1 avec Argon2id, 19 MiB de mémoire, 2 itérations, parallélisme 1, sel aléatoire 16 octets et sortie 32 octets. Les paramètres sont versionnés et stockés avec l’empreinte afin de permettre un rehash futur. Les contrats et le runtime restent indépendants de SQLite et de la bibliothèque Argon2 concrète ; la persistance SQLite et le hashage sont deux adaptateurs distincts.
+
+**État : implémenté/en qualification, pas PASS.** Le commissioning du premier administrateur, la temporisation progressive après échecs, les secrets temporaires et la récupération signée restent hors de cette preuve.
