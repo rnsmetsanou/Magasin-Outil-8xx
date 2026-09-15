@@ -21,14 +21,15 @@ internal static class PlatformStatusOverlay
         {
             FontSize = 12,
             Foreground = Brushes.White,
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 780,
         };
         var badge = new Border
         {
             Background = new SolidColorBrush(Color.Parse("#20304F")),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(10, 5),
-            Margin = new Thickness(0, 0, 16, 8),
+            Padding = new Thickness(10, 6),
+            Margin = new Thickness(16, 0, 16, 8),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
             Child = text,
@@ -42,10 +43,32 @@ internal static class PlatformStatusOverlay
             var status = magazine.PlatformStatus;
             var core = status.Connected ? "CORE ●" : "CORE ○";
             var evidence = status.Connected
-                ? $"{status.Quality ?? "?"} · {status.Freshness ?? "?"} · Machine #{status.MachineSessionGeneration?.ToString() ?? "?"}"
+                ? $"{status.Quality ?? "?"}/{status.Freshness ?? "?"} · Machine #{status.MachineSessionGeneration?.ToString() ?? "?"}"
                 : status.Message;
-            text.Text = $"{session.DisplayName} · {core} · {evidence}";
-            window.Title = $"Gestion des outils — WM — {session.DisplayName} · {core}";
+            var license = magazine.LicenseStatus;
+            var licenseLabel = license is null
+                ? "LICENCE ?"
+                : license.Status == "Valid"
+                    ? $"LICENCE ● · {license.LicenseId ?? "valide"}"
+                    : $"LICENCE ○ · {license.Status}";
+
+            var firstLine = $"{session.DisplayName} · {core} · {evidence} · {licenseLabel}";
+            var command = magazine.LastCommand;
+            if (command is null)
+            {
+                text.Text = firstLine;
+            }
+            else
+            {
+                var operation = string.IsNullOrWhiteSpace(command.OperationId) ? "—" : Short(command.OperationId);
+                var permission = string.IsNullOrWhiteSpace(command.RequiredPermission)
+                    ? "droit n/a"
+                    : $"{command.RequiredPermission} {(command.PermissionGranted ? "✓" : "✕")}";
+                text.Text = firstLine + Environment.NewLine +
+                    $"Dernière action · {command.Status} · {permission} · licence {command.LicenseStatus} · admission {command.AdmissionStatus} · Op {operation}";
+            }
+
+            window.Title = $"Gestion des outils — WM — {session.DisplayName} · {core} · {licenseLabel}";
         }
 
         RefreshLabel();
@@ -73,4 +96,6 @@ internal static class PlatformStatusOverlay
         timer.Start();
         window.Closed += (_, _) => timer.Stop();
     }
+
+    private static string Short(string value) => value.Length <= 8 ? value : value[..8];
 }
