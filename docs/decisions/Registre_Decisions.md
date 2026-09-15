@@ -20,7 +20,7 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 | Licences | Licence hors ligne signée, liée à une identité cryptographique d’installation ; clé privée uniquement dans l’outil d’émission WM. Expiration/incohérence : nouvelles mutations licenciées bloquées, lectures selon droits et poursuite des opérations déjà admises. |
 | Admission et audit | Le Core est seul propriétaire des écritures. Intention, corrélation, représentation canonique et audit d’admission sont persistés atomiquement avant tout effet technologique. SQLite reste un adaptateur remplaçable. |
 | Politique audit pilote | Rétention 365 jours, budget 1 Gio, alerte à 80 %, sauvegarde quotidienne et avant migration, dix sauvegardes quotidiennes conservées. Valeurs configurables à qualifier. |
-| Récupération | Liste fermée d’actions de récupération ; aucun bypass Administrateur général. Récupération du dernier administrateur par autorisation signée propre à l’installation et à usage unique. |
+| Récupération | Liste fermée d’actions de récupération ; aucun bypass Administrateur général. Secret temporaire ciblé à usage unique pour le mot de passe ; récupération du dernier administrateur par autorisation signée propre à l’installation et à usage unique. |
 | Audit en panne | Diagnostic, consultation vérifiable et récupération supervisée uniquement ; aucune nouvelle commande métier ni modification courante des rôles. |
 | Langues | Français requis, anglais souhaité en V1, allemand si possible. |
 | Unités | Millimètres et pouces en V1 ; préférences utilisateur et extension par grandeur physique. |
@@ -44,15 +44,16 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Paramètres Argon2id finaux à benchmarker sur le PC industriel cible.
 - Limitation par source/contexte réseau à ajouter pour une exposition réseau de l’authentification ; le throttling actuel reste centré compte/identifiant.
-- Secret temporaire de réinitialisation et récupération signée du dernier administrateur : à implémenter dans T2.4.
+- T2.4-B : politique exacte définissant la perte du dernier administrateur récupérable à figer avec la recette signée.
+- T2.4-C : taille/rétention exacte du journal de secours borné à qualifier comme politique produit.
 
 ## État de réalisation
 
 Le prototype Avalonia reste autonome. Le socle de lecture T0/T1 est qualifié en simulation Windows. **T2.1, T2.2 et T2.3 sont clôturés en simulation Windows.**
 
-T2.3-A/B/C/D sont tous **PASS LOCAL** : format signé, identité d’installation durable, anti-rollback, temps de confiance, admission gouvernée et composition réelle dans `MagasinOutil.CoreHost`.
+**T2.4-A est implémenté et attend sa qualification locale.** T2.4-B/C/D restent à implémenter.
 
-Le serveur OPC UA intégré, le raccordement Fleet, les chemins de récupération produit T2.4 et le connecteur Beckhoff sécurisé restent hors de ces preuves.
+Le serveur OPC UA intégré, le raccordement Fleet, la qualification Beckhoff réelle et le packaging produit restent hors de ces preuves.
 
 ## T0/T1 — socle de lecture vérifié sur Windows
 
@@ -66,30 +67,34 @@ T2.1-A/B/C sont **PASS LOCAL** avec régression T0/T1 verte : contrats indépend
 
 T2.2-A/B/C/D sont **PASS LOCAL** : identités nominatives, comptes durables, Argon2id, sessions opaques/révocables, permissions dynamiques, throttling, commissioning du premier administrateur et stockage borné des faux identifiants.
 
-Le secret temporaire de réinitialisation et la récupération signée du dernier administrateur ne font pas partie de cette clôture nominale ; ils appartiennent à T2.4.
-
 ## T2.3 — licences hors ligne signées et temps de confiance : clôturé
 
-Le journal final reçu le 15 septembre 2026 confirme simultanément :
-
-- **T2.3-A PASS LOCAL** : payload canonique/versionné, ECDSA P-256 + SHA-256, clés publiques approuvées, refus des altérations et aucune signature privée dans le runtime ;
-- **T2.3-B PASS LOCAL** : identité d’installation durable, renouvellement monotone, anti-rollback, expiration, temps de confiance et récupération temporelle signée ;
-- **T2.3-C PASS LOCAL** : `license.install`, refus des nouvelles commandes lorsque la licence n’est pas autoritative, séparation permission/licence, opérations déjà admises non annulées rétroactivement, lectures hors verrou ;
-- **T2.3-D PASS LOCAL** : `licensing.db` et identité réellement composés dans `MagasinOutil.CoreHost`, identité conservée après redémarrage, composants concrets absents du client de lecture.
-
-Le profil de simulation T2.3-D démarre volontairement avec **zéro clé publique d’émetteur de production approuvée**. Cette preuve qualifie la composition sans inventer la configuration produit.
-
-Voir le dossier consolidé `../implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md`.
+T2.3-A/B/C/D sont **PASS LOCAL** : format signé, identité d’installation durable, anti-rollback, temps de confiance, admission gouvernée et composition réelle dans `MagasinOutil.CoreHost`. Voir `../implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md`.
 
 **État : T2.3 clôturé en simulation Windows.** Aucune qualification Beckhoff réelle, TPM, clé de production ou conformité CRA n’en découle.
 
-## Prochaine tranche — T2.4
+## T2.4-A — secret temporaire de réinitialisation
 
-T2.4 couvre les **chemins fermés de récupération produit et l’audit en situation dégradée**, notamment :
+La micro-tranche A est implémentée avec les décisions suivantes :
 
-- secret temporaire de réinitialisation de mot de passe, usage unique, durée initiale 15 minutes ;
-- récupération signée du dernier administrateur, liée à l’installation, usage unique, finalité et clé distinctes des licences ;
-- comportement lorsque l’audit principal est indisponible ;
-- journal de secours local borné réservé aux événements de récupération ;
-- impossibilité d’utiliser ce journal de secours pour admettre des commandes métier ;
-- interdiction d’une mutation de récupération si l’identité ou la trace de récupération ne peut pas être vérifiée/persistée.
+- émission/révocation gouvernées par `identity.manage` ;
+- secret de 256 bits généré cryptographiquement ;
+- durée pilote initiale de 15 minutes ;
+- secret persisté uniquement sous forme dérivée via `IPasswordHashingProvider` ;
+- une seule autorisation active par sujet, la nouvelle révoquant l’ancienne ;
+- liaison à la `SecurityRevision` du compte afin qu’un reset obsolète ne puisse écraser un changement plus récent ;
+- remplacement du credential et consommation du secret dans une transaction SQLite commune ;
+- permissions et état d’activation du compte non modifiés par le reset ;
+- toutes les sessions courantes du sujet révoquées après succès via `ISubjectSessionRevoker` ;
+- aucune création automatique de session ;
+- replay et double consommation concurrente empêchés.
+
+Voir `../implementation/T2_4_A_Secret_Temporaire_Reinitialisation_Mot_de_Passe.md`.
+
+**État : IMPLÉMENTÉ — À QUALIFIER LOCALEMENT.** Aucun PASS n’est déclaré avant un journal vert de `Test-T24.ps1`.
+
+## Suite T2.4
+
+- **T2.4-B** : récupération signée du dernier administrateur, liée à l’installation et anti-replay ;
+- **T2.4-C** : audit dégradé et journal de secours borné réservé à la récupération ;
+- **T2.4-D** : composition réelle dans `MagasinOutil.CoreHost` et non-régression globale.
