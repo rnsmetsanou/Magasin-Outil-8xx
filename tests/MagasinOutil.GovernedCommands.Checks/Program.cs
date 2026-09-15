@@ -86,17 +86,17 @@ static ProductCommandRequest PrepareRequest(
 
 if (mode == "missing-license")
 {
-    var operateur = await SignInAsync("operateur");
+    var missingLicenseOperator = await SignInAsync("operateur");
     var license = await client.ReadLicenseAsync(new ProductSessionRequest(
         ProductSessionContract.Version,
-        operateur.SessionReference,
+        missingLicenseOperator.SessionReference,
         clientId));
     Check(license.Status == "Missing" && license.LicenseId is null,
         "CoreHost reports the real missing-license state before demo license installation.");
 
-    var before = await ReadAsync(operateur);
+    var before = await ReadAsync(missingLicenseOperator);
     var beforeTool = ToolLocation(before, 127).Tool!;
-    var request = PrepareRequest(operateur, clientId, before, Guid.NewGuid().ToString("D"));
+    var request = PrepareRequest(missingLicenseOperator, clientId, before, Guid.NewGuid().ToString("D"));
     var result = await client.ExecuteAsync(request);
     Check(result.Status == ProductCommandStatus.LicenseRejected && result.PermissionGranted,
         "Operator permission alone cannot bypass a missing product license.");
@@ -104,34 +104,34 @@ if (mode == "missing-license")
           result.LicenseStatus == "MissingLicense" && result.AdmissionStatus == "NotAttempted",
         "Missing license is rejected before durable admission and exposes the governing decisions.");
 
-    var after = await ReadAsync(operateur);
+    var after = await ReadAsync(missingLicenseOperator);
     var afterTool = ToolLocation(after, 127).Tool!;
     Check(afterTool.Position == beforeTool.Position && afterTool.Revision == beforeTool.Revision,
         "Missing-license rejection produces no simulated machine effect.");
-    await SignOutAsync(operateur);
+    await SignOutAsync(missingLicenseOperator);
     Console.WriteLine("D3-A Magasin 8xx missing-license command gate: PASS");
     return;
 }
 
 if (mode == "replay-after-restart")
 {
-    var operateur = await SignInAsync("operateur");
-    var snapshot = await ReadAsync(operateur);
+    var restartOperator = await SignInAsync("operateur");
+    var snapshot = await ReadAsync(restartOperator);
     var before = ToolLocation(snapshot, 127).Tool!;
     Check(before.Position == ToolPosition.Magazine && before.Revision == 1,
         "Restarted simulation starts from its initial volatile state for the replay proof.");
-    var replay = await client.ExecuteAsync(PrepareRequest(
-        operateur,
+    var restartReplay = await client.ExecuteAsync(PrepareRequest(
+        restartOperator,
         clientId,
         snapshot,
         DurablePrepareIntent));
-    Check(replay.Status == ProductCommandStatus.AlreadyAdmitted && !string.IsNullOrWhiteSpace(replay.OperationId),
+    Check(restartReplay.Status == ProductCommandStatus.AlreadyAdmitted && !string.IsNullOrWhiteSpace(restartReplay.OperationId),
         "Durable Intent survives CoreHost restart and resolves as already admitted.");
-    var after = await ReadAsync(operateur);
+    var after = await ReadAsync(restartOperator);
     var after127 = ToolLocation(after, 127).Tool!;
     Check(after127.Position == ToolPosition.Magazine && after127.Revision == 1,
         "Previously admitted Intent is not blindly resubmitted after CoreHost restart.");
-    await SignOutAsync(operateur);
+    await SignOutAsync(restartOperator);
     Console.WriteLine("D3-C Magasin 8xx durable admission restart replay protection: PASS");
     return;
 }
