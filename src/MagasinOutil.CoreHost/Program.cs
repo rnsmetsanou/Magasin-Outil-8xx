@@ -3,6 +3,7 @@ using MagasinOutil.Platform;
 using MagasinOutil.Transport;
 using Microsoft.Extensions.Hosting;
 using Platform.Poc.Application.Contracts;
+using Platform.Poc.Identity.Contracts;
 using Platform.Poc.Identity.PasswordHashing.Argon2;
 using Platform.Poc.Identity.Persistence.Sqlite;
 using Platform.Poc.Identity.Runtime;
@@ -29,10 +30,25 @@ Directory.CreateDirectory(stateDirectory);
 var admissionStore = new SqliteDurableAdmissionStore(Path.Combine(stateDirectory, "durable-authority.db"));
 await admissionStore.InitializeAsync();
 
-var identityStore = new SqliteLocalAccountStore(Path.Combine(stateDirectory, "identity.db"));
+var identityDatabase = Path.Combine(stateDirectory, "identity.db");
+var identityStore = new SqliteLocalAccountStore(identityDatabase);
 await identityStore.InitializeAsync();
+var identitySecurityStore = new SqliteIdentitySecurityStore(identityDatabase);
+await identitySecurityStore.InitializeAsync();
 var passwordHashing = new Argon2idPasswordHashingProvider();
 var localAccounts = new LocalAccountService(identityStore, passwordHashing);
+var authenticationDelayPolicy = new ProgressiveAuthenticationDelayPolicy(
+    BeginAfterFailures: 5,
+    DelaySchedule: [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(30)]);
+var authenticator = new RateLimitedLocalAuthenticator(
+    localAccounts,
+    identitySecurityStore,
+    authenticationDelayPolicy);
 var identityAuthority = new LocalIdentityAuthority(new SessionPolicySnapshot(
     Revision: 1,
     LocalInteractiveIdleTimeout: TimeSpan.FromMinutes(30),
@@ -49,7 +65,7 @@ if (demoUsersEnabled)
     await DemoIdentityBootstrap.EnsureDemoAccountsAsync(localAccounts, identityStore, demoPassword);
 }
 
-var sessions = new DemoSessionApplication(localAccounts, identityStore, identityAuthority);
+var sessions = new DemoSessionApplication(authenticator, identityStore, identityAuthority);
 
 var licensingStore = new SqliteLicensingStateStore(Path.Combine(stateDirectory, "licensing.db"));
 await licensingStore.InitializeAsync();
@@ -76,5 +92,5 @@ await using var application = await SimulatedInventoryApplication.StartAsync();
 await using var host = NamedPipeProductHost.Create(pipe, application, sessions);
 await host.StartAsync();
 Console.WriteLine(
-    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys=0; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
+    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys=0; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; auth-throttle=durable; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
 await host.WaitForShutdownAsync();
