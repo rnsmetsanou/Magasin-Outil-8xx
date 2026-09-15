@@ -91,7 +91,16 @@ public sealed class App : Application
         var login = desktop.MainWindow;
         _session = session;
         var main = new MainWindow(remoteMagazine);
-        PlatformStatusOverlay.Attach(main, remoteMagazine, session);
+        PlatformStatusOverlay.Attach(
+            main,
+            remoteMagazine,
+            session,
+            () =>
+            {
+                if (_client is null) return;
+                var console = new PlatformConsoleWindow(_client, session, _clientId);
+                _ = console.ShowDialog(main);
+            });
         main.Closed += async (_, _) =>
         {
             if (_client is not null && _session is not null)
