@@ -10,7 +10,7 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 - [T2.2-C — limitation des tentatives et commissioning du premier administrateur](implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) : implémenté, **qualification locale requise** ; throttling durable à partir de cinq échecs et commissioning d’installation à usage unique sans administrateur universel.
 
-- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : **PASS LOCAL** ; contrats fournisseur-indépendants, adaptateurs Argon2id et SQLite séparés, authentification hors ligne, révisions de sécurité optimistes et mesure pilote de 309 ms par hash.
+- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : la révision initiale est **PASS LOCAL** avec mesure pilote de 309 ms par hash ; la branche a ensuite été durcie contre l’énumération de comptes et cette révision durcie doit être requalifiée lors du prochain `Test-T22.ps1`.
 
 - [T2.2-A — noyau d’autorité des identités et sessions](implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md) : **PASS LOCAL** ; deux identités nominatives, sessions opaques, liaison client/cible, expiration, activité humaine, révocation, désactivation et permissions dynamiques.
 
