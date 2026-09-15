@@ -41,7 +41,7 @@ Commande :
 .\eng\Test-T22.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-Le journal reçu le 15 septembre 2026 qualifie la révision durcie. Il confirme notamment :
+Les journaux du 15 septembre 2026 qualifient la révision durcie. Ils confirment notamment :
 
 - contrats et runtime indépendants de SQLite et de l’implémentation Argon2 ;
 - sels distincts pour deux mots de passe identiques ;
@@ -59,10 +59,10 @@ Le journal reçu le 15 septembre 2026 qualifie la révision durcie. Il confirme 
 - absence des mots de passe de test en clair dans les artefacts SQLite ;
 - refus de la permission générique `*` pour un compte humain.
 
-Le temps Argon2id mesuré sur cette exécution est de **360 ms** sur le poste Windows de qualification.
+La dernière exécution T2.2 complète a mesuré **192 ms** pour un hash Argon2id sur le poste Windows de qualification. Des exécutions antérieures avaient mesuré environ **309 ms** puis **360 ms** avec les mêmes paramètres. Cette variation renforce la décision de ne pas figer le coût produit à partir du poste de développement : un benchmark reproductible sur le PC industriel cible reste nécessaire.
 
 ## État
 
 **PASS LOCAL — SIMULATION WINDOWS.**
 
-Ce résultat ne constitue ni une certification cryptographique ni une qualification du coût Argon2id sur le PC industriel cible. La limitation durable des tentatives et le commissioning du premier administrateur sont qualifiés séparément dans T2.2-C.
+Ce résultat ne constitue ni une certification cryptographique ni une qualification du coût Argon2id sur le PC industriel cible. La limitation durable des tentatives et le commissioning du premier administrateur sont qualifiés séparément dans T2.2-C ; le stockage borné des faux identifiants est qualifié dans T2.2-D.
