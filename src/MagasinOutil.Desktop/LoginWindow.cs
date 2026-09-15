@@ -145,7 +145,7 @@ public sealed class LoginWindow : Window
 
         var footer = new TextBlock
         {
-            Text = ".NET 10 · Avalonia · Démonstration locale",
+            Text = "Démonstration locale · Plateforme Multi-Technologie",
             FontSize = 11.5,
             Foreground = new SolidColorBrush(Color.Parse("#93A5C2")),
         };
@@ -216,10 +216,10 @@ public sealed class LoginWindow : Window
         panel.Children.Add(quickHeader);
 
         var profiles = new UniformGrid { Columns = 2, Rows = 2 };
-        profiles.Children.Add(Profile("Consultation", "consultation"));
-        profiles.Children.Add(Profile("Opérateur", "operateur"));
-        profiles.Children.Add(Profile("Régleur outils", "regleur"));
-        profiles.Children.Add(Profile("Administrateur", "admin"));
+        profiles.Children.Add(Profile("◉", "Consultation", "consultation"));
+        profiles.Children.Add(Profile("▶", "Opérateur", "operateur"));
+        profiles.Children.Add(Profile("🔧", "Régleur outils", "regleur"));
+        profiles.Children.Add(Profile("⚙", "Administrateur", "admin"));
         panel.Children.Add(profiles);
 
         panel.Children.Add(_connect);
@@ -253,15 +253,38 @@ public sealed class LoginWindow : Window
         }
     }
 
-    private Button Profile(string label, string userName)
+    private Button Profile(string icon, string label, string userName)
     {
+        var content = new Grid { ColumnDefinitions = new("32,*") };
+        var glyph = new TextBlock
+        {
+            Text = icon,
+            FontSize = 18,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        content.Children.Add(glyph);
+
+        var text = new TextBlock
+        {
+            Text = label,
+            FontSize = 14,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.NoWrap,
+        };
+        Grid.SetColumn(text, 1);
+        content.Children.Add(text);
+
         var button = new Button
         {
-            Content = label,
-            MinHeight = 42,
+            Content = content,
+            Height = 50,
+            Margin = new Thickness(4),
             Padding = new Thickness(10, 6),
-            Margin = new Thickness(0, 0, 7, 7),
-            HorizontalContentAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
         button.Click += (_, _) =>
         {
