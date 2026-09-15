@@ -8,11 +8,11 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.2-D — stockage borné du throttling des identités inconnues](implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md) : **implémenté, qualification locale requise** ; borne par défaut de 256 traces inconnues, éviction limitée aux identités sans compte durable et protection des compteurs de vrais comptes.
+- [T2.2-D — stockage borné du throttling des identités inconnues](implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md) : **PASS LOCAL** ; borne par défaut de 256 traces inconnues, éviction limitée aux identités sans compte durable et protection des compteurs de vrais comptes.
 
 - [T2.2-C — limitation des tentatives et commissioning du premier administrateur](implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) : **PASS LOCAL** ; throttling durable à partir de cinq échecs, remise à zéro après succès et commissioning d’installation à usage unique sans administrateur universel.
 
-- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : **PASS LOCAL sur la révision durcie** ; travail Argon2id également pour un utilisateur inconnu, réponse générique pour compte désactivé et mesure de 360 ms sur le dernier journal.
+- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : **PASS LOCAL sur la révision durcie** ; travail Argon2id également pour un utilisateur inconnu, réponse générique pour compte désactivé et paramètres de coût mesurés localement.
 
 - [T2.2-A — noyau d’autorité des identités et sessions](implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md) : **PASS LOCAL** ; deux identités nominatives, sessions opaques, liaison client/cible, expiration, activité humaine, révocation, désactivation et permissions dynamiques.
 
@@ -20,7 +20,7 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 - [T2 — décision sur les autorités durables du 15 septembre 2026](decisions/T2_Autorites_Durables_Decision_2026-09-15.md) : choix A à F validés, délais de session local/distant, rôles, licences, admission durable, audit et récupération.
 
-- [Décisions et points ouverts](decisions/Registre_Decisions.md) : état actuel des décisions et limites de T2.2.
+- [Décisions et points ouverts](decisions/Registre_Decisions.md) : état actuel des décisions et limites restantes.
 
 - [Feuille de route et état d’avancement](Feuille_de_Route_Pilote_V1.md) : jalons, preuves et distinction entre simulation et qualification sur cible.
 
@@ -38,11 +38,15 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 - [Déploiement, OPC UA et Fleet](analyse/Analyse_Deploiement_OPCUA_Fleet_Magasin_8xx_2026-09-14.md) : analyse de la plateforme et profils de déploiement.
 - [État du prototype Avalonia](hmi/README.md) : documentation du code actuellement présent, distincte de la cible web.
 
-## T2.2 — état courant
+## T2.2 — clôturé en simulation Windows
 
-T2.2-A, T2.2-B durci et T2.2-C sont **PASS LOCAL** sur Windows avec régression T0/T1 + T2.1 verte. T2.2-D est la dernière micro-tranche de robustesse avant clôture : elle borne la persistance des faux noms d’utilisateur afin qu’un flood d’identifiants inexistants ne puisse pas faire croître SQLite sans limite, tout en préservant les compteurs des comptes réels.
+T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont **PASS LOCAL** avec régression T0/T1 + T2.1 verte.
 
-**État : T2.2-D implémenté — à qualifier localement.** Si D passe avec toutes les régressions vertes, T2.2 pourra être clôturé et T2.3 — licences — ouvert.
+Le lot qualifie notamment : comptes locaux nominatifs durables, authentification Argon2id hors ligne, sessions opaques et révocables, liaison client/cible, permissions dynamiques, protection anti-énumération, temporisation durable à partir de cinq échecs, commissioning atomique du premier administrateur sans compte universel et persistance bornée des faux identifiants.
+
+**État : T2.2 clôturé.** La prochaine tranche est **T2.3 — licences hors ligne signées et temps de confiance**.
+
+Les limites restent explicites : simulation Windows seulement, aucune qualification Beckhoff réelle ni validation finale sur le PC industriel cible.
 
 ## Analyses historiques
 
