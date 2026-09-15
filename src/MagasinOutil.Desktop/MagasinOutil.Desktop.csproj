@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>WinExe</OutputType></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <ProjectReference Include="../MagasinOutil.Transport/MagasinOutil.Transport.csproj" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
     <AvaloniaResource Include="Assets/**" />
