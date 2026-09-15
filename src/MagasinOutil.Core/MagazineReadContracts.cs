@@ -64,5 +64,7 @@ public sealed record ProductPlatformStatus(
 public interface IIntegratedMagazineService : IMagazineService
 {
     ProductPlatformStatus PlatformStatus { get; }
+    ProductLicenseView? LicenseStatus { get; }
+    ProductCommandResult? LastCommand { get; }
     ValueTask RefreshAsync(CancellationToken cancellationToken = default);
 }
