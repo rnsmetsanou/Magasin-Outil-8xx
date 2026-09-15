@@ -13,12 +13,14 @@ public sealed class App : Application
 {
     private NamedPipeProductClient? _client;
     private ProductSessionView? _session;
+    private bool _darkTheme;
     private readonly string _clientId = "magasin8xx-hmi-" + Guid.NewGuid().ToString("N");
 
     public override void Initialize()
     {
         Styles.Add(new FluentTheme());
         RequestedThemeVariant = ThemeVariant.Light;
+        _darkTheme = false;
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -37,10 +39,20 @@ public sealed class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private void SetTheme(bool dark)
+    {
+        _darkTheme = dark;
+        RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+    }
+
     [SupportedOSPlatform("windows")]
     private void ShowLogin(IClassicDesktopStyleApplicationLifetime desktop, bool showImmediately)
     {
-        var login = new LoginWindow(SignInAsync, session => OpenProductAsync(desktop, session));
+        var login = new LoginWindow(
+            SignInAsync,
+            session => OpenProductAsync(desktop, session),
+            _darkTheme,
+            SetTheme);
         login.Closed += (_, _) =>
         {
             if (ReferenceEquals(desktop.MainWindow, login))
@@ -92,7 +104,7 @@ public sealed class App : Application
         var login = desktop.MainWindow;
         var switchingUser = false;
         _session = session;
-        var main = new MainWindow(remoteMagazine);
+        var main = new MainWindow(remoteMagazine, _darkTheme, SetTheme);
         PlatformStatusOverlay.Attach(
             main,
             remoteMagazine,
