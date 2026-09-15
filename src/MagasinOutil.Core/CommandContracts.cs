@@ -25,6 +25,7 @@ public enum ProductCommandStatus
     InvalidRequest = 8,
     Incompatible = 9,
     FailedAfterAdmission = 10,
+    AlreadyAdmitted = 11,
 }
 
 public sealed record ProductCommandRequest(
