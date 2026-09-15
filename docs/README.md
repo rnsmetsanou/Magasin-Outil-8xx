@@ -8,7 +8,7 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : contrats fournisseur-indépendants, adaptateurs Argon2id et SQLite séparés, authentification hors ligne ; **implémenté, qualification locale requise**.
+- [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : **PASS LOCAL** ; contrats fournisseur-indépendants, adaptateurs Argon2id et SQLite séparés, authentification hors ligne, révisions de sécurité optimistes et mesure pilote de 309 ms par hash.
 
 - [T2.2-A — noyau d’autorité des identités et sessions](implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md) : **PASS LOCAL** ; deux identités nominatives, sessions opaques, liaison client/cible, expiration, activité humaine, révocation, désactivation et permissions dynamiques.
 
@@ -33,6 +33,10 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 - [Contrat d’exposition V0.1](analyse/Contrat_Exposition_Magasin_8xx_V0.1_2026-09-14.md) : proposition détaillée OPC UA ; maintenance V1 validée en consultation seule, autres détails fonctionnels à consolider.
 - [Déploiement, OPC UA et Fleet](analyse/Analyse_Deploiement_OPCUA_Fleet_Magasin_8xx_2026-09-14.md) : analyse de la plateforme et profils de déploiement.
 - [État du prototype Avalonia](hmi/README.md) : documentation du code actuellement présent, distincte de la cible web.
+
+## T2.2-C — prochaine micro-tranche
+
+Le prochain sous-jalon couvre le commissioning à usage unique du premier administrateur et la limitation des tentatives d’authentification répétées. Le seuil de départ de la temporisation est fixé à cinq échecs ; la courbe exacte reste configurable et n’est pas figée silencieusement comme politique produit. Le secret d’activation du commissioning est propre à l’installation, fourni par un canal séparé et ne doit jamais être stocké en clair. Aucun administrateur universel ni mot de passe par défaut n’est introduit.
 
 ## Analyses historiques
 
