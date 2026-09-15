@@ -31,14 +31,14 @@ public sealed class App : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var pipe = Environment.GetEnvironmentVariable("WM_MAGASIN8XX_PIPE");
             _client = new NamedPipeProductClient(string.IsNullOrWhiteSpace(pipe) ? "wm.magasin8xx.demo" : pipe);
-            ShowLogin(desktop);
+            ShowLogin(desktop, showImmediately: false);
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
     [SupportedOSPlatform("windows")]
-    private void ShowLogin(IClassicDesktopStyleApplicationLifetime desktop)
+    private void ShowLogin(IClassicDesktopStyleApplicationLifetime desktop, bool showImmediately)
     {
         var login = new LoginWindow(SignInAsync, session => OpenProductAsync(desktop, session));
         login.Closed += (_, _) =>
@@ -51,7 +51,7 @@ public sealed class App : Application
             }
         };
         desktop.MainWindow = login;
-        login.Show();
+        if (showImmediately) login.Show();
     }
 
     [SupportedOSPlatform("windows")]
@@ -112,7 +112,7 @@ public sealed class App : Application
                     _clientId));
                 switchingUser = true;
                 _session = null;
-                ShowLogin(desktop);
+                ShowLogin(desktop, showImmediately: true);
                 main.Close();
             });
         main.Closed += async (_, _) =>
