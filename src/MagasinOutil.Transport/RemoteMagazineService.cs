@@ -9,6 +9,7 @@ public sealed class RemoteMagazineService : IIntegratedMagazineService
     private readonly IProductLicenseReadService? _licenses;
     private readonly string _sessionReference;
     private readonly string _clientId;
+    private readonly IReadOnlyCollection<string> _permissions;
     private readonly object _gate = new();
     private IReadOnlyList<Location> _locations = [];
     private ProductPlatformStatus _status = new(false, null, null, null, null, null, "Core non lu.");
@@ -16,7 +17,7 @@ public sealed class RemoteMagazineService : IIntegratedMagazineService
     private ProductCommandResult? _lastCommand;
 
     public RemoteMagazineService(IProductMagazineReadService reader, string sessionReference, string clientId)
-        : this(reader, null, null, sessionReference, clientId)
+        : this(reader, null, null, sessionReference, clientId, [])
     {
     }
 
@@ -26,12 +27,24 @@ public sealed class RemoteMagazineService : IIntegratedMagazineService
         IProductLicenseReadService? licenses,
         string sessionReference,
         string clientId)
+        : this(reader, commands, licenses, sessionReference, clientId, [])
+    {
+    }
+
+    public RemoteMagazineService(
+        IProductMagazineReadService reader,
+        IProductMagazineCommandService? commands,
+        IProductLicenseReadService? licenses,
+        string sessionReference,
+        string clientId,
+        IReadOnlyCollection<string> permissions)
     {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _commands = commands;
         _licenses = licenses;
         _sessionReference = string.IsNullOrWhiteSpace(sessionReference) ? throw new ArgumentException("Session required.", nameof(sessionReference)) : sessionReference;
         _clientId = string.IsNullOrWhiteSpace(clientId) ? throw new ArgumentException("Client id required.", nameof(clientId)) : clientId;
+        _permissions = permissions?.ToArray() ?? [];
     }
 
     public ProductPlatformStatus PlatformStatus
@@ -48,6 +61,8 @@ public sealed class RemoteMagazineService : IIntegratedMagazineService
     {
         get { lock (_gate) return _lastCommand; }
     }
+
+    public IReadOnlyCollection<string> Permissions => _permissions;
 
     public IReadOnlyList<Location> Read()
     {
