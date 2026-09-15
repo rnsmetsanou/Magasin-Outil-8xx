@@ -3,12 +3,14 @@ using MagasinOutil.Transport;
 
 if (!OperatingSystem.IsWindows())
     throw new PlatformNotSupportedException("D3 governed command checks require Windows named pipes.");
-if (args.Length != 2 || args[1] is not ("missing-license" or "licensed"))
-    throw new ArgumentException("Usage: MagasinOutil.GovernedCommands.Checks [pipe-name] [missing-license|licensed]");
+if (args.Length != 2 || args[1] is not ("missing-license" or "licensed" or "replay-after-restart"))
+    throw new ArgumentException("Usage: MagasinOutil.GovernedCommands.Checks [pipe-name] [missing-license|licensed|replay-after-restart]");
 
 var password = Environment.GetEnvironmentVariable("WM_MAGASIN8XX_DEMO_PASSWORD");
 if (string.IsNullOrWhiteSpace(password))
     throw new InvalidOperationException("WM_MAGASIN8XX_DEMO_PASSWORD is required for D3 checks.");
+
+const string DurablePrepareIntent = "11111111-2222-4333-8444-555555555555";
 
 static void Check(bool condition, string message)
 {
@@ -111,6 +113,29 @@ if (mode == "missing-license")
     return;
 }
 
+if (mode == "replay-after-restart")
+{
+    var operateur = await SignInAsync("operateur");
+    var snapshot = await ReadAsync(operateur);
+    var before = ToolLocation(snapshot, 127).Tool!;
+    Check(before.Position == ToolPosition.Magazine && before.Revision == 1,
+        "Restarted simulation starts from its initial volatile state for the replay proof.");
+    var replay = await client.ExecuteAsync(PrepareRequest(
+        operateur,
+        clientId,
+        snapshot,
+        DurablePrepareIntent));
+    Check(replay.Status == ProductCommandStatus.AlreadyAdmitted && !string.IsNullOrWhiteSpace(replay.OperationId),
+        "Durable Intent survives CoreHost restart and resolves as already admitted.");
+    var after = await ReadAsync(operateur);
+    var after127 = ToolLocation(after, 127).Tool!;
+    Check(after127.Position == ToolPosition.Magazine && after127.Revision == 1,
+        "Previously admitted Intent is not blindly resubmitted after CoreHost restart.");
+    await SignOutAsync(operateur);
+    Console.WriteLine("D3-C Magasin 8xx durable admission restart replay protection: PASS");
+    return;
+}
+
 var consultation = await SignInAsync("consultation");
 var consultationLicense = await client.ReadLicenseAsync(new ProductSessionRequest(
     ProductSessionContract.Version,
@@ -147,8 +172,7 @@ await SignOutAsync(admin);
 
 var operateur = await SignInAsync("operateur");
 var beforePrepare = await ReadAsync(operateur);
-var prepareIntent = Guid.NewGuid().ToString("D");
-var prepareRequest = PrepareRequest(operateur, clientId, beforePrepare, prepareIntent);
+var prepareRequest = PrepareRequest(operateur, clientId, beforePrepare, DurablePrepareIntent);
 var prepare = await client.ExecuteAsync(prepareRequest);
 Check(prepare.Status == ProductCommandStatus.Completed && !string.IsNullOrWhiteSpace(prepare.OperationId),
     "Operator PrepareTool is completed through the governed CoreHost command path.");
@@ -177,12 +201,11 @@ Check(conflict.Status == ProductCommandStatus.AdmissionConflict,
     "Reusing an admitted Intent with different content is rejected as an admission conflict.");
 
 var spindleOccupant = Occupant(afterReplay, ToolPosition.Spindle);
-var loadIntent = Guid.NewGuid().ToString("D");
 var loadRequest = new ProductCommandRequest(
     ProductCommandContract.Version,
     operateur.SessionReference,
     clientId,
-    loadIntent,
+    Guid.NewGuid().ToString("D"),
     ProductCommandKind.LoadTool,
     27,
     127,
