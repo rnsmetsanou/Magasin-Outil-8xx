@@ -35,7 +35,7 @@ Politique pilote initiale :
 
 Ces valeurs sont des paramètres de qualification, pas une politique produit immuable. La recette locale a mesuré **309 ms** pour un hash pilote sur le poste Windows utilisé pour la validation. Cette mesure devra être reprise sur le PC industriel cible avant de figer les paramètres produit.
 
-## Preuve locale reçue
+## Preuve locale reçue — révision initiale de T2.2-B
 
 Commande exécutée :
 
@@ -43,7 +43,7 @@ Commande exécutée :
 .\eng\Test-T22.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-Le journal reçu le 15 septembre 2026 confirme :
+Le journal reçu le 15 septembre 2026 confirme pour la révision alors exécutée :
 
 - contrats d’identité indépendants de SQLite et de l’implémentation Argon2 ;
 - runtime d’identité indépendant de SQLite et de l’implémentation Argon2 ;
@@ -66,21 +66,23 @@ Le journal reçu le 15 septembre 2026 confirme :
 
 Le même journal rejoue et conserve verts T0/T1, T2.1 et T2.2-A.
 
-## État
+État de cette révision : **PASS LOCAL — SIMULATION WINDOWS**.
 
-**PASS LOCAL — SIMULATION WINDOWS.**
+## Durcissement postérieur au PASS reçu
 
-Ce PASS qualifie le chemin local durable et l’adaptateur Argon2id sur le poste de test ; il ne constitue ni une certification cryptographique, ni une validation sur le PC industriel cible, ni un commissioning produit complet.
+Après analyse sécurité, la branche a été durcie sur deux points qui n’étaient pas couverts par le journal précédent :
 
-## Suite
+1. un nom utilisateur inconnu exécute désormais lui aussi un travail Argon2id avant de renvoyer `InvalidCredentials`, afin d’éviter un raccourci temporel permettant d’inférer l’existence d’un compte ;
+2. un compte désactivé renvoie également `InvalidCredentials` via le chemin de connexion afin de ne pas divulguer son état ; cet état reste disponible aux surfaces d’administration de confiance.
 
-T2.2-C doit couvrir :
+La recette T2.2-B contient maintenant des preuves instrumentées :
 
-- commissioning à usage unique du premier administrateur ;
-- secret d’activation spécifique à l’installation fourni par un canal séparé et jamais conservé en clair ;
-- aucun compte administrateur universel ou mot de passe par défaut ;
-- protection contre les tentatives répétées, avec compteur rattaché à l’identité normalisée ;
-- seuil acquis de cinq échecs avant délai progressif ;
-- courbe de délai configurable et non figée silencieusement dans le produit.
+- le mauvais mot de passe d’un compte connu déclenche `VerifyAsync` ;
+- un utilisateur inconnu déclenche une dérivation Argon2id au lieu d’un retour rapide ;
+- utilisateur inconnu, mauvais mot de passe et compte désactivé ne divulguent pas leur différence par le statut de connexion.
 
-Le secret temporaire de réinitialisation et la récupération signée du dernier administrateur restent des sous-jalons ultérieurs.
+**La révision durcie est implémentée mais doit être requalifiée localement.** Le PASS reçu ci-dessus reste une preuve historique valide de la révision antérieure ; il ne doit pas être étendu silencieusement au nouveau code.
+
+## Limites
+
+La qualification actuelle ne constitue ni une certification cryptographique, ni une validation sur le PC industriel cible. Le commissioning du premier administrateur et la limitation durable des tentatives sont traités dans T2.2-C. Le secret temporaire de réinitialisation et la récupération signée du dernier administrateur restent des sous-jalons ultérieurs.
