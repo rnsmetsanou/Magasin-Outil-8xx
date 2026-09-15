@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../config/platform/Pilot.props" />
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <PackageReference Include="Platform.Poc.Application.Contracts" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+  </ItemGroup>
+</Project>
