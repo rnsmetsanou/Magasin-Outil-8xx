@@ -44,27 +44,28 @@ public sealed class SimulatedMagazine : IMagazineService
             return new Location(n, rack, forbidden, blocked, tool);
         }).ToList();
     }
+
     public IReadOnlyList<Location> Read() { lock (_gate) return _locations.ToArray(); }
+
+    /// <summary>Returns null when the transfer is currently admissible by the simulation business rules.</summary>
+    public EditResult? ValidateTransfer(SimulatedTransfer request)
+    {
+        lock (_gate) return ValidateTransferLocked(request);
+    }
+
     public EditResult Transfer(SimulatedTransfer request)
     {
         lock (_gate)
         {
-            if (request.Destination is not (ToolPosition.Prepared or ToolPosition.Spindle))
-                return new(EditOutcome.Rejected, "Destination non prise en charge.");
+            var rejection = ValidateTransferLocked(request);
+            if (rejection is not null) return rejection;
+
             var index = _locations.FindIndex(l => l.Number == request.Location);
-            if (index < 0 || _locations[index] is { Forbidden: true } or { Blocked: true } || _locations[index].Tool is null)
-                return new(EditOutcome.Rejected, "Emplacement indisponible.");
             var location = _locations[index];
             var tool = location.Tool!;
-            if (tool.Id != request.ToolId || tool.Revision != request.ExpectedRevision)
-                return new(EditOutcome.Conflict, "L’outil a changé. Relire avant de confirmer.");
-            if (tool.Condition != ToolCondition.Available || tool.Position == request.Destination ||
-                (request.Destination == ToolPosition.Prepared && tool.Position != ToolPosition.Magazine))
-                return new(EditOutcome.Rejected, "Action indisponible pour cet outil dans le simulateur.");
             var occupantIndex = _locations.FindIndex(l => l.Tool?.Position == request.Destination);
             var occupant = occupantIndex < 0 ? null : _locations[occupantIndex].Tool;
-            if (occupant?.Id != request.ExpectedOccupantId || occupant?.Revision != request.ExpectedOccupantRevision)
-                return new(EditOutcome.Conflict, "L’occupation de destination a changé. Relire avant de confirmer.");
+
             // A simulation transaction only: this is NOT a physical movement/completion protocol.
             if (occupantIndex >= 0)
                 _locations[occupantIndex] = _locations[occupantIndex] with
@@ -74,25 +75,65 @@ public sealed class SimulatedMagazine : IMagazineService
                 (request.Destination == ToolPosition.Spindle ? "en broche." : "préparé."));
         }
     }
+
+    /// <summary>Returns null when the edit is currently admissible by the simulation business rules.</summary>
+    public EditResult? ValidateEdit(EditTool edit)
+    {
+        lock (_gate) return ValidateEditLocked(edit);
+    }
+
     public EditResult Apply(EditTool edit)
     {
         lock (_gate)
         {
+            var rejection = ValidateEditLocked(edit);
+            if (rejection is not null) return rejection;
+
             var index = _locations.FindIndex(l => l.Number == edit.Location);
-            if (index < 0 || _locations[index] is { Forbidden: true } or { Blocked: true } || _locations[index].Tool is null)
-                return new(EditOutcome.Rejected, "Emplacement indisponible.");
             var location = _locations[index];
             var tool = location.Tool!;
-            if (tool.Id != edit.ToolId || tool.Revision != edit.ExpectedRevision)
-                return new(EditOutcome.Conflict, "Les données de l’outil ont changé. Annuler et relire la fiche.");
             var name = edit.Name.Trim();
-            if (name.Length is < 1 or > 30)
-                return new(EditOutcome.Rejected, "Le nom doit contenir de 1 à 30 caractères dans le simulateur.");
-            if (decimal.Round(edit.Wear, 3) != edit.Wear ||
-                edit.Length is decimal length && (length < 0 || decimal.Round(length, 3) != length))
-                return new(EditOutcome.Rejected, "Longueur positive ou nulle, trois décimales au maximum dans le simulateur.");
             _locations[index] = location with { Tool = tool with { Name = name, Wear = edit.Wear, Length = edit.Length ?? tool.Length, Revision = tool.Revision + 1 } };
             return new(EditOutcome.AppliedInSimulation, $"Modification simulée confirmée pour T{tool.Id}.");
         }
+    }
+
+    private EditResult? ValidateTransferLocked(SimulatedTransfer request)
+    {
+        if (request.Destination is not (ToolPosition.Prepared or ToolPosition.Spindle))
+            return new(EditOutcome.Rejected, "Destination non prise en charge.");
+        var index = _locations.FindIndex(l => l.Number == request.Location);
+        if (index < 0 || _locations[index] is { Forbidden: true } or { Blocked: true } || _locations[index].Tool is null)
+            return new(EditOutcome.Rejected, "Emplacement indisponible.");
+        var location = _locations[index];
+        var tool = location.Tool!;
+        if (tool.Id != request.ToolId || tool.Revision != request.ExpectedRevision)
+            return new(EditOutcome.Conflict, "L’outil a changé. Relire avant de confirmer.");
+        if (tool.Condition != ToolCondition.Available || tool.Position == request.Destination ||
+            (request.Destination == ToolPosition.Prepared && tool.Position != ToolPosition.Magazine))
+            return new(EditOutcome.Rejected, "Action indisponible pour cet outil dans le simulateur.");
+        var occupantIndex = _locations.FindIndex(l => l.Tool?.Position == request.Destination);
+        var occupant = occupantIndex < 0 ? null : _locations[occupantIndex].Tool;
+        if (occupant?.Id != request.ExpectedOccupantId || occupant?.Revision != request.ExpectedOccupantRevision)
+            return new(EditOutcome.Conflict, "L’occupation de destination a changé. Relire avant de confirmer.");
+        return null;
+    }
+
+    private EditResult? ValidateEditLocked(EditTool edit)
+    {
+        var index = _locations.FindIndex(l => l.Number == edit.Location);
+        if (index < 0 || _locations[index] is { Forbidden: true } or { Blocked: true } || _locations[index].Tool is null)
+            return new(EditOutcome.Rejected, "Emplacement indisponible.");
+        var location = _locations[index];
+        var tool = location.Tool!;
+        if (tool.Id != edit.ToolId || tool.Revision != edit.ExpectedRevision)
+            return new(EditOutcome.Conflict, "Les données de l’outil ont changé. Annuler et relire la fiche.");
+        var name = edit.Name.Trim();
+        if (name.Length is < 1 or > 30)
+            return new(EditOutcome.Rejected, "Le nom doit contenir de 1 à 30 caractères dans le simulateur.");
+        if (decimal.Round(edit.Wear, 3) != edit.Wear ||
+            edit.Length is decimal length && (length < 0 || decimal.Round(length, 3) != length))
+            return new(EditOutcome.Rejected, "Longueur positive ou nulle, trois décimales au maximum dans le simulateur.");
+        return null;
     }
 }
