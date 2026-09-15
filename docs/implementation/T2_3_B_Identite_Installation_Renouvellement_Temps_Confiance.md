@@ -45,7 +45,9 @@ Commande :
 .\eng\Test-T23.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-Un premier journal reçu le 15 septembre 2026 a confirmé :
+La révision courante a été requalifiée le 15 septembre 2026 après l’introduction des statuts métier explicites `Expired` et `NotYetValid`.
+
+Le journal confirme notamment :
 
 - contrats et runtime durables indépendants de SQLite ;
 - identité d’installation stable et distincte entre installations ;
@@ -57,7 +59,7 @@ Un premier journal reçu le 15 septembre 2026 a confirmé :
 - renouvellement vers une version supérieure et prise d’autorité des nouvelles capacités ;
 - conflit sur même version/contenu différent ;
 - refus du rollback vers une ancienne version signée ;
-- expiration après progression du temps ;
+- expiration après progression du temps avec `InstalledLicenseEvaluationStatus.Expired` et cause `LicenseVerificationStatus.Expired` ;
 - impossibilité de retrouver la validité par recul de l’horloge ;
 - persistance de la détection après recréation ;
 - installation d’un renouvellement plus récent sans effacer l’incohérence temporelle ;
@@ -67,21 +69,10 @@ Un premier journal reçu le 15 septembre 2026 a confirmé :
 - persistance finale de l’identité, de V3 et du temps récupéré ;
 - absence de clé privée d’émission ou de récupération dans les artefacts SQLite.
 
-Cette exécution conservait également **T0/T1, T2.1, T2.2 et T2.3-A verts**.
-
-### Requalification après raffinement des statuts d’évaluation
-
-T2.3-C a ensuite introduit des statuts d’évaluation métier explicites `Expired` et `NotYetValid`, afin qu’une admission puisse distinguer une licence expirée d’une licence cryptographiquement invalide.
-
-Le premier rerun après ce raffinement s’est arrêté sur l’assertion B d’expiration parce que le test attendait encore l’ancien contrat `VerificationFailed + Expired`. Le runtime avait bien retourné le nouvel état `InstalledLicenseEvaluationStatus.Expired` ; aucune régression du temps de confiance ou de l’expiration n’a été observée.
-
-Le test a été corrigé pour exiger simultanément :
-
-- `InstalledLicenseEvaluationStatus.Expired` au niveau métier ;
-- `LicenseVerificationStatus.Expired` comme cause de vérification.
+La même exécution conserve **T0/T1, T2.1, T2.2 et T2.3-A verts** et poursuit avec T2.3-C.
 
 ## État
 
-**PASS LOCAL historique sur le comportement T2.3-B ; RÉVISION COURANTE À REQUALIFIER après raffinement explicite du statut d’expiration.**
+**PASS LOCAL — SIMULATION WINDOWS — RÉVISION COURANTE REQUALIFIÉE.**
 
-Le PASS courant ne sera rétabli qu’après une exécution verte de `Test-T23.ps1` sur cette révision. Ce jalon ne qualifie toujours pas un TPM, un outil d’émission de production, les règles commerciales de transfert, ni le raccordement des licences aux admissions machine.
+Ce PASS ne qualifie toujours pas un Trusted Platform Module (TPM), un outil d’émission de production, les règles commerciales de transfert ni la composition finale du pilote. Le raccordement d’admission est traité par T2.3-C et la composition réelle CoreHost par T2.3-D.
