@@ -6,13 +6,13 @@ namespace MagasinOutil.Transport;
 
 public static class ProductAdministrationRpc
 {
-    private static Marshaller<T> Json<T>() => Marshallers.Create<T>(
+    private static Marshaller<T> Json<T>() where T : class => Marshallers.Create<T>(
         value => JsonSerializer.SerializeToUtf8Bytes(value),
         bytes => JsonSerializer.Deserialize<T>(bytes) ?? throw new InvalidDataException("Empty RPC payload."));
 
-    public static readonly Method<ProductSessionRequest, ProductAdministrationSnapshot?> ReadMethod =
+    public static readonly Method<ProductSessionRequest, ProductAdministrationReadResult> ReadMethod =
         new(MethodType.Unary, "wm.magasin8xx.v1.Administration", nameof(ProductAdministrationGrpcServiceBase.Read),
-            Json<ProductSessionRequest>(), Json<ProductAdministrationSnapshot?>());
+            Json<ProductSessionRequest>(), Json<ProductAdministrationReadResult>());
 
     public static void BindService(ServiceBinderBase binder, ProductAdministrationGrpcServiceBase? service) =>
         binder.AddMethod(ReadMethod, service is null ? null : service.Read);
@@ -21,11 +21,11 @@ public static class ProductAdministrationRpc
 [BindServiceMethod(typeof(ProductAdministrationRpc), nameof(ProductAdministrationRpc.BindService))]
 public abstract class ProductAdministrationGrpcServiceBase
 {
-    public abstract Task<ProductAdministrationSnapshot?> Read(ProductSessionRequest request, ServerCallContext context);
+    public abstract Task<ProductAdministrationReadResult> Read(ProductSessionRequest request, ServerCallContext context);
 }
 
 public sealed class ProductAdministrationGrpcService(IProductAdministrationReadService service) : ProductAdministrationGrpcServiceBase
 {
-    public override async Task<ProductAdministrationSnapshot?> Read(ProductSessionRequest request, ServerCallContext context) =>
+    public override async Task<ProductAdministrationReadResult> Read(ProductSessionRequest request, ServerCallContext context) =>
         await service.ReadAdministrationAsync(request, context.CancellationToken).ConfigureAwait(false);
 }
