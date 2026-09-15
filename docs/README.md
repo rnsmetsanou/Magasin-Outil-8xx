@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [T2.4 — plan audit et chemins de récupération produit](plan/T2_4_Audit_Recuperation_Produit_V0.1.md) : **prochaine tranche** ; secret temporaire de réinitialisation, récupération signée du dernier administrateur, audit dégradé avec journal de secours borné et composition réelle dans CoreHost.
+
 - [T2.3 — validation Windows consolidée](implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md) : **T2.3-A/B/C/D PASS LOCAL — T2.3 clôturé** ; format signé, identité d’installation, anti-rollback, temps de confiance, admission gouvernée et composition réelle dans `MagasinOutil.CoreHost`.
 
 - [T2.3-D — composition réelle de la licence durable dans CoreHost](implementation/T2_3_D_Composition_CoreHost_Licence_Durable.md) : **PASS LOCAL** ; `licensing.db`, identité d’installation durable et composants communs de licence réellement composés dans `MagasinOutil.CoreHost`, sans clé d’émetteur de production embarquée.
@@ -84,9 +86,14 @@ Voir le [dossier de validation consolidé T2.3](implementation/T2_3_Licences_Hor
 
 L’identité V1 n’est pas encore revendiquée comme matériellement scellée au Trusted Platform Module (TPM). Les politiques commerciales de licence, la configuration des clés publiques de production, l’outil d’émission, la qualification du PC industriel et le raccordement Beckhoff réel restent hors de ce PASS.
 
-## Prochaine tranche
+## T2.4 — audit et chemins de récupération produit
 
-**T2.4 — audit et chemins de récupération produit** doit couvrir les parcours fermés de récupération, notamment le secret temporaire de réinitialisation de mot de passe, la récupération signée du dernier administrateur et le comportement lorsque l’audit principal est indisponible.
+Le [plan T2.4](plan/T2_4_Audit_Recuperation_Produit_V0.1.md) fixe le découpage suivant :
+
+- **T2.4-A** : secret temporaire de réinitialisation, durée initiale 15 minutes, usage unique, aucune session automatique ;
+- **T2.4-B** : récupération signée du dernier administrateur, liée à l’installation, anti-replay et finalité cryptographique distincte ;
+- **T2.4-C** : audit dégradé et journal de secours borné, incapable d’admettre une commande métier ;
+- **T2.4-D** : composition réelle dans `MagasinOutil.CoreHost` et non-régression globale.
 
 ## Analyses historiques
 
