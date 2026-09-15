@@ -9,7 +9,7 @@ namespace MagasinOutil.Desktop;
 public sealed class LoginWindow : Window
 {
     private readonly Func<string, string, Task<ProductSignInResult>> _signIn;
-    private readonly Action<ProductSessionView> _authenticated;
+    private readonly Func<ProductSessionView, Task> _authenticated;
     private readonly TextBox _userName = new() { MinHeight = 44, PlaceholderText = "Utilisateur" };
     private readonly TextBox _password = new() { MinHeight = 44, PlaceholderText = "Mot de passe", PasswordChar = '●' };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap };
@@ -17,7 +17,7 @@ public sealed class LoginWindow : Window
 
     public LoginWindow(
         Func<string, string, Task<ProductSignInResult>> signIn,
-        Action<ProductSessionView> authenticated)
+        Func<ProductSessionView, Task> authenticated)
     {
         _signIn = signIn;
         _authenticated = authenticated;
@@ -108,8 +108,8 @@ public sealed class LoginWindow : Window
             var result = await _signIn(_userName.Text ?? string.Empty, _password.Text ?? string.Empty);
             if (result.IsAuthenticated && result.Session is not null)
             {
-                _status.Text = "Session établie.";
-                _authenticated(result.Session);
+                _status.Text = "Session établie · lecture du Core…";
+                await _authenticated(result.Session);
                 return;
             }
 
