@@ -46,7 +46,6 @@ public sealed class App : Application
             }
         };
         desktop.MainWindow = login;
-        login.Show();
     }
 
     private async Task<ProductSignInResult> SignInAsync(string userName, string password)
