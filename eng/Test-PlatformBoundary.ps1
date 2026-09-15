@@ -35,7 +35,7 @@ $start.RedirectStandardOutput = $true
 $start.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
 # Windows file names cannot contain a quote; generated pipe/state names are controlled by this script.
 # 120 seconds is a qualification fixture only, not the final product policy.
-$start.Arguments = '\"{0}\" --simulation {1} \"{2}\" 120' -f $hostDll, $pipe, $state
+$start.Arguments = '"{0}" --simulation {1} "{2}" 120' -f $hostDll, $pipe, $state
 $hostProcess = [System.Diagnostics.Process]::Start($start)
 try {
     $readiness = [System.Diagnostics.Stopwatch]::StartNew()
