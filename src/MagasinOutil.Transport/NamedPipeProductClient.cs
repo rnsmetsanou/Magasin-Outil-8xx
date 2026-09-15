@@ -178,7 +178,7 @@ public sealed class NamedPipeProductClient :
         }
     }
 
-    public async ValueTask<ProductAdministrationSnapshot?> ReadAdministrationAsync(
+    public async ValueTask<ProductAdministrationReadResult> ReadAdministrationAsync(
         ProductSessionRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -194,7 +194,10 @@ public sealed class NamedPipeProductClient :
         }
         catch (RpcException)
         {
-            return null;
+            return new ProductAdministrationReadResult(
+                ProductAdministrationReadStatus.Unavailable,
+                null,
+                "Service d'administration indisponible.");
         }
     }
 
