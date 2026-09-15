@@ -142,7 +142,8 @@ var consultationLicense = await client.ReadLicenseAsync(new ProductSessionReques
     consultation.SessionReference,
     clientId));
 Check(consultationLicense.Status == "Valid" && consultationLicense.Capabilities.Contains("tool-management") &&
-      consultationLicense.LicenseId is not null && consultationLicense.ExpiresAtUtc > DateTimeOffset.UtcNow,
+      consultationLicense.LicenseId is not null && consultationLicense.ExpiresAtUtc is { } licenseExpiry &&
+      licenseExpiry > DateTimeOffset.UtcNow,
     "Signed installation-bound demo license is valid and exposes tool-management capability.");
 var consultationSnapshot = await ReadAsync(consultation);
 var consultationDenied = await client.ExecuteAsync(PrepareRequest(
