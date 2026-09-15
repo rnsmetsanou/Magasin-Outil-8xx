@@ -8,9 +8,11 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.3-C — admission gouvernée par licence](implementation/T2_3_C_Admission_Gouvernee_Licence.md) : **implémenté, qualification locale requise** ; décision de licence évaluée à chaque nouvelle admission, permission `license.install`, lectures hors verrou et opérations déjà admises non annulées rétroactivement.
+- [T2.3-D — composition réelle de la licence durable dans CoreHost](implementation/T2_3_D_Composition_CoreHost_Licence_Durable.md) : **implémenté, qualification locale requise** ; `licensing.db`, identité d’installation durable et composants communs de licence composés dans `MagasinOutil.CoreHost`, sans clé d’émetteur de production embarquée.
 
-- [T2.3-B — identité d’installation, renouvellement et temps de confiance](implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md) : **PASS LOCAL historique ; révision courante à requalifier** après introduction des statuts explicites `Expired` / `NotYetValid` ; aucun affaiblissement du mécanisme d’expiration.
+- [T2.3-C — admission gouvernée par licence](implementation/T2_3_C_Admission_Gouvernee_Licence.md) : **PASS LOCAL** ; licence évaluée à chaque nouvelle admission, permission `license.install`, lectures hors verrou et opérations déjà admises non annulées rétroactivement.
+
+- [T2.3-B — identité d’installation, renouvellement et temps de confiance](implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md) : **PASS LOCAL — révision courante requalifiée** ; identité d’installation durable, anti-rollback de renouvellement, borne temporelle persistée, statut d’expiration explicite et récupération du temps par artefact signé.
 
 - [T2.3-A — contrat et vérification de licence hors ligne signée](implementation/T2_3_A_Contrat_Verification_Licence_Signee.md) : **PASS LOCAL** ; format canonique versionné, registre de clés publiques approuvées, vérification ECDSA P-256/SHA-256, refus des altérations et absence de clé privée d’émission dans le runtime.
 
@@ -56,9 +58,11 @@ Le lot qualifie notamment : comptes locaux nominatifs durables, authentification
 
 **T2.3-A est PASS LOCAL.** La vérification hors ligne du format signé, de la canonicalité, de l’émetteur, de la clé, du produit, de l’installation et de la période est qualifiée sans clé privée dans le runtime machine.
 
-**T2.3-B possède un PASS LOCAL historique, mais la révision courante doit être requalifiée.** Le raffinement des statuts d’évaluation a remplacé l’ancien résultat métier générique `VerificationFailed` par les états explicites `Expired` et `NotYetValid`. Le premier rerun s’est arrêté parce que l’assertion B attendait encore l’ancien contrat ; le runtime avait bien détecté l’expiration. Le test est corrigé et doit repasser avant de restaurer le statut PASS courant.
+**T2.3-B est PASS LOCAL sur la révision courante.** Le raffinement des statuts d’évaluation est requalifié : une licence expirée produit désormais explicitement `Expired` tout en conservant `LicenseVerificationStatus.Expired` comme cause. L’identité, l’anti-rollback, le temps de confiance et la récupération signée restent verts.
 
-**T2.3-C est implémenté et attend sa qualification locale.** Il raccorde l’autorité de licence aux nouvelles admissions machine tout en gardant les permissions humaines indépendantes. `license.install` gouverne l’import d’un artefact signé. Une opération déjà admise n’est pas annulée lors d’une expiration ultérieure, et les lectures restent hors du verrou de mutation.
+**T2.3-C est PASS LOCAL.** L’autorité de licence est qualifiée au point de nouvelle admission : absence/expiration/incohérence refusent le nouvel effet, une licence ne donne jamais une permission humaine, les lectures restent hors verrou et une opération déjà admise peut se terminer sans réévaluation rétroactive.
+
+**T2.3-D est implémenté et attend sa qualification locale.** Il compose désormais le store de licence, l’identité d’installation et l’autorité durable dans `MagasinOutil.CoreHost`, puis qualifie leur persistance après redémarrage. Le profil de simulation n’embarque aucune clé publique d’émetteur approuvée.
 
 L’identité V1 est cryptographiquement aléatoire mais n’est pas encore revendiquée comme matériellement scellée au Trusted Platform Module (TPM). Un fournisseur matériel pourra être qualifié ultérieurement derrière les mêmes contrats.
 
@@ -73,6 +77,6 @@ Les limites restent explicites : simulation Windows seulement, aucune qualificat
 | [Premier écran et présentation](analyse/HMI_Magasin_Premier_Ecran_Modele_Presentation_V0_1.md) | Proposition graphique historique ; ne prouve pas l’implémentation de tous les parcours. |
 | [Adaptation 1024 et P6.9](analyse/HMI_Magasin_Adaptation_1024_P69_2026-09-14.md) | Proposition historique ; dimensions et cible graphique actualisées par les échanges et le registre. |
 
-La synchronisation de ces documents ne modifie aucun code applicatif ou PLC.
+La synchronisation de ces documents ne modifie aucun code PLC.
 
 - [T0/T1 — implémentation et lancement](implementation/T0_T1_Frontiere_Processus.md)
