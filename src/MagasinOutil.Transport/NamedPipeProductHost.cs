@@ -18,7 +18,8 @@ public static class NamedPipeProductHost
         IProductSessionService sessions,
         IProductMagazineReadService magazineReads,
         IProductMagazineCommandService commands,
-        IProductLicenseReadService licenses)
+        IProductLicenseReadService licenses,
+        IProductAdministrationReadService administration)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
         ArgumentNullException.ThrowIfNull(inventory);
@@ -26,6 +27,7 @@ public static class NamedPipeProductHost
         ArgumentNullException.ThrowIfNull(magazineReads);
         ArgumentNullException.ThrowIfNull(commands);
         ArgumentNullException.ThrowIfNull(licenses);
+        ArgumentNullException.ThrowIfNull(administration);
 
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [] });
         builder.Configuration.Sources.Clear();
@@ -37,6 +39,7 @@ public static class NamedPipeProductHost
         builder.Services.AddSingleton(magazineReads);
         builder.Services.AddSingleton(commands);
         builder.Services.AddSingleton(licenses);
+        builder.Services.AddSingleton(administration);
         builder.Services.AddGrpc(options =>
         {
             options.MaxReceiveMessageSize = 64 * 1024;
@@ -51,6 +54,7 @@ public static class NamedPipeProductHost
         app.MapGrpcService<ProductSessionGrpcService>();
         app.MapGrpcService<ProductMagazineGrpcService>();
         app.MapGrpcService<ProductCommandGrpcService>();
+        app.MapGrpcService<ProductAdministrationGrpcService>();
         return app;
     }
 }
