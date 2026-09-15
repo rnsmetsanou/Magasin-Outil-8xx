@@ -8,7 +8,9 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.3-D — composition réelle de la licence durable dans CoreHost](implementation/T2_3_D_Composition_CoreHost_Licence_Durable.md) : **implémenté, qualification locale requise** ; `licensing.db`, identité d’installation durable et composants communs de licence composés dans `MagasinOutil.CoreHost`, sans clé d’émetteur de production embarquée.
+- [T2.3 — validation Windows consolidée](implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md) : **T2.3-A/B/C/D PASS LOCAL — T2.3 clôturé** ; format signé, identité d’installation, anti-rollback, temps de confiance, admission gouvernée et composition réelle dans `MagasinOutil.CoreHost`.
+
+- [T2.3-D — composition réelle de la licence durable dans CoreHost](implementation/T2_3_D_Composition_CoreHost_Licence_Durable.md) : **PASS LOCAL** ; `licensing.db`, identité d’installation durable et composants communs de licence réellement composés dans `MagasinOutil.CoreHost`, sans clé d’émetteur de production embarquée.
 
 - [T2.3-C — admission gouvernée par licence](implementation/T2_3_C_Admission_Gouvernee_Licence.md) : **PASS LOCAL** ; licence évaluée à chaque nouvelle admission, permission `license.install`, lectures hors verrou et opérations déjà admises non annulées rétroactivement.
 
@@ -54,19 +56,37 @@ Le lot qualifie notamment : comptes locaux nominatifs durables, authentification
 
 **État : T2.2 clôturé.**
 
-## T2.3 — licences hors ligne signées et temps de confiance
+## T2.3 — licences hors ligne signées et temps de confiance — clôturé
 
-**T2.3-A est PASS LOCAL.** La vérification hors ligne du format signé, de la canonicalité, de l’émetteur, de la clé, du produit, de l’installation et de la période est qualifiée sans clé privée dans le runtime machine.
+**T2.3-A/B/C/D sont PASS LOCAL.**
 
-**T2.3-B est PASS LOCAL sur la révision courante.** Le raffinement des statuts d’évaluation est requalifié : une licence expirée produit désormais explicitement `Expired` tout en conservant `LicenseVerificationStatus.Expired` comme cause. L’identité, l’anti-rollback, le temps de confiance et la récupération signée restent verts.
+Le lot qualifie en simulation Windows :
 
-**T2.3-C est PASS LOCAL.** L’autorité de licence est qualifiée au point de nouvelle admission : absence/expiration/incohérence refusent le nouvel effet, une licence ne donne jamais une permission humaine, les lectures restent hors verrou et une opération déjà admise peut se terminer sans réévaluation rétroactive.
+- format de licence signé, canonique et versionné ;
+- vérification ECDSA P-256 + SHA-256 à partir de clés publiques approuvées ;
+- identité d’installation durable `inst1_...` issue d’aléa cryptographique ;
+- persistance de licence et anti-rollback de `RenewalVersion` ;
+- temps de confiance avec borne UTC persistée, temps monotone et récupération signée ;
+- expiration et incohérence temporelle bloquant les nouvelles admissions sans interrompre les opérations déjà admises ;
+- séparation entre permission humaine, licence produit et préconditions machine ;
+- `license.install` comme permission explicite d’import d’un artefact déjà signé ;
+- absence de capacités de licence déclarées par le client ;
+- lectures hors du verrou de mutation ;
+- composition réelle des composants communs de licence dans `MagasinOutil.CoreHost` ;
+- persistance de l’identité après redémarrage du CoreHost ;
+- absence de l’autorité concrète de licence, de la cryptographie et de SQLite dans `MagasinOutil.ReadClient`.
 
-**T2.3-D est implémenté et attend sa qualification locale.** Il compose désormais le store de licence, l’identité d’installation et l’autorité durable dans `MagasinOutil.CoreHost`, puis qualifie leur persistance après redémarrage. Le profil de simulation n’embarque aucune clé publique d’émetteur approuvée.
+Le profil de simulation T2.3-D contient volontairement **zéro clé publique de production approuvée** : il qualifie la composition sans inventer une configuration d’émission produit.
 
-L’identité V1 est cryptographiquement aléatoire mais n’est pas encore revendiquée comme matériellement scellée au Trusted Platform Module (TPM). Un fournisseur matériel pourra être qualifié ultérieurement derrière les mêmes contrats.
+Voir le [dossier de validation consolidé T2.3](implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md).
 
-Les limites restent explicites : simulation Windows seulement, aucune qualification Beckhoff réelle ni validation finale sur le PC industriel cible.
+**État : T2.3 clôturé en simulation Windows.**
+
+L’identité V1 n’est pas encore revendiquée comme matériellement scellée au Trusted Platform Module (TPM). Les politiques commerciales de licence, la configuration des clés publiques de production, l’outil d’émission, la qualification du PC industriel et le raccordement Beckhoff réel restent hors de ce PASS.
+
+## Prochaine tranche
+
+**T2.4 — audit et chemins de récupération produit** doit couvrir les parcours fermés de récupération, notamment le secret temporaire de réinitialisation de mot de passe, la récupération signée du dernier administrateur et le comportement lorsque l’audit principal est indisponible.
 
 ## Analyses historiques
 
