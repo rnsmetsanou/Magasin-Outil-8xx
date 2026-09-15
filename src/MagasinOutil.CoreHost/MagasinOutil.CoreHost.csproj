@@ -6,5 +6,9 @@
     <ProjectReference Include="../MagasinOutil.Platform/MagasinOutil.Platform.csproj" />
     <PackageReference Include="Platform.Poc.Transport.Grpc" Version="[0.1.0-pilot.t21.1]" />
     <PackageReference Include="Platform.Poc.Persistence.Sqlite" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Licensing.Contracts" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Licensing.Runtime" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Licensing.Cryptography" Version="[0.1.0-pilot.t21.1]" />
+    <PackageReference Include="Platform.Poc.Licensing.Persistence.Sqlite" Version="[0.1.0-pilot.t21.1]" />
   </ItemGroup>
 </Project>
