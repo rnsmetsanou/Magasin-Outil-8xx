@@ -1,30 +1,22 @@
 # Feuille de route du pilote Magasin 8xx
 
-Date : 15 septembre 2026. Statut : feuille de route actualisée après clôture locale de T2.2 et qualification de T2.3-A ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
+Date : 15 septembre 2026. Statut : feuille de route actualisée après clôture locale de T2.2 et qualification de T2.3-A/B ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
 
 ## 1. Où en sommes-nous ?
 
-Le socle de lecture T0/T1 est **PASS LOCAL** sur Windows : cœur séparé, clients gRPC, même autorité Machine partagée et consommation de paquets communs.
+Le socle de lecture T0/T1 est **PASS LOCAL** sur Windows.
 
-Le lot **T2.1 — autorités durables et stockage** est **PASS LOCAL** : contrats provider-indépendants, admission + audit atomiques avant effet technologique, déduplication concurrente, persistance et sauvegarde/restauration SQLite, composition du provider uniquement côté CoreHost et régression T0/T1 verte.
+Le lot **T2.1 — autorités durables et stockage** est **PASS LOCAL** : contrats fournisseur-indépendants, admission + audit atomiques avant effet technologique, déduplication concurrente, persistance/sauvegarde SQLite et composition du fournisseur côté CoreHost.
 
-Le lot **T2.2 — identités locales, authentification et sessions** est également **PASS LOCAL** :
+Le lot **T2.2 — identités locales, authentification et sessions** est **PASS LOCAL** : comptes nominatifs durables, Argon2id, sessions opaques/révocables, permissions dynamiques, throttling durable, premier administrateur commissionné sans compte universel et stockage borné des faux identifiants.
 
-- identités humaines nominatives et comptes durables hors ligne ;
-- Argon2id derrière un adaptateur remplaçable ;
-- réponse de login générique et travail cryptographique aussi pour les noms inconnus ;
-- sessions opaques, révocables, liées au sujet, client et cible ;
-- délais d’inactivité local/distant et durée absolue ;
-- permissions réévaluées avant nouvelle admission ;
-- throttling durable à partir de cinq échecs, politique de durée configurable ;
-- commissioning atomique et à usage unique du premier administrateur, sans compte universel ;
-- stockage borné des traces de throttling pour faux identifiants, sans éviction des vrais comptes.
+**T2.3-A est PASS LOCAL** : format de licence canonique versionné et vérification cryptographique hors ligne.
 
-**T2.3-A est PASS LOCAL** : format de licence canonique versionné, vérification ECDSA P-256/SHA-256 hors ligne, clés publiques approuvées, liaison émetteur/clé/produit/installation et refus des altérations.
+**T2.3-B est PASS LOCAL** : identité d’installation durable, renouvellement monotone, temps de confiance et récupération temporelle signée.
 
-**T2.3-B est implémenté et attend sa qualification locale** : identité d’installation durable, licence installée, renouvellement monotone, temps de confiance hors ligne et récupération temporelle signée.
+**T2.3-C est implémenté et attend sa qualification locale** : admission des nouvelles opérations gouvernée par licence, permission `license.install`, lectures hors verrou et poursuite des opérations déjà admises.
 
-La connexion Beckhoff réelle, la récupération signée du dernier administrateur et les commandes métier complètes restent hors de ce jalon.
+La connexion Beckhoff réelle, la récupération signée du dernier administrateur et la qualification produit restent hors de ce jalon.
 
 ## 2. Étapes et critères de sortie
 
@@ -33,7 +25,7 @@ La connexion Beckhoff réelle, la récupération signée du dernier administrate
 | 0. Prototype et découverte | Parcours magasin simulé, contraintes WM, formats écran et premières sources PLC | Prototype réalisé | Référence de parcours disponible, limites de simulation explicites |
 | 1. Contrat V1 | Périmètre métier, exposition OPC UA, rôles, maintenance et profils | Principales décisions V1 acquises | Questions restantes identifiées avec leur impact |
 | 2. Architecture d’intégration | Répartition plateforme/pilote, contrats, transport, stockage et composition | T0/T1 + T2.1 + T2.2 vérifiés | Frontières communes qualifiées sans duplication des autorités |
-| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, HMI/OPC UA/Fleet | En cours — T2.3-A PASS, T2.3-B en qualification | Une opération bout en bout avec refus gouvernés, audit durable et coupures exercés |
+| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, HMI/OPC UA/Fleet | En cours — T2.3-A/B PASS, T2.3-C en qualification | Une opération bout en bout avec refus gouvernés, audit durable et coupures exercés |
 | 4. Couverture fonctionnelle V1 | Outils, correcteurs, usures, maintenance consultative, langues/unités, administration | À réaliser | Matrice V1 couverte et vérifiée en simulation |
 | 5. Raccordement Beckhoff 8xx | Lectures puis écritures/opérations réelles, Secure ADS, synchronisation PLC/CNC | Sources partiellement analysées | Preuves sur banc cible pour chaque capacité annoncée |
 | 6. Qualification produit et livraison pilote | Installation, profils, reprise, matériel réel, dossiers de preuve | À préparer | Critères de recette produit satisfaits et limites acceptées |
@@ -53,7 +45,10 @@ La connexion Beckhoff réelle, la récupération signée du dernier administrate
 - authentification Argon2id avec paramètres versionnés et benchmark à refaire sur cible ;
 - throttling progressif démarrant au cinquième échec ; courbe exacte configurable ;
 - commissioning du premier administrateur par secret d’activation propre à l’installation, à usage unique ;
-- licence locale signée et audit durable ;
+- licence locale signée, liée à une identité d’installation et sans clé privée d’émission sur la machine ;
+- renouvellement de licence monotone et récupération du temps par artefact signé ;
+- expiration/incohérence temporelle bloquant les nouvelles opérations licenciées, pas les opérations déjà admises ;
+- `license.install` comme permission explicite d’import d’un artefact déjà signé ;
 - SQLite et gRPC remplaçables derrière des contrats ;
 - maintenance V1 en consultation seule ;
 - Opérateur autorisé à modifier uniquement les usures, y compris en broche sous conditions, et à Préparer/Charger ;
@@ -61,9 +56,9 @@ La connexion Beckhoff réelle, la récupération signée du dernier administrate
 
 ## 4. T2.2 — clôturé
 
-T2.2-A/B/C/D sont **PASS LOCAL** en simulation Windows. Les invariants de compte, authentification, session, permission, throttling et premier commissioning sont donc considérés qualifiés pour la suite du pilote.
+T2.2-A/B/C/D sont **PASS LOCAL** en simulation Windows. Les invariants de compte, authentification, session, permission, throttling et premier commissioning sont qualifiés pour la suite du pilote.
 
-Le secret temporaire de réinitialisation de mot de passe et la récupération signée du dernier administrateur sont volontairement déplacés vers **T2.4 — audit/récupération produit**, car ils relèvent des chemins de récupération fermés et non du noyau d’authentification nominal.
+Le secret temporaire de réinitialisation de mot de passe et la récupération signée du dernier administrateur sont déplacés vers **T2.4 — audit/récupération produit**.
 
 ## 5. T2.3 — licences hors ligne signées et temps de confiance
 
@@ -71,54 +66,41 @@ T2.3 est construit par micro-tranches, sans placer la clé privée d’émission
 
 ### T2.3-A — contrat de licence et vérification cryptographique : PASS LOCAL
 
-Objectif : prouver qu’un fichier de licence peut être vérifié hors ligne à partir d’une clé publique approuvée, sans dépendance Internet ni secret d’émission dans le runtime.
+Critères qualifiés : format versionné/canonique, signature ECDSA P-256 + SHA-256, clés publiques approuvées, liaisons émetteur/clé/produit/installation, capacités signées, période de validité et refus des altérations. Les contrats restent indépendants de l’adaptateur cryptographique concret.
+
+### T2.3-B — installation durable et temps de confiance : PASS LOCAL
 
 Critères qualifiés :
 
-- format versionné et représentation canonique signée ;
-- `LicenseId`, version de renouvellement, émetteur/identifiant de clé, produit, identité d’installation, capacités, début de validité et expiration optionnelle ;
-- signature vérifiée avec une clé publique approuvée ;
-- clés de test et de production séparables ;
-- signature invalide, contenu altéré, mauvais produit, mauvaise installation et clé inconnue refusés ;
-- contrats indépendants de l’algorithme/provider cryptographique concret ;
-- aucune clé privée dans le Core, la HMI ou le dépôt pilote.
-
-**État : PASS LOCAL.**
-
-### T2.3-B — installation durable et temps de confiance
-
-Objectif : conserver l’autorité de licence localement et résister aux incohérences d’horloge évidentes sans exiger de réseau.
-
-Critères de qualification :
-
-- identité d’installation durable issue d’un aléa cryptographiquement sûr, sans MAC ni numéro de disque ;
-- persistance de la dernière licence approuvée et de sa révision ;
-- enveloppe signée revalidée lors de l’évaluation ;
-- refus d’un rollback de `RenewalVersion` et d’un contenu différent portant la même version ;
-- référence temporelle persistée permettant de détecter un recul significatif de l’horloge murale ;
-- temps monotone utilisé pour les durées internes au processus, temps civil pour les périodes de licence ;
-- un saut vers l’avant ne peut pas être annulé par un simple recul de l’horloge ;
-- récupération du temps par une autorisation signée, liée à l’installation et à séquence croissante ;
-- renouvellement de licence possible comme action de récupération mais ne supprimant pas à lui seul une incohérence temporelle ;
-- aucune clé privée d’émission ou de récupération dans le store machine.
+- identité d’installation durable issue d’un aléa cryptographique, sans MAC ni numéro de disque ;
+- persistance/revalidation de la licence signée ;
+- anti-rollback de `RenewalVersion` ;
+- borne UTC haute persistée et temps monotone pendant le processus ;
+- expiration non contournable par recul d’horloge ;
+- récupération temporelle signée liée à l’installation et à séquence croissante ;
+- renouvellement possible comme chemin de récupération sans supprimer à lui seul l’incohérence temporelle ;
+- absence de clés privées dans le store machine.
 
 L’identité logicielle V1 n’est pas déclarée matériellement non clonable. Un fournisseur adossé à un Trusted Platform Module (TPM) ou autre matériel de confiance pourra être qualifié ultérieurement derrière les mêmes contrats.
 
-**État : implémenté — à qualifier localement.**
-
 ### T2.3-C — admission gouvernée par licence
 
-Objectif : raccorder l’autorité de licence aux admissions sans casser les opérations déjà admises.
+Objectif : raccorder l’autorité de licence aux nouvelles admissions sans casser les opérations déjà admises.
 
-Critères :
+Critères de qualification :
 
-- installation/renouvellement de licence exposés uniquement via une autorité exigeant `license.install` ;
-- consultation autorisée selon droits lorsque la licence est expirée, sauf capacité explicitement licenciée autrement ;
-- nouvelles mutations/commandes licenciées refusées si licence absente, invalide, expirée ou temporellement incohérente ;
-- opérations déjà admises continuent selon leur état machine ;
+- installation/renouvellement via une autorité exigeant `license.install` ;
+- nouvelle mutation/commande refusée si licence absente, invalide, expirée, temporellement incohérente ou sans capacité requise ;
+- une licence valide ne confère aucun droit utilisateur absent ;
+- une permission utilisateur ne contourne pas la licence ;
+- opération déjà admise poursuivie jusqu’à sa conclusion observée sans nouvelle décision de licence ;
 - capacités licenciées évaluées côté Core, jamais déclarées par le client ;
 - même décision pour HMI, API et OPC UA lorsqu’ils atteignent la même admission ;
+- runtimes de lecture hors du verrou de licence des mutations ;
+- `Machine.Runtime` indépendant du runtime de licence, de SQLite et de la cryptographie concrète ;
 - non-régression T0/T1 + T2.1 + T2.2 + T2.3-A/B.
+
+**État : implémenté — à qualifier localement.**
 
 Les durées commerciales, personnes autorisées à émettre et règles de transfert d’iPC restent des décisions WM ouvertes ; elles ne bloquent pas la qualification de l’architecture technique.
 
@@ -150,4 +132,4 @@ Après T2.3 :
 - mapping Beckhoff 8xx, unités/échelles, protocole et preuves de complétion ;
 - qualification finale du renderer HMI web.
 
-Aucun de ces points ne remet en cause les PASS LOCAL déjà obtenus pour T0/T1, T2.1, T2.2 ou T2.3-A.
+Aucun de ces points ne remet en cause les PASS LOCAL déjà obtenus pour T0/T1, T2.1, T2.2 ou T2.3-A/B.
