@@ -28,6 +28,21 @@ var invalid = await client.SignInAsync(new ProductSignInRequest(
 Check(invalid.Status == ProductSignInStatus.InvalidCredentials && invalid.Session is null,
     "Wrong password is rejected without a session.");
 
+ProductSignInResult? throttled = null;
+for (var attempt = 1; attempt <= 5; attempt++)
+{
+    throttled = await client.SignInAsync(new ProductSignInRequest(
+        ProductSessionContract.Version,
+        "identite-inconnue-d1",
+        password + "-wrong",
+        clientId));
+    if (attempt < 5)
+        Check(throttled.Status == ProductSignInStatus.InvalidCredentials,
+            $"Unknown identity failure {attempt} remains a generic credential failure.");
+}
+Check(throttled?.Status == ProductSignInStatus.Throttled && throttled.RetryAfter > TimeSpan.Zero,
+    "Fifth clustered failure activates durable progressive throttling.");
+
 async Task<ProductSessionView> SignInAsync(string userName)
 {
     var result = await client.SignInAsync(new ProductSignInRequest(
