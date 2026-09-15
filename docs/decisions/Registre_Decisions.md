@@ -40,12 +40,13 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Destination externe des sauvegardes, responsabilité d’exploitation et restauration produit complète : à définir ; les paramètres pilotes de fréquence/rétention sont acquis pour la qualification.
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
-- T2.2 : le seuil de temporisation progressive après cinq échecs est acquis, mais la courbe/durée exacte reste à définir et qualifier. La fixture de test `1 s → 2 s → 4 s → 8 s` n’est pas une décision produit. Le secret temporaire de réinitialisation et la récupération signée restent à implémenter.
+- T2.2 : le seuil de temporisation progressive après cinq échecs est acquis, mais la courbe/durée exacte reste à définir et qualifier. La fixture de test `1 s → 2 s → 4 s → 8 s` n’est pas une décision produit. Le secret temporaire de réinitialisation et la récupération signée restent à implémenter dans une tranche de récupération ultérieure.
 - Pour une exposition réseau de l’authentification, ajouter une limitation indépendante par source/contexte réseau en complément du throttling par compte. Cette protection appartient au transport et ne doit pas être simulée comme une propriété du store d’identité.
+- T2.3 : durées commerciales, autorités d’émission et règles de transfert restent à définir par WM ; ces questions ne bloquent pas la qualification technique du format signé, de l’identité d’installation et du comportement d’expiration.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A, la révision durcie de T2.2-B et T2.2-C sont PASS LOCAL. T2.2-D est implémenté et attend sa qualification locale avant clôture de T2.2.** Les licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows. Le lot **T2.2 — identités locales, authentification et sessions** est également clôturé en simulation Windows : **T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont PASS LOCAL**, avec régression T0/T1 + T2.1 verte. La prochaine tranche est **T2.3 — licences hors ligne signées et temps de confiance**. Les licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -78,28 +79,21 @@ Le journal reçu le 15 septembre 2026 confirme simultanément :
 
 Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. T2.1 est clôturé ; aucune qualification Beckhoff réelle n’en découle.
 
-## T2.2-A — noyau d’autorité des identités et sessions : PASS LOCAL
+## T2.2 — identités locales, authentification et sessions : clôturé
 
-Le journal reçu le 15 septembre 2026 confirme la totalité des contrôles T2.2-A : deux identités nominatives, sessions opaques liées au client et à la cible, délais 30/10 minutes, activité humaine explicite, non-prolongation par refresh automatique, retrait de permission immédiatement effectif, révocation, désactivation, durée absolue de 8 heures et réauthentification après recréation du Core. La régression T0/T1 + T2.1 reste verte.
+Le journal final reçu le 15 septembre 2026 confirme simultanément les quatre micro-tranches :
 
-Voir le [dossier T2.2-A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md). **État : PASS LOCAL.**
+- **T2.2-A PASS LOCAL** : identités nominatives, sessions opaques, liaison client/cible, délais d’inactivité, durée absolue, activité humaine explicite, retrait de permissions, révocation et réauthentification après recréation du Core ;
+- **T2.2-B PASS LOCAL** : comptes durables, Argon2id, révisions optimistes, changement de mot de passe, absence de secrets en clair, réponse de login générique et travail Argon2id aussi pour un nom inconnu ;
+- **T2.2-C PASS LOCAL** : temporisation durable après cinq échecs, remise à zéro après succès, commissioning atomique à usage unique du premier administrateur et concurrence convergeant vers un seul compte ;
+- **T2.2-D PASS LOCAL** : stockage borné des traces d’identités inconnues, éviction limitée aux faux identifiants et conservation intacte du compteur des comptes réels sous pression.
 
-## T2.2-B — comptes locaux durables et authentification Argon2id : PASS LOCAL
+La dernière exécution conserve également T0/T1 et T2.1 verts. Le temps Argon2id observé lors de cette exécution était de **192 ms** ; les mesures précédentes étaient plus élevées, ce qui confirme que le coût devra être benchmarké sur le PC industriel cible avant de devenir une politique produit.
 
-Le journal reçu le 15 septembre 2026 qualifie la révision durcie de B : persistance SQLite, Argon2id, révisions optimistes, changement de mot de passe, permissions, désactivation, absence de secrets en clair et protection anti-énumération. Un compte inconnu effectue lui aussi un travail Argon2id ; utilisateur inconnu, mauvais mot de passe et compte désactivé ne divulguent pas un état distinct via le login. Le temps Argon2id mesuré sur cette exécution est de **360 ms**.
+Voir les dossiers [A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md), [B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md), [C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) et [D](../implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md).
 
-Voir le [dossier T2.2-B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md). **État : PASS LOCAL.**
+**État : T2.2 clôturé en simulation Windows.** Aucune qualification Beckhoff réelle ni validation finale du matériel cible n’en découle.
 
-## T2.2-C — limitation des tentatives et premier administrateur : PASS LOCAL
+## T2.3 — licences hors ligne signées et temps de confiance
 
-Le journal reçu le 15 septembre 2026 confirme : démarrage du délai progressif au cinquième échec, persistance après recréation du store, impossibilité de contourner un délai actif avec le bon mot de passe, remise à zéro après succès, comportement générique pour les identités inconnues, commissioning propre à l’installation, secret d’activation non conservé en clair, création atomique du premier administrateur, consommation à usage unique et convergence de deux tentatives concurrentes vers exactement un compte.
-
-Le premier administrateur reçoit un ensemble explicite de permissions administratives, sans `*`, `tool.prepare` ou `tool.load`. Voir le [dossier T2.2-C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md). **État : PASS LOCAL.**
-
-## T2.2-D — stockage borné du throttling inconnu
-
-La dernière micro-tranche de robustesse T2.2 est implémentée et décrite dans le [dossier T2.2-D](../implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md). `SqliteIdentitySecurityStore` borne désormais les lignes de throttling ne correspondant à aucun compte durable : capacité pilote par défaut 256, paramétrable. Les lignes des comptes réels sont exclues de l’éviction.
-
-La recette dédiée injecte 512 faux identifiants avec une borne de test à 32 et doit vérifier simultanément la borne, l’éviction des anciennes traces inconnues, la conservation du compteur du compte réel et la persistance de cette protection après recréation du store.
-
-**État : implémenté/en qualification, pas PASS.** Un PASS de D avec toutes les régressions vertes permettra de clôturer T2.2 et d’ouvrir T2.3 — licences.
+Prochaine tranche. Elle doit qualifier le format signé, l’identité cryptographique d’installation, la vérification hors ligne, les capacités licenciées, l’expiration, les incohérences temporelles, le renouvellement et les règles de blocage des nouvelles mutations sans interrompre les opérations déjà admises.
