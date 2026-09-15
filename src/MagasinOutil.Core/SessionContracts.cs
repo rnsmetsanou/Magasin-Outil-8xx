@@ -13,6 +13,7 @@ public enum ProductSignInStatus
     Unavailable = 2,
     InvalidRequest = 3,
     Incompatible = 4,
+    Throttled = 5,
 }
 
 public enum ProductSessionStatus
@@ -39,7 +40,11 @@ public sealed record ProductSessionView(
     DateTimeOffset AbsoluteExpiresAt,
     long PolicyRevision);
 
-public sealed record ProductSignInResult(ProductSignInStatus Status, ProductSessionView? Session, string Reason)
+public sealed record ProductSignInResult(
+    ProductSignInStatus Status,
+    ProductSessionView? Session,
+    string Reason,
+    TimeSpan? RetryAfter = null)
 {
     public bool IsAuthenticated => Status == ProductSignInStatus.Authenticated && Session is not null;
 }
