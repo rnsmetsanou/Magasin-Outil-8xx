@@ -10,8 +10,8 @@ public sealed class LoginWindow : Window
 {
     private readonly Func<string, string, Task<ProductSignInResult>> _signIn;
     private readonly Action<ProductSessionView> _authenticated;
-    private readonly TextBox _userName = new() { MinHeight = 44, Watermark = "Utilisateur" };
-    private readonly TextBox _password = new() { MinHeight = 44, Watermark = "Mot de passe", PasswordChar = '●' };
+    private readonly TextBox _userName = new() { MinHeight = 44, PlaceholderText = "Utilisateur" };
+    private readonly TextBox _password = new() { MinHeight = 44, PlaceholderText = "Mot de passe", PasswordChar = '●' };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Button _connect = new() { Content = "Se connecter", MinHeight = 48, HorizontalAlignment = HorizontalAlignment.Stretch };
 
