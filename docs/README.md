@@ -8,7 +8,9 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.3-A — contrat et vérification de licence hors ligne signée](implementation/T2_3_A_Contrat_Verification_Licence_Signee.md) : **implémenté, qualification locale requise** ; format canonique versionné, registre de clés publiques approuvées, vérification ECDSA P-256/SHA-256 et absence de clé privée d’émission dans le runtime.
+- [T2.3-B — identité d’installation, renouvellement et temps de confiance](implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md) : **implémenté, qualification locale requise** ; identité d’installation durable, anti-rollback de renouvellement, borne temporelle persistée et récupération du temps par artefact signé.
+
+- [T2.3-A — contrat et vérification de licence hors ligne signée](implementation/T2_3_A_Contrat_Verification_Licence_Signee.md) : **PASS LOCAL** ; format canonique versionné, registre de clés publiques approuvées, vérification ECDSA P-256/SHA-256, refus des altérations et absence de clé privée d’émission dans le runtime.
 
 - [T2.2-D — stockage borné du throttling des identités inconnues](implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md) : **PASS LOCAL** ; borne par défaut de 256 traces inconnues, éviction limitée aux identités sans compte durable et protection des compteurs de vrais comptes.
 
@@ -50,9 +52,13 @@ Le lot qualifie notamment : comptes locaux nominatifs durables, authentification
 
 ## T2.3 — licences hors ligne signées et temps de confiance
 
-T2.3-A est implémenté sur la branche `pilot/t2-3-offline-signed-licenses` et attend sa qualification locale. Il couvre le contrat, la représentation canonique, le fichier signé, le registre de clés publiques approuvées et la vérification hors ligne. La clé privée d’émission reste hors du runtime machine.
+**T2.3-A est PASS LOCAL.** La vérification hors ligne du format signé, de la canonicalité, de l’émetteur, de la clé, du produit, de l’installation et de la période est qualifiée sans clé privée dans le runtime machine.
 
-T2.3-B traitera ensuite la persistance de la licence installée, le renouvellement et le temps de confiance ; T2.3-C raccordera l’autorité de licence aux admissions.
+**T2.3-B est implémenté et attend sa qualification locale.** Il ajoute l’identité d’installation durable, la licence installée persistante, la version de renouvellement monotone, la détection de retour arrière de l’horloge et une récupération temporelle explicitement signée.
+
+L’identité V1 est cryptographiquement aléatoire mais n’est pas encore revendiquée comme matériellement scellée au TPM. Un fournisseur matériel pourra être qualifié ultérieurement derrière les mêmes contrats.
+
+T2.3-C raccordera ensuite l’autorité de licence aux admissions : expiration ou incohérence temporelle devront bloquer les **nouvelles** mutations/commandes sans interrompre les lectures ni les opérations déjà admises.
 
 Les limites restent explicites : simulation Windows seulement, aucune qualification Beckhoff réelle ni validation finale sur le PC industriel cible.
 
