@@ -10,5 +10,6 @@
     <Project Path="tests/MagasinOutil.Checks/MagasinOutil.Checks.csproj" />
     <Project Path="tests/MagasinOutil.Session.Checks/MagasinOutil.Session.Checks.csproj" />
     <Project Path="tests/MagasinOutil.IntegratedRead.Checks/MagasinOutil.IntegratedRead.Checks.csproj" />
+    <Project Path="tests/MagasinOutil.GovernedCommands.Checks/MagasinOutil.GovernedCommands.Checks.csproj" />
   </Folder>
 </Solution>
