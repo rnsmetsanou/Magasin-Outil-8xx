@@ -15,6 +15,7 @@ public sealed class NamedPipeProductClient :
     IProductMagazineReadService,
     IProductMagazineCommandService,
     IProductLicenseReadService,
+    IProductAdministrationReadService,
     IToolInventoryReader,
     IDisposable
 {
@@ -174,6 +175,26 @@ public sealed class NamedPipeProductClient :
         catch (RpcException)
         {
             return new ProductLicenseView("Unavailable", string.Empty, null, null, null, null, [], "Service de licence indisponible.");
+        }
+    }
+
+    public async ValueTask<ProductAdministrationSnapshot?> ReadAdministrationAsync(
+        ProductSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var call = _invoker.AsyncUnaryCall(ProductAdministrationRpc.ReadMethod, null,
+                new CallOptions(deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken), request);
+            return await call.ResponseAsync.ConfigureAwait(false);
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (RpcException)
+        {
+            return null;
         }
     }
 
