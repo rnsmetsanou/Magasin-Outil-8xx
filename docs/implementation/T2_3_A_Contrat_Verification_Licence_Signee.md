@@ -65,15 +65,15 @@ Aucune clé privée d’émission n’est ajoutée aux projets `src` de la plate
 
 La recette de qualification génère uniquement une clé privée ECDSA **éphémère dans le projet de test**, afin de produire des fixtures signées. Une architecture d’outil d’émission WM séparé sera traitée ultérieurement ; la clé privée de production ne doit jamais être distribuée avec le produit machine.
 
-## Recette T2.3-A
+## Validation locale reçue
 
-Commande globale :
+Commande exécutée :
 
 ```powershell
 .\eng\Test-T23.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-La recette rejoue d’abord T0/T1, T2.1 et T2.2, puis vérifie notamment :
+Le journal reçu le 15 septembre 2026 confirme simultanément :
 
 - contrats de licence indépendants de l’adaptateur cryptographique concret ;
 - runtime indépendant de cet adaptateur ;
@@ -82,10 +82,10 @@ La recette rejoue d’abord T0/T1, T2.1 et T2.2, puis vérifie notamment :
 - aller-retour du fichier de licence hors ligne ;
 - licence correctement signée acceptée avec une clé publique approuvée ;
 - capacités provenant uniquement du payload signé ;
-- altération du contenu refusée ;
+- altération du contenu refusée avant usage sémantique ;
 - altération de signature refusée ;
 - clé inconnue refusée ;
-- algorithme inconnu refusé ;
+- algorithme inconnu refusé explicitement ;
 - impossibilité de rebinder un payload signé vers un autre identifiant de clé ;
 - cohérence émetteur/clé ;
 - mauvais produit refusé ;
@@ -95,8 +95,22 @@ La recette rejoue d’abord T0/T1, T2.1 et T2.2, puis vérifie notamment :
 - incompatibilité algorithme/clé refusée ;
 - capacités dupliquées refusées avant signature.
 
+La même exécution conserve **T0/T1, T2.1 et l’ensemble de T2.2 verts**.
+
 ## État
 
-**IMPLÉMENTÉ — À QUALIFIER LOCALEMENT.**
+**PASS LOCAL — SIMULATION WINDOWS.**
 
-Aucun PASS T2.3-A n’est déclaré avant réception du journal `Test-T23.ps1`. Cette tranche qualifie le contrat et la vérification cryptographique, pas encore le temps de confiance ni l’autorité durable de licence.
+Ce PASS qualifie le contrat et la vérification cryptographique hors ligne. Il ne constitue pas une validation de l’outil d’émission de production, du stockage durable de licence, du temps de confiance ni du matériel cryptographique éventuel de l’iPC cible.
+
+## Suite
+
+T2.3-B doit qualifier :
+
+- identité d’installation durable générée à partir d’aléa cryptographiquement sûr, sans MAC ni numéro de disque ;
+- licence installée persistante et revalidée depuis son enveloppe signée ;
+- version de renouvellement monotone empêchant le retour vers une licence signée plus ancienne ;
+- temps de confiance combinant horloge UTC persistée entre redémarrages et temps monotone pendant un processus ;
+- détection d’un retour arrière de l’horloge ;
+- mécanisme signé explicite de récupération du temps ;
+- possibilité future de remplacer l’identité logicielle par un fournisseur matériel sans modifier les contrats métier.
