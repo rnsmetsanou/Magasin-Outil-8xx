@@ -26,7 +26,7 @@ internal static class PlatformStatusOverlay
             Padding = new Thickness(8),
             FontSize = 19,
         };
-        ToolTip.SetTip(infoButton, "À propos / informations Plateforme");
+        ToolTip.SetTip(infoButton, "Informations système");
         infoButton.Click += (_, _) => openPlatform();
 
         var identityText = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
@@ -58,33 +58,28 @@ internal static class PlatformStatusOverlay
             VerticalAlignment = VerticalAlignment.Center,
         });
         identityContent.Children.Add(identityText);
-
-        var identity = new Border
+        identityContent.Children.Add(new TextBlock
         {
-            CornerRadius = new CornerRadius(6),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Color.Parse("#AAB4C5")),
-            Padding = new Thickness(10, 4),
-            MinHeight = 44,
-            MinWidth = 138,
-            Child = identityContent,
+            Text = "⌄",
+            FontSize = 14,
+            Opacity = 0.75,
             VerticalAlignment = VerticalAlignment.Center,
-        };
-        ToolTip.SetTip(identity, $"Session ouverte pour {session.DisplayName} ({session.UserName})");
+        });
 
-        var switchButton = new Button
+        var identity = new Button
         {
-            Content = "↻",
-            MinWidth = 44,
+            Content = identityContent,
             MinHeight = 44,
-            Padding = new Thickness(8),
-            FontSize = 20,
+            MinWidth = 152,
+            Padding = new Thickness(10, 4),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            VerticalContentAlignment = VerticalAlignment.Center,
         };
-        ToolTip.SetTip(switchButton, "Changer d’utilisateur");
-        switchButton.Click += async (_, _) =>
+        ToolTip.SetTip(identity, $"{session.DisplayName} ({session.UserName}) · cliquer pour changer d’utilisateur");
+        identity.Click += async (_, _) =>
         {
             infoButton.IsEnabled = false;
-            switchButton.IsEnabled = false;
+            identity.IsEnabled = false;
             try
             {
                 await switchUserAsync();
@@ -92,13 +87,12 @@ internal static class PlatformStatusOverlay
             finally
             {
                 infoButton.IsEnabled = true;
-                switchButton.IsEnabled = true;
+                identity.IsEnabled = true;
             }
         };
 
         window.AddHeaderAction(infoButton);
         window.AddHeaderAction(identity);
-        window.AddHeaderAction(switchButton);
 
         window.Content = null;
         var host = new Grid { RowDefinitions = new("*,Auto") };
