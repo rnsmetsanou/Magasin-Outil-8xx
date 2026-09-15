@@ -18,9 +18,9 @@ internal sealed class PlatformConsoleWindow : Window
     private readonly Grid _content = new() { RowDefinitions = new("Auto,*") };
     private readonly Bitmap _blueLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-blue.png")));
     private readonly Bitmap _whiteLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-white.png")));
-    private readonly Image _logo = new() { Width = 148, Height = 58, Stretch = Stretch.Uniform };
-    private readonly TextBlock _subtitle = new() { FontSize = 13, Opacity = 0.78, TextWrapping = TextWrapping.Wrap };
-    private readonly Border _hero = new() { CornerRadius = new CornerRadius(10), Padding = new Thickness(18, 14) };
+    private readonly Image _logo = new() { Width = 128, Height = 52, Stretch = Stretch.Uniform };
+    private readonly TextBlock _subtitle = new() { FontSize = 12.5, Opacity = 0.78, TextWrapping = TextWrapping.Wrap };
+    private readonly Border _hero = new() { CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 12) };
     private readonly bool _dark;
 
     private IBrush Ink => Brush(_dark ? "#FFFFFF" : "#202945");
@@ -42,10 +42,10 @@ internal sealed class PlatformConsoleWindow : Window
         _dark = (Application.Current?.RequestedThemeVariant ?? ThemeVariant.Light) == ThemeVariant.Dark;
 
         Title = "Informations système — WM";
-        Width = 1140;
-        Height = 780;
-        MinWidth = 980;
-        MinHeight = 680;
+        Width = 900;
+        Height = 650;
+        MinWidth = 820;
+        MinHeight = 560;
         CanResize = true;
         UseLayoutRounding = true;
         RequestedThemeVariant = _dark ? ThemeVariant.Dark : ThemeVariant.Light;
@@ -57,7 +57,7 @@ internal sealed class PlatformConsoleWindow : Window
         root.Children.Add(BuildHeader());
 
         Grid.SetRow(_content, 1);
-        _content.Margin = new Thickness(18, 0, 18, 18);
+        _content.Margin = new Thickness(16, 0, 16, 16);
         _content.Children.Add(_hero);
         var loading = new Border
         {
@@ -92,10 +92,10 @@ internal sealed class PlatformConsoleWindow : Window
             Background = Surface,
             BorderBrush = Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(18, 14, 18, 12),
+            Padding = new Thickness(16, 12, 16, 10),
         };
 
-        var header = new Grid { ColumnDefinitions = new("Auto,*,Auto"), ColumnSpacing = 16 };
+        var header = new Grid { ColumnDefinitions = new("Auto,*,Auto"), ColumnSpacing = 14 };
         Grid.SetColumn(_logo, 0);
         header.Children.Add(_logo);
 
@@ -103,7 +103,7 @@ internal sealed class PlatformConsoleWindow : Window
         title.Children.Add(new TextBlock
         {
             Text = "Informations système",
-            FontSize = 28,
+            FontSize = 25,
             FontWeight = FontWeight.SemiBold,
             Foreground = Ink,
         });
@@ -116,9 +116,9 @@ internal sealed class PlatformConsoleWindow : Window
         var close = new Button
         {
             Content = "Fermer",
-            MinHeight = 42,
-            MinWidth = 118,
-            Padding = new Thickness(16, 8),
+            MinHeight = 40,
+            MinWidth = 105,
+            Padding = new Thickness(14, 7),
             VerticalAlignment = VerticalAlignment.Center,
         };
         close.Click += (_, _) => Close();
@@ -182,7 +182,7 @@ internal sealed class PlatformConsoleWindow : Window
 
         var tabs = new TabControl
         {
-            Margin = new Thickness(0, 14, 0, 0),
+            Margin = new Thickness(0, 12, 0, 0),
             ItemsSource = new[]
             {
                 new TabItem { Header = "Vue générale", Content = Scroll(Overview(snapshot)) },
@@ -201,11 +201,11 @@ internal sealed class PlatformConsoleWindow : Window
         _hero.BorderBrush = Line;
         _hero.BorderThickness = new Thickness(1);
 
-        var layout = new StackPanel { Spacing = 10 };
+        var layout = new StackPanel { Spacing = 8 };
         layout.Children.Add(new TextBlock
         {
             Text = heading,
-            FontSize = 24,
+            FontSize = 22,
             FontWeight = FontWeight.SemiBold,
             Foreground = Ink,
         });
@@ -214,7 +214,7 @@ internal sealed class PlatformConsoleWindow : Window
             Text = message,
             TextWrapping = TextWrapping.Wrap,
             Foreground = MutedInk,
-            FontSize = 14,
+            FontSize = 13,
         });
         var badgesLine = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var badge in badges) badgesLine.Children.Add(badge);
