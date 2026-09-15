@@ -43,12 +43,14 @@ async Task SignOutAsync(ProductSessionView session)
 }
 
 var operateur = await SignInAsync("operateur");
-var operatorSnapshot = await client.ReadAdministrationAsync(new ProductSessionRequest(
+var operatorResult = await client.ReadAdministrationAsync(new ProductSessionRequest(
     ProductSessionContract.Version,
     operateur.SessionReference,
     clientId));
-Check(operatorSnapshot is not null, "Operator receives a session-governed administration snapshot.");
-Check(operatorSnapshot!.License.Status == "Valid" && operatorSnapshot.License.Capabilities.Contains("tool-management"),
+Check(operatorResult.IsSuccess && operatorResult.Snapshot is not null,
+    "Operator receives a session-governed administration snapshot.");
+var operatorSnapshot = operatorResult.Snapshot!;
+Check(operatorSnapshot.License.Status == "Valid" && operatorSnapshot.License.Capabilities.Contains("tool-management"),
     "Operator administration view exposes the real valid product license.");
 Check(!operatorSnapshot.CanViewUsers && operatorSnapshot.Users.Count == 0,
     "Operator cannot enumerate user profiles without identity/roles administration rights.");
@@ -59,12 +61,14 @@ Check(operatorSnapshot.Session.Permissions.Contains("tool.prepare") && operatorS
 await SignOutAsync(operateur);
 
 var admin = await SignInAsync("admin");
-var adminSnapshot = await client.ReadAdministrationAsync(new ProductSessionRequest(
+var adminResult = await client.ReadAdministrationAsync(new ProductSessionRequest(
     ProductSessionContract.Version,
     admin.SessionReference,
     clientId));
-Check(adminSnapshot is not null, "Administrator receives a session-governed administration snapshot.");
-Check(adminSnapshot!.CanViewUsers && adminSnapshot.Users.Count == 4,
+Check(adminResult.IsSuccess && adminResult.Snapshot is not null,
+    "Administrator receives a session-governed administration snapshot.");
+var adminSnapshot = adminResult.Snapshot!;
+Check(adminSnapshot.CanViewUsers && adminSnapshot.Users.Count == 4,
     "Administrator sees the four explicit demo profiles from the CoreHost catalogue.");
 Check(adminSnapshot.CanViewAudit && adminSnapshot.AuditEntries.Count > 0,
     "Administrator sees durable admission audit entries produced by governed commands.");
@@ -83,7 +87,8 @@ var wrongClient = await client.ReadAdministrationAsync(new ProductSessionRequest
     ProductSessionContract.Version,
     admin.SessionReference,
     clientId + "-other"));
-Check(wrongClient is null, "Opaque session cannot read administration data for another client identity.");
+Check(wrongClient.Status == ProductAdministrationReadStatus.SessionInvalid && wrongClient.Snapshot is null,
+    "Opaque session cannot read administration data for another client identity.");
 await SignOutAsync(admin);
 
 Console.WriteLine("D4 Magasin 8xx visual administration data integration: PASS");
