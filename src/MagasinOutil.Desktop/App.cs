@@ -51,6 +51,7 @@ public sealed class App : Application
             }
         };
         desktop.MainWindow = login;
+        login.Show();
     }
 
     [SupportedOSPlatform("windows")]
@@ -89,6 +90,7 @@ public sealed class App : Application
         }
 
         var login = desktop.MainWindow;
+        var switchingUser = false;
         _session = session;
         var main = new MainWindow(remoteMagazine);
         PlatformStatusOverlay.Attach(
@@ -100,9 +102,23 @@ public sealed class App : Application
                 if (_client is null) return;
                 var console = new PlatformConsoleWindow(_client, session, _clientId);
                 _ = console.ShowDialog(main);
+            },
+            async () =>
+            {
+                if (_client is null || _session is null) return;
+                await _client.SignOutAsync(new ProductSessionRequest(
+                    ProductSessionContract.Version,
+                    _session.SessionReference,
+                    _clientId));
+                switchingUser = true;
+                _session = null;
+                ShowLogin(desktop);
+                main.Close();
             });
         main.Closed += async (_, _) =>
         {
+            if (switchingUser) return;
+
             if (_client is not null && _session is not null)
             {
                 try
