@@ -76,7 +76,8 @@ public sealed class App : Application
             _client,
             _client,
             session.SessionReference,
-            _clientId);
+            _clientId,
+            session.Permissions);
         await remoteMagazine.RefreshAsync();
         if (!remoteMagazine.PlatformStatus.Connected || remoteMagazine.Read().Count == 0)
         {
