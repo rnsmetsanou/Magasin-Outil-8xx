@@ -108,7 +108,7 @@ internal sealed class PlatformConsoleWindow : Window
     {
         var session = snapshot.Session;
         var panel = Section();
-        panel.Children.Add(Title("Session CoreHost"));
+        panel.Children.Add(SectionTitle("Session CoreHost"));
         panel.Children.Add(StatusLine("Utilisateur", $"{session.DisplayName} ({session.UserName})"));
         panel.Children.Add(StatusLine("Sujet", session.SubjectId));
         panel.Children.Add(StatusLine("Émise", Format(session.IssuedAt)));
@@ -130,7 +130,7 @@ internal sealed class PlatformConsoleWindow : Window
     private static Control License(ProductLicenseView license)
     {
         var panel = Section();
-        panel.Children.Add(Title("Licence produit"));
+        panel.Children.Add(SectionTitle("Licence produit"));
         panel.Children.Add(StatusBadge(
             license.Status == "Valid" ? "● LICENCE ACTIVE" : "○ " + license.Status.ToUpperInvariant(),
             license.Status == "Valid"));
@@ -154,7 +154,7 @@ internal sealed class PlatformConsoleWindow : Window
     private static Control Users(ProductAdministrationSnapshot snapshot)
     {
         var panel = Section();
-        panel.Children.Add(Title("Utilisateurs & rôles"));
+        panel.Children.Add(SectionTitle("Utilisateurs & rôles"));
         if (!snapshot.CanViewUsers)
         {
             panel.Children.Add(Restricted("Accès réservé à identity.manage ou roles.manage."));
@@ -194,7 +194,7 @@ internal sealed class PlatformConsoleWindow : Window
     private static Control Audit(ProductAdministrationSnapshot snapshot)
     {
         var panel = Section();
-        panel.Children.Add(Title(snapshot.AuditScope));
+        panel.Children.Add(SectionTitle(snapshot.AuditScope));
         if (!snapshot.CanViewAudit)
         {
             panel.Children.Add(Restricted("Accès réservé à audit.read."));
@@ -239,7 +239,7 @@ internal sealed class PlatformConsoleWindow : Window
     };
 
     private static StackPanel Section() => new() { Spacing = 10, Margin = new Thickness(18) };
-    private static TextBlock Title(string text) => new() { Text = text, FontSize = 22, FontWeight = FontWeight.SemiBold };
+    private static TextBlock SectionTitle(string text) => new() { Text = text, FontSize = 22, FontWeight = FontWeight.SemiBold };
     private static TextBlock Subtitle(string text) => new() { Text = text, FontSize = 15, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 10, 0, 0) };
 
     private static Control StatusLine(string title, string value)
