@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -24,6 +25,9 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            if (!OperatingSystem.IsWindows())
+                throw new PlatformNotSupportedException("Le profil de démonstration intégré utilise un tube nommé Windows.");
+
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var pipe = Environment.GetEnvironmentVariable("WM_MAGASIN8XX_PIPE");
             _client = new NamedPipeProductClient(string.IsNullOrWhiteSpace(pipe) ? "wm.magasin8xx.demo" : pipe);
@@ -33,6 +37,7 @@ public sealed class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    [SupportedOSPlatform("windows")]
     private void ShowLogin(IClassicDesktopStyleApplicationLifetime desktop)
     {
         var login = new LoginWindow(SignInAsync, session => OpenProduct(desktop, session));
@@ -48,6 +53,7 @@ public sealed class App : Application
         desktop.MainWindow = login;
     }
 
+    [SupportedOSPlatform("windows")]
     private async Task<ProductSignInResult> SignInAsync(string userName, string password)
     {
         if (_client is null)
@@ -60,6 +66,7 @@ public sealed class App : Application
             _clientId));
     }
 
+    [SupportedOSPlatform("windows")]
     private void OpenProduct(IClassicDesktopStyleApplicationLifetime desktop, ProductSessionView session)
     {
         if (_client is null) return;
