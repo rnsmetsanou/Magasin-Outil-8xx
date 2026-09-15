@@ -8,7 +8,9 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
-- [T2.3-B — identité d’installation, renouvellement et temps de confiance](implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md) : **implémenté, qualification locale requise** ; identité d’installation durable, anti-rollback de renouvellement, borne temporelle persistée et récupération du temps par artefact signé.
+- [T2.3-C — admission gouvernée par licence](implementation/T2_3_C_Admission_Gouvernee_Licence.md) : **implémenté, qualification locale requise** ; décision de licence évaluée à chaque nouvelle admission, permission `license.install`, lectures hors verrou et opérations déjà admises non annulées rétroactivement.
+
+- [T2.3-B — identité d’installation, renouvellement et temps de confiance](implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md) : **PASS LOCAL** ; identité d’installation durable, anti-rollback de renouvellement, borne temporelle persistée et récupération du temps par artefact signé.
 
 - [T2.3-A — contrat et vérification de licence hors ligne signée](implementation/T2_3_A_Contrat_Verification_Licence_Signee.md) : **PASS LOCAL** ; format canonique versionné, registre de clés publiques approuvées, vérification ECDSA P-256/SHA-256, refus des altérations et absence de clé privée d’émission dans le runtime.
 
@@ -54,11 +56,11 @@ Le lot qualifie notamment : comptes locaux nominatifs durables, authentification
 
 **T2.3-A est PASS LOCAL.** La vérification hors ligne du format signé, de la canonicalité, de l’émetteur, de la clé, du produit, de l’installation et de la période est qualifiée sans clé privée dans le runtime machine.
 
-**T2.3-B est implémenté et attend sa qualification locale.** Il ajoute l’identité d’installation durable, la licence installée persistante, la version de renouvellement monotone, la détection de retour arrière de l’horloge et une récupération temporelle explicitement signée.
+**T2.3-B est PASS LOCAL.** L’identité d’installation durable, la persistance de la licence installée, l’anti-rollback de renouvellement, le temps de confiance et la récupération temporelle signée sont qualifiés en simulation Windows.
 
-L’identité V1 est cryptographiquement aléatoire mais n’est pas encore revendiquée comme matériellement scellée au TPM. Un fournisseur matériel pourra être qualifié ultérieurement derrière les mêmes contrats.
+**T2.3-C est implémenté et attend sa qualification locale.** Il raccorde l’autorité de licence aux nouvelles admissions machine tout en gardant les permissions humaines indépendantes. `license.install` gouverne l’import d’un artefact signé. Une opération déjà admise n’est pas annulée lors d’une expiration ultérieure, et les lectures restent hors du verrou de mutation.
 
-T2.3-C raccordera ensuite l’autorité de licence aux admissions : expiration ou incohérence temporelle devront bloquer les **nouvelles** mutations/commandes sans interrompre les lectures ni les opérations déjà admises.
+L’identité V1 est cryptographiquement aléatoire mais n’est pas encore revendiquée comme matériellement scellée au Trusted Platform Module (TPM). Un fournisseur matériel pourra être qualifié ultérieurement derrière les mêmes contrats.
 
 Les limites restent explicites : simulation Windows seulement, aucune qualification Beckhoff réelle ni validation finale sur le PC industriel cible.
 
