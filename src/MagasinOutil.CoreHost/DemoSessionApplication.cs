@@ -8,7 +8,7 @@ using Platform.Poc.Machine.Contracts.Connectivity;
 namespace MagasinOutil.CoreHost;
 
 internal sealed class DemoSessionApplication(
-    LocalAccountService accounts,
+    RateLimitedLocalAuthenticator authenticator,
     ILocalAccountStore accountStore,
     LocalIdentityAuthority authority) : IProductSessionService
 {
@@ -26,13 +26,18 @@ internal sealed class DemoSessionApplication(
             !ValidText(request.ClientId, 128))
             return new(ProductSignInStatus.InvalidRequest, null, "Demande de connexion invalide.");
 
-        var authentication = await accounts.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
+        var authentication = await authenticator.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
             .ConfigureAwait(false);
         if (!authentication.IsAuthenticated || authentication.Identity is null)
         {
-            return authentication.Status == LocalAuthenticationStatus.Unavailable
-                ? new(ProductSignInStatus.Unavailable, null, "Autorité d'identité indisponible.")
-                : new(ProductSignInStatus.InvalidCredentials, null, "Utilisateur ou mot de passe incorrect.");
+            return authentication.Status switch
+            {
+                ProtectedLocalAuthenticationStatus.Throttled =>
+                    new(ProductSignInStatus.Throttled, null, "Trop de tentatives. Réessayer après le délai indiqué.", authentication.RetryAfter),
+                ProtectedLocalAuthenticationStatus.Unavailable =>
+                    new(ProductSignInStatus.Unavailable, null, "Autorité d'identité indisponible."),
+                _ => new(ProductSignInStatus.InvalidCredentials, null, "Utilisateur ou mot de passe incorrect."),
+            };
         }
 
         var identity = authentication.Identity;
