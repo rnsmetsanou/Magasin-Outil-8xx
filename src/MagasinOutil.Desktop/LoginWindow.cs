@@ -36,7 +36,6 @@ public sealed class LoginWindow : Window
             Background = Brushes.White,
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(34),
-            BoxShadow = BoxShadows.Parse("0 12 32 0 #22000000"),
         };
         Grid.SetColumn(card, 1);
         Grid.SetRow(card, 1);
@@ -78,7 +77,7 @@ public sealed class LoginWindow : Window
         panel.Children.Add(_password);
         panel.Children.Add(new TextBlock { Text = "Profils rapides", FontSize = 13 });
 
-        var profiles = new WrapPanel { Spacing = 6 };
+        var profiles = new WrapPanel();
         profiles.Children.Add(Profile("Consultation", "consultation"));
         profiles.Children.Add(Profile("Opérateur", "operateur"));
         profiles.Children.Add(Profile("Régleur", "regleur"));
@@ -128,7 +127,13 @@ public sealed class LoginWindow : Window
 
     private Button Profile(string label, string userName)
     {
-        var button = new Button { Content = label, MinHeight = 36, Padding = new Thickness(10, 4) };
+        var button = new Button
+        {
+            Content = label,
+            MinHeight = 36,
+            Padding = new Thickness(10, 4),
+            Margin = new Thickness(0, 0, 6, 6),
+        };
         button.Click += (_, _) =>
         {
             _userName.Text = userName;
