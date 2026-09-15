@@ -1,6 +1,6 @@
 # Feuille de route du pilote Magasin 8xx
 
-Date : 15 septembre 2026. Statut : feuille de route actualisée après clôture locale de T2.2 ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
+Date : 15 septembre 2026. Statut : feuille de route actualisée après clôture locale de T2.2 et qualification de T2.3-A ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
 
 ## 1. Où en sommes-nous ?
 
@@ -20,9 +20,11 @@ Le lot **T2.2 — identités locales, authentification et sessions** est égalem
 - commissioning atomique et à usage unique du premier administrateur, sans compte universel ;
 - stockage borné des traces de throttling pour faux identifiants, sans éviction des vrais comptes.
 
-La dernière exécution conserve T0/T1 et T2.1 verts. Voir les dossiers T2.2-A/B/C/D dans `docs/implementation`.
+**T2.3-A est PASS LOCAL** : format de licence canonique versionné, vérification ECDSA P-256/SHA-256 hors ligne, clés publiques approuvées, liaison émetteur/clé/produit/installation et refus des altérations.
 
-La prochaine tranche est **T2.3 — licences hors ligne signées et temps de confiance**. La connexion Beckhoff réelle, la récupération signée du dernier administrateur et les commandes métier complètes restent hors de ce jalon.
+**T2.3-B est implémenté et attend sa qualification locale** : identité d’installation durable, licence installée, renouvellement monotone, temps de confiance hors ligne et récupération temporelle signée.
+
+La connexion Beckhoff réelle, la récupération signée du dernier administrateur et les commandes métier complètes restent hors de ce jalon.
 
 ## 2. Étapes et critères de sortie
 
@@ -31,7 +33,7 @@ La prochaine tranche est **T2.3 — licences hors ligne signées et temps de con
 | 0. Prototype et découverte | Parcours magasin simulé, contraintes WM, formats écran et premières sources PLC | Prototype réalisé | Référence de parcours disponible, limites de simulation explicites |
 | 1. Contrat V1 | Périmètre métier, exposition OPC UA, rôles, maintenance et profils | Principales décisions V1 acquises | Questions restantes identifiées avec leur impact |
 | 2. Architecture d’intégration | Répartition plateforme/pilote, contrats, transport, stockage et composition | T0/T1 + T2.1 + T2.2 vérifiés | Frontières communes qualifiées sans duplication des autorités |
-| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, HMI/OPC UA/Fleet | En cours — prochaine sous-tranche T2.3 | Une opération bout en bout avec refus gouvernés, audit durable et coupures exercés |
+| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, HMI/OPC UA/Fleet | En cours — T2.3-A PASS, T2.3-B en qualification | Une opération bout en bout avec refus gouvernés, audit durable et coupures exercés |
 | 4. Couverture fonctionnelle V1 | Outils, correcteurs, usures, maintenance consultative, langues/unités, administration | À réaliser | Matrice V1 couverte et vérifiée en simulation |
 | 5. Raccordement Beckhoff 8xx | Lectures puis écritures/opérations réelles, Secure ADS, synchronisation PLC/CNC | Sources partiellement analysées | Preuves sur banc cible pour chaque capacité annoncée |
 | 6. Qualification produit et livraison pilote | Installation, profils, reprise, matériel réel, dossiers de preuve | À préparer | Critères de recette produit satisfaits et limites acceptées |
@@ -65,13 +67,13 @@ Le secret temporaire de réinitialisation de mot de passe et la récupération s
 
 ## 5. T2.3 — licences hors ligne signées et temps de confiance
 
-T2.3 sera construit par micro-tranches, sans placer la clé privée d’émission sur la machine.
+T2.3 est construit par micro-tranches, sans placer la clé privée d’émission sur la machine.
 
-### T2.3-A — contrat de licence et vérification cryptographique
+### T2.3-A — contrat de licence et vérification cryptographique : PASS LOCAL
 
 Objectif : prouver qu’un fichier de licence peut être vérifié hors ligne à partir d’une clé publique approuvée, sans dépendance Internet ni secret d’émission dans le runtime.
 
-Critères :
+Critères qualifiés :
 
 - format versionné et représentation canonique signée ;
 - `LicenseId`, version de renouvellement, émetteur/identifiant de clé, produit, identité d’installation, capacités, début de validité et expiration optionnelle ;
@@ -81,19 +83,28 @@ Critères :
 - contrats indépendants de l’algorithme/provider cryptographique concret ;
 - aucune clé privée dans le Core, la HMI ou le dépôt pilote.
 
+**État : PASS LOCAL.**
+
 ### T2.3-B — installation durable et temps de confiance
 
 Objectif : conserver l’autorité de licence localement et résister aux incohérences d’horloge évidentes sans exiger de réseau.
 
-Critères :
+Critères de qualification :
 
-- installation/renouvellement seulement via `license.install` ;
+- identité d’installation durable issue d’un aléa cryptographiquement sûr, sans MAC ni numéro de disque ;
 - persistance de la dernière licence approuvée et de sa révision ;
-- refus d’un rollback de renouvellement ;
+- enveloppe signée revalidée lors de l’évaluation ;
+- refus d’un rollback de `RenewalVersion` et d’un contenu différent portant la même version ;
 - référence temporelle persistée permettant de détecter un recul significatif de l’horloge murale ;
-- temps monotone utilisé pour les durées internes au processus, temps civil uniquement pour les périodes de licence ;
-- renouvellement signé pouvant rétablir un état temporel cohérent ;
-- révocation hors ligne uniquement lorsqu’une information signée approuvée est importée.
+- temps monotone utilisé pour les durées internes au processus, temps civil pour les périodes de licence ;
+- un saut vers l’avant ne peut pas être annulé par un simple recul de l’horloge ;
+- récupération du temps par une autorisation signée, liée à l’installation et à séquence croissante ;
+- renouvellement de licence possible comme action de récupération mais ne supprimant pas à lui seul une incohérence temporelle ;
+- aucune clé privée d’émission ou de récupération dans le store machine.
+
+L’identité logicielle V1 n’est pas déclarée matériellement non clonable. Un fournisseur adossé à un Trusted Platform Module (TPM) ou autre matériel de confiance pourra être qualifié ultérieurement derrière les mêmes contrats.
+
+**État : implémenté — à qualifier localement.**
 
 ### T2.3-C — admission gouvernée par licence
 
@@ -101,12 +112,13 @@ Objectif : raccorder l’autorité de licence aux admissions sans casser les op�
 
 Critères :
 
+- installation/renouvellement de licence exposés uniquement via une autorité exigeant `license.install` ;
 - consultation autorisée selon droits lorsque la licence est expirée, sauf capacité explicitement licenciée autrement ;
 - nouvelles mutations/commandes licenciées refusées si licence absente, invalide, expirée ou temporellement incohérente ;
 - opérations déjà admises continuent selon leur état machine ;
 - capacités licenciées évaluées côté Core, jamais déclarées par le client ;
 - même décision pour HMI, API et OPC UA lorsqu’ils atteignent la même admission ;
-- non-régression T0/T1 + T2.1 + T2.2.
+- non-régression T0/T1 + T2.1 + T2.2 + T2.3-A/B.
 
 Les durées commerciales, personnes autorisées à émettre et règles de transfert d’iPC restent des décisions WM ouvertes ; elles ne bloquent pas la qualification de l’architecture technique.
 
@@ -131,9 +143,11 @@ Après T2.3 :
 
 - paramètres Argon2id finaux sur le PC industriel cible ;
 - politiques commerciales de licence et autorités d’émission ;
+- fournisseur matériel éventuel pour l’identité d’installation et disponibilité TPM sur l’iPC cible ;
+- tolérance produit exacte aux petits reculs de l’horloge ;
 - destination externe et responsabilité opérationnelle des sauvegardes ;
 - détails Fleet, certificats réseau et packaging ;
 - mapping Beckhoff 8xx, unités/échelles, protocole et preuves de complétion ;
 - qualification finale du renderer HMI web.
 
-Aucun de ces points ne remet en cause les PASS LOCAL déjà obtenus pour T0/T1, T2.1 ou T2.2.
+Aucun de ces points ne remet en cause les PASS LOCAL déjà obtenus pour T0/T1, T2.1, T2.2 ou T2.3-A.
