@@ -60,6 +60,11 @@ public sealed class SimulatedInventoryApplication : IToolInventoryReader, IAsync
             "AtomicSimulationSnapshot", [ToolInventoryContract.ReadCapability], places));
     }
 
+    public EditResult? ValidateTransfer(SimulatedTransfer request) => _magazine.ValidateTransfer(request);
+    public EditResult Transfer(SimulatedTransfer request) => _magazine.Transfer(request);
+    public EditResult? ValidateEdit(EditTool request) => _magazine.ValidateEdit(request);
+    public EditResult Apply(EditTool request) => _magazine.Apply(request);
+
     public async ValueTask DisposeAsync()
     {
         if (_sessions.State == ConnectionState.Connected)
