@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [T2.3-A — contrat et vérification de licence hors ligne signée](implementation/T2_3_A_Contrat_Verification_Licence_Signee.md) : **implémenté, qualification locale requise** ; format canonique versionné, registre de clés publiques approuvées, vérification ECDSA P-256/SHA-256 et absence de clé privée d’émission dans le runtime.
+
 - [T2.2-D — stockage borné du throttling des identités inconnues](implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md) : **PASS LOCAL** ; borne par défaut de 256 traces inconnues, éviction limitée aux identités sans compte durable et protection des compteurs de vrais comptes.
 
 - [T2.2-C — limitation des tentatives et commissioning du premier administrateur](implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) : **PASS LOCAL** ; throttling durable à partir de cinq échecs, remise à zéro après succès et commissioning d’installation à usage unique sans administrateur universel.
@@ -44,7 +46,13 @@ T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont **PASS LOCAL** avec régression T0/T
 
 Le lot qualifie notamment : comptes locaux nominatifs durables, authentification Argon2id hors ligne, sessions opaques et révocables, liaison client/cible, permissions dynamiques, protection anti-énumération, temporisation durable à partir de cinq échecs, commissioning atomique du premier administrateur sans compte universel et persistance bornée des faux identifiants.
 
-**État : T2.2 clôturé.** La prochaine tranche est **T2.3 — licences hors ligne signées et temps de confiance**.
+**État : T2.2 clôturé.**
+
+## T2.3 — licences hors ligne signées et temps de confiance
+
+T2.3-A est implémenté sur la branche `pilot/t2-3-offline-signed-licenses` et attend sa qualification locale. Il couvre le contrat, la représentation canonique, le fichier signé, le registre de clés publiques approuvées et la vérification hors ligne. La clé privée d’émission reste hors du runtime machine.
+
+T2.3-B traitera ensuite la persistance de la licence installée, le renouvellement et le temps de confiance ; T2.3-C raccordera l’autorité de licence aux admissions.
 
 Les limites restent explicites : simulation Windows seulement, aucune qualification Beckhoff réelle ni validation finale sur le PC industriel cible.
 
