@@ -66,5 +66,6 @@ public interface IIntegratedMagazineService : IMagazineService
     ProductPlatformStatus PlatformStatus { get; }
     ProductLicenseView? LicenseStatus { get; }
     ProductCommandResult? LastCommand { get; }
+    IReadOnlyCollection<string> Permissions { get; }
     ValueTask RefreshAsync(CancellationToken cancellationToken = default);
 }
