@@ -13,7 +13,8 @@ internal static class PlatformStatusOverlay
         MainWindow window,
         IIntegratedMagazineService magazine,
         ProductSessionView session,
-        Action openPlatform)
+        Action openPlatform,
+        Func<Task> switchUserAsync)
     {
         if (window.Content is not Control original) return;
 
@@ -40,9 +41,37 @@ internal static class PlatformStatusOverlay
             Content = "Plateforme",
             MinHeight = 38,
             Padding = new Thickness(14, 6),
-            HorizontalAlignment = HorizontalAlignment.Right,
         };
         platformButton.Click += (_, _) => openPlatform();
+        var switchButton = new Button
+        {
+            Content = "Changer d'utilisateur",
+            MinHeight = 38,
+            Padding = new Thickness(14, 6),
+        };
+        switchButton.Click += async (_, _) =>
+        {
+            platformButton.IsEnabled = false;
+            switchButton.IsEnabled = false;
+            try
+            {
+                await switchUserAsync();
+            }
+            finally
+            {
+                platformButton.IsEnabled = true;
+                switchButton.IsEnabled = true;
+            }
+        };
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        buttons.Children.Add(platformButton);
+        buttons.Children.Add(switchButton);
 
         var surface = new StackPanel
         {
@@ -51,7 +80,7 @@ internal static class PlatformStatusOverlay
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
         };
-        surface.Children.Add(platformButton);
+        surface.Children.Add(buttons);
         surface.Children.Add(badge);
         host.Children.Add(surface);
         window.Content = host;
