@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <ProjectReference Include="../../src/MagasinOutil.Transport/MagasinOutil.Transport.csproj" />
+  </ItemGroup>
+</Project>
