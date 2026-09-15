@@ -16,6 +16,7 @@ namespace MagasinOutil.Desktop;
 public sealed class MainWindow : Window
 {
     private readonly IMagazineService _service;
+    private readonly Action<bool>? _themeChanged;
     private readonly Bitmap _blueLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-blue.png")));
     private readonly Bitmap _whiteLogo = new(AssetLoader.Open(new Uri("avares://MagasinOutil.Desktop/Assets/wm-logo-white.png")));
     private readonly Grid _shell = new() { RowDefinitions = new("Auto,Auto,*,Auto") };
@@ -49,9 +50,10 @@ public sealed class MainWindow : Window
     private IBrush Selected => Brush(_dark ? "#52658E" : "#E0E3ED");
     private static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
 
-    public MainWindow(IMagazineService service)
+    public MainWindow(IMagazineService service, bool initialDark = false, Action<bool>? themeChanged = null)
     {
         _service = service;
+        _themeChanged = themeChanged;
         Title = "Gestion des outils — WM — Simulation";
         Width = 1024; Height = 768; MinWidth = 1024; MinHeight = 768;
         CanResize = true;
@@ -98,7 +100,7 @@ public sealed class MainWindow : Window
         KeyDown += (_, e) => { if (e.Key == Key.F11) { WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen; e.Handled = true; } };
         Closed += (_, _) => { _blueLogo.Dispose(); _whiteLogo.Dispose(); };
         Content = _shell;
-        ApplyTheme(false);
+        ApplyTheme(initialDark);
     }
     private static void Put(Grid parent, Control child, int row, int column)
     { Grid.SetRow(child, row); Grid.SetColumn(child, column); parent.Children.Add(child); }
@@ -121,6 +123,7 @@ public sealed class MainWindow : Window
         Background = Back; Foreground = Ink;
         foreach (var panel in _panels) panel.Background = Panel;
         _logo.Source = dark ? _whiteLogo : _blueLogo;
+        _themeChanged?.Invoke(dark);
         Render();
     }
     private static string Number(decimal value) => value.ToString("F3", Culture);
