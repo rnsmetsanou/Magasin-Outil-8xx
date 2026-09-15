@@ -16,12 +16,16 @@ public static class NamedPipeProductHost
         string pipeName,
         IToolInventoryReader inventory,
         IProductSessionService sessions,
-        IProductMagazineReadService magazineReads)
+        IProductMagazineReadService magazineReads,
+        IProductMagazineCommandService commands,
+        IProductLicenseReadService licenses)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
         ArgumentNullException.ThrowIfNull(inventory);
         ArgumentNullException.ThrowIfNull(sessions);
         ArgumentNullException.ThrowIfNull(magazineReads);
+        ArgumentNullException.ThrowIfNull(commands);
+        ArgumentNullException.ThrowIfNull(licenses);
 
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [] });
         builder.Configuration.Sources.Clear();
@@ -31,19 +35,22 @@ public static class NamedPipeProductHost
         builder.Services.AddSingleton(inventory);
         builder.Services.AddSingleton(sessions);
         builder.Services.AddSingleton(magazineReads);
+        builder.Services.AddSingleton(commands);
+        builder.Services.AddSingleton(licenses);
         builder.Services.AddGrpc(options =>
         {
-            options.MaxReceiveMessageSize = 16 * 1024;
+            options.MaxReceiveMessageSize = 64 * 1024;
             options.MaxSendMessageSize = 4 * 1024 * 1024;
             options.EnableDetailedErrors = false;
         });
 
         var app = builder.Build();
         // Legacy pilot read remains available for regression proof. The integrated HMI uses the
-        // session-governed ProductMagazineGrpcService below.
+        // session-governed product services below.
         app.MapGrpcService<InventoryGrpcService>();
         app.MapGrpcService<ProductSessionGrpcService>();
         app.MapGrpcService<ProductMagazineGrpcService>();
+        app.MapGrpcService<ProductCommandGrpcService>();
         return app;
     }
 }
