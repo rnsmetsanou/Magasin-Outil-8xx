@@ -19,34 +19,32 @@ internal static class PlatformStatusOverlay
         if (window.Content is not Control original) return;
 
         window.Content = null;
-        var host = new Grid();
+        var host = new Grid { RowDefinitions = new("*,Auto") };
+        Grid.SetRow(original, 0);
         host.Children.Add(original);
 
         var text = new TextBlock
         {
-            FontSize = 12,
+            FontSize = 11.5,
             Foreground = Brushes.White,
             TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 860,
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        var badge = new Border
-        {
-            Background = new SolidColorBrush(Color.Parse("#20304F")),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(10, 6),
-            Child = text,
-        };
+
         var platformButton = new Button
         {
             Content = "Plateforme",
             MinHeight = 38,
+            MinWidth = 112,
             Padding = new Thickness(14, 6),
         };
         platformButton.Click += (_, _) => openPlatform();
+
         var switchButton = new Button
         {
             Content = "Changer d'utilisateur",
             MinHeight = 38,
+            MinWidth = 170,
             Padding = new Thickness(14, 6),
         };
         switchButton.Click += async (_, _) =>
@@ -67,22 +65,31 @@ internal static class PlatformStatusOverlay
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            Spacing = 8,
             HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         buttons.Children.Add(platformButton);
         buttons.Children.Add(switchButton);
 
-        var surface = new StackPanel
+        var statusGrid = new Grid
         {
-            Spacing = 6,
-            Margin = new Thickness(16, 0, 16, 8),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Bottom,
+            ColumnDefinitions = new("*,Auto"),
+            ColumnSpacing = 14,
         };
-        surface.Children.Add(buttons);
-        surface.Children.Add(badge);
-        host.Children.Add(surface);
+        Grid.SetColumn(text, 0);
+        Grid.SetColumn(buttons, 1);
+        statusGrid.Children.Add(text);
+        statusGrid.Children.Add(buttons);
+
+        var bar = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#20304F")),
+            Padding = new Thickness(14, 8),
+            Child = statusGrid,
+        };
+        Grid.SetRow(bar, 1);
+        host.Children.Add(bar);
         window.Content = host;
 
         void RefreshLabel()
@@ -96,7 +103,7 @@ internal static class PlatformStatusOverlay
             var licenseLabel = license is null
                 ? "LICENCE ?"
                 : license.Status == "Valid"
-                    ? $"LICENCE ● · {license.LicenseId ?? "valide"}"
+                    ? "LICENCE ●"
                     : $"LICENCE ○ · {license.Status}";
 
             var prepareRight = Right(magazine, "tool.prepare");
@@ -115,8 +122,8 @@ internal static class PlatformStatusOverlay
                 var permission = string.IsNullOrWhiteSpace(command.RequiredPermission)
                     ? "droit n/a"
                     : $"{command.RequiredPermission} {(command.PermissionGranted ? "✓" : "✕")}";
-                text.Text = firstLine + Environment.NewLine + rightsLine + Environment.NewLine +
-                    $"Dernière action · {command.Status} · {permission} · licence {command.LicenseStatus} · admission {command.AdmissionStatus} · Op {operation}";
+                text.Text = firstLine + Environment.NewLine + rightsLine +
+                    $" · Dernière action {command.Status} · {permission} · admission {command.AdmissionStatus} · Op {operation}";
             }
 
             window.Title = $"Gestion des outils — WM — {session.DisplayName} · {core} · {licenseLabel}";
