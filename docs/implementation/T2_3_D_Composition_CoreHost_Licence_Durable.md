@@ -41,34 +41,43 @@ T2.3-D qualifie donc la frontière de composition et la durabilité de l’ident
 
 ## Politique temporelle
 
-La tolérance au recul d’horloge est désormais passée explicitement au CoreHost dans le profil de simulation.
+La tolérance au recul d’horloge est passée explicitement au CoreHost dans le profil de simulation.
 
 La recette utilise **120 secondes uniquement comme fixture de qualification**. Cette valeur ne devient pas une politique produit finale.
 
-## Recette
+## Validation locale reçue
 
-`eng/Test-T23D.ps1` :
-
-- restaure le pilote uniquement depuis les paquets plateforme locaux produits par la recette ;
-- compile le pilote ;
-- démarre le CoreHost avec un nouveau répertoire d’état ;
-- vérifie la création non vide de `licensing.db` ;
-- extrait l’identité `inst1_...` annoncée par le CoreHost ;
-- vérifie l’état initial `license=Missing` ;
-- vérifie qu’aucune clé publique d’émetteur n’est embarquée dans la simulation ;
-- redémarre le CoreHost sur le même répertoire d’état ;
-- vérifie que l’identité d’installation est strictement identique après redémarrage ;
-- contrôle que les paquets concrets de licence sont composés uniquement côté CoreHost ;
-- contrôle que `MagasinOutil.ReadClient` et `MagasinOutil.Platform` n’embarquent pas l’autorité de licence concrète, l’adaptateur cryptographique ou SQLite.
-
-La recette globale reste :
+Commande globale exécutée :
 
 ```powershell
 .\eng\Test-T23.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
+Le journal reçu le 15 septembre 2026 confirme :
+
+- création réelle et non vide de `licensing.db` par `MagasinOutil.CoreHost` ;
+- création d’une identité d’installation cryptographique sans clé privée d’émetteur embarquée ;
+- démarrage du profil de simulation avec zéro clé publique de production approuvée ;
+- redémarrage du CoreHost sur le même répertoire d’état avec conservation stricte de l’identité d’installation ;
+- présence des composants communs de licence, de vérification cryptographique et de persistance SQLite dans la composition du CoreHost ;
+- absence de l’autorité de licence concrète, de la cryptographie et du fournisseur SQLite dans `MagasinOutil.ReadClient` ;
+- indépendance du module métier/plateforme du pilote vis-à-vis de la composition concrète de licence.
+
+La même exécution conserve **T0/T1, T2.1, T2.2 et T2.3-A/B/C verts**.
+
 ## État
 
-**IMPLÉMENTÉ — À QUALIFIER LOCALEMENT.**
+**PASS LOCAL — SIMULATION WINDOWS.**
 
-T2.3 ne sera déclaré clôturé qu’après réception d’un journal où T2.3-D passe avec A, B, C et toutes les régressions précédentes toujours vertes.
+T2.3-D qualifie la composition réelle de l’autorité de licence dans le pilote et clôt le dernier écart entre les preuves plateforme et le processus `MagasinOutil.CoreHost`.
+
+Ce PASS ne qualifie pas :
+
+- une clé publique de production réelle ;
+- l’outil d’émission WM de production ;
+- les règles commerciales de durée/transfert ;
+- un Trusted Platform Module (TPM) ou autre scellement matériel ;
+- le PC industriel cible ;
+- un raccordement Beckhoff réel.
+
+Avec T2.3-A/B/C également PASS LOCAL, **T2.3 est clôturé en simulation Windows**.
