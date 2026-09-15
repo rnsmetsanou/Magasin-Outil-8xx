@@ -22,7 +22,7 @@ internal static class PlatformStatusOverlay
             FontSize = 12,
             Foreground = Brushes.White,
             TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 780,
+            MaxWidth = 860,
         };
         var badge = new Border
         {
@@ -52,11 +52,15 @@ internal static class PlatformStatusOverlay
                     ? $"LICENCE ● · {license.LicenseId ?? "valide"}"
                     : $"LICENCE ○ · {license.Status}";
 
+            var prepareRight = Right(magazine, "tool.prepare");
+            var loadRight = Right(magazine, "tool.load");
+            var editRight = Right(magazine, "tool.data.edit");
             var firstLine = $"{session.DisplayName} · {core} · {evidence} · {licenseLabel}";
+            var rightsLine = $"Droits · Préparer {prepareRight} · Charger {loadRight} · Modifier {editRight}";
             var command = magazine.LastCommand;
             if (command is null)
             {
-                text.Text = firstLine;
+                text.Text = firstLine + Environment.NewLine + rightsLine;
             }
             else
             {
@@ -64,7 +68,7 @@ internal static class PlatformStatusOverlay
                 var permission = string.IsNullOrWhiteSpace(command.RequiredPermission)
                     ? "droit n/a"
                     : $"{command.RequiredPermission} {(command.PermissionGranted ? "✓" : "✕")}";
-                text.Text = firstLine + Environment.NewLine +
+                text.Text = firstLine + Environment.NewLine + rightsLine + Environment.NewLine +
                     $"Dernière action · {command.Status} · {permission} · licence {command.LicenseStatus} · admission {command.AdmissionStatus} · Op {operation}";
             }
 
@@ -96,6 +100,9 @@ internal static class PlatformStatusOverlay
         timer.Start();
         window.Closed += (_, _) => timer.Stop();
     }
+
+    private static string Right(IIntegratedMagazineService magazine, string permission) =>
+        magazine.Permissions.Contains(permission) ? "✓" : "🔒";
 
     private static string Short(string value) => value.Length <= 8 ? value : value[..8];
 }
