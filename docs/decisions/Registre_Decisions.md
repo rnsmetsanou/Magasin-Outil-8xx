@@ -41,10 +41,11 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - Mapping Beckhoff 8xx : propriétaires PLC/CNC/application, échelles, encodage, protocole, atomicité et preuves de complétion à confirmer.
 - Distribution et compatibilité des composants communs de plateforme : à définir ; ne pas copier leur code privé dans ce dépôt.
 - T2.2 : le seuil de temporisation progressive après cinq échecs est acquis, mais la courbe/durée exacte reste à définir et qualifier. La fixture de test `1 s → 2 s → 4 s → 8 s` n’est pas une décision produit. Le secret temporaire de réinitialisation et la récupération signée restent à implémenter.
+- Pour une exposition réseau de l’authentification, ajouter une limitation indépendante par source/contexte réseau en complément du throttling par compte. Cette protection appartient au transport et ne doit pas être simulée comme une propriété du store d’identité.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A est PASS LOCAL. La révision initiale de T2.2-B est PASS LOCAL ; la branche B a ensuite reçu un durcissement anti-énumération et doit être requalifiée. T2.2-C est implémenté et en attente de qualification locale.** Les licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows : T2.1-A, T2.1-B et T2.1-C sont PASS LOCAL, avec régression T0/T1 verte. **T2.2-A, la révision durcie de T2.2-B et T2.2-C sont PASS LOCAL. T2.2-D est implémenté et attend sa qualification locale avant clôture de T2.2.** Les licences produit, serveur OPC UA intégré, raccordement Fleet et connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -83,18 +84,22 @@ Le journal reçu le 15 septembre 2026 confirme la totalité des contrôles T2.2-
 
 Voir le [dossier T2.2-A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md). **État : PASS LOCAL.**
 
-## T2.2-B — comptes locaux durables et authentification Argon2id
+## T2.2-B — comptes locaux durables et authentification Argon2id : PASS LOCAL
 
-Le journal reçu le 15 septembre 2026 a validé la première révision de B : persistance SQLite, Argon2id, révisions optimistes, changement de mot de passe, permissions, désactivation et absence de secrets en clair. Le temps pilote mesuré était de **309 ms** par hash. Voir le [dossier T2.2-B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md).
+Le journal reçu le 15 septembre 2026 qualifie la révision durcie de B : persistance SQLite, Argon2id, révisions optimistes, changement de mot de passe, permissions, désactivation, absence de secrets en clair et protection anti-énumération. Un compte inconnu effectue lui aussi un travail Argon2id ; utilisateur inconnu, mauvais mot de passe et compte désactivé ne divulguent pas un état distinct via le login. Le temps Argon2id mesuré sur cette exécution est de **360 ms**.
 
-Après ce PASS, le chemin de connexion a été durci pour éviter un facteur d’énumération : un utilisateur inconnu réalise désormais un travail Argon2id au lieu d’un retour rapide, et un compte désactivé ne divulgue plus son état via un statut de connexion distinct. Des assertions instrumentées ont été ajoutées à la recette.
+Voir le [dossier T2.2-B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md). **État : PASS LOCAL.**
 
-**État courant : révision initiale PASS LOCAL ; révision durcie à requalifier.**
+## T2.2-C — limitation des tentatives et premier administrateur : PASS LOCAL
 
-## T2.2-C — limitation des tentatives et premier administrateur
+Le journal reçu le 15 septembre 2026 confirme : démarrage du délai progressif au cinquième échec, persistance après recréation du store, impossibilité de contourner un délai actif avec le bon mot de passe, remise à zéro après succès, comportement générique pour les identités inconnues, commissioning propre à l’installation, secret d’activation non conservé en clair, création atomique du premier administrateur, consommation à usage unique et convergence de deux tentatives concurrentes vers exactement un compte.
 
-La micro-tranche C est implémentée et décrite dans le [dossier T2.2-C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md). Elle introduit une limitation durable rattachée au nom normalisé, avec démarrage au cinquième échec, ainsi qu’un commissioning transactionnel à usage unique du premier administrateur protégé par un secret spécifique à l’installation dont seul le dérivé est persisté.
+Le premier administrateur reçoit un ensemble explicite de permissions administratives, sans `*`, `tool.prepare` ou `tool.load`. Voir le [dossier T2.2-C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md). **État : PASS LOCAL.**
 
-Le premier administrateur reçoit un ensemble explicite de permissions d’administration côté serveur, sans permission `*`, `tool.prepare` ou `tool.load`. Les deux tentatives concurrentes de commissioning doivent converger vers exactement un compte créé.
+## T2.2-D — stockage borné du throttling inconnu
 
-**État : implémenté/en qualification, pas PASS.**
+La dernière micro-tranche de robustesse T2.2 est implémentée et décrite dans le [dossier T2.2-D](../implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md). `SqliteIdentitySecurityStore` borne désormais les lignes de throttling ne correspondant à aucun compte durable : capacité pilote par défaut 256, paramétrable. Les lignes des comptes réels sont exclues de l’éviction.
+
+La recette dédiée injecte 512 faux identifiants avec une borne de test à 32 et doit vérifier simultanément la borne, l’éviction des anciennes traces inconnues, la conservation du compteur du compte réel et la persistance de cette protection après recréation du store.
+
+**État : implémenté/en qualification, pas PASS.** Un PASS de D avec toutes les régressions vertes permettra de clôturer T2.2 et d’ouvrir T2.3 — licences.
