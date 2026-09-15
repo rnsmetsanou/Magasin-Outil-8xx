@@ -48,7 +48,7 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows. Le lot **T2.2 — identités locales, authentification et sessions** est également clôturé en simulation Windows : **T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont PASS LOCAL**, avec régression T0/T1 + T2.1 verte. **T2.3-A est PASS LOCAL. T2.3-B est implémenté et attend sa qualification locale.** Le raccordement de la licence aux admissions, le serveur OPC UA intégré, le raccordement Fleet et le connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows. Le lot **T2.2 — identités locales, authentification et sessions** est également clôturé en simulation Windows. **T2.3-A et T2.3-B sont PASS LOCAL. T2.3-C est implémenté et attend sa qualification locale.** Le serveur OPC UA intégré, le raccordement Fleet et le connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -72,42 +72,32 @@ La [proposition T2 V0.1](../plan/T2_Autorites_Durables_Proposition_V0.1.md) cons
 
 ## T2.1 — autorités durables et stockage clôturés en simulation
 
-Le journal reçu le 15 septembre 2026 confirme simultanément :
-
-- **T2.1-C PASS LOCAL** : composition réelle de `Platform.Poc.Persistence.Sqlite` par `MagasinOutil.CoreHost`, base durable créée, module métier et client de lecture non couplés à SQLite ;
-- **T2.1-A PASS LOCAL** : invariants de sessions et d’admission provider-indépendants ;
-- **T2.1-B PASS LOCAL** : migration, atomicité admission + audit, rollback, déduplication concurrente, persistance et sauvegarde/restauration ;
-- régression **T0/T1 PASS LOCAL**.
-
-Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. T2.1 est clôturé ; aucune qualification Beckhoff réelle n’en découle.
+Le journal reçu le 15 septembre 2026 confirme simultanément T2.1-A, T2.1-B, T2.1-C et la régression T0/T1 : **PASS LOCAL**. Le [dossier de preuve T2.1](../implementation/T2_1_Autorites_Durables_Validation_Windows_2026-09-15.md) fait foi pour le périmètre simulé. Aucune qualification Beckhoff réelle n’en découle.
 
 ## T2.2 — identités locales, authentification et sessions : clôturé
 
-Le journal final reçu le 15 septembre 2026 confirme simultanément les quatre micro-tranches :
+T2.2-A/B/C/D sont **PASS LOCAL**. Ils qualifient les identités nominatives, comptes durables, Argon2id, sessions opaques, permissions dynamiques, throttling, commissioning du premier administrateur et stockage borné des faux identifiants. Voir les dossiers [A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md), [B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md), [C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) et [D](../implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md).
 
-- **T2.2-A PASS LOCAL** : identités nominatives, sessions opaques, liaison client/cible, délais d’inactivité, durée absolue, activité humaine explicite, retrait de permissions, révocation et réauthentification après recréation du Core ;
-- **T2.2-B PASS LOCAL** : comptes durables, Argon2id, révisions optimistes, changement de mot de passe, absence de secrets en clair, réponse de login générique et travail Argon2id aussi pour un nom inconnu ;
-- **T2.2-C PASS LOCAL** : temporisation durable après cinq échecs, remise à zéro après succès, commissioning atomique à usage unique du premier administrateur et concurrence convergeant vers un seul compte ;
-- **T2.2-D PASS LOCAL** : stockage borné des traces d’identités inconnues, éviction limitée aux faux identifiants et conservation intacte du compteur des comptes réels sous pression.
-
-La dernière exécution conserve également T0/T1 et T2.1 verts. Le temps Argon2id observé lors de cette exécution était de **192 ms** ; les mesures précédentes étaient plus élevées, ce qui confirme que le coût devra être benchmarké sur le PC industriel cible avant de devenir une politique produit.
-
-Voir les dossiers [A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md), [B](../implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md), [C](../implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) et [D](../implementation/T2_2_D_Stockage_Borne_Throttling_Identites_Inconnues.md).
-
-**État : T2.2 clôturé en simulation Windows.** Aucune qualification Beckhoff réelle ni validation finale du matériel cible n’en découle.
+**État : T2.2 clôturé en simulation Windows.**
 
 ## T2.3-A — contrat et vérification de licence hors ligne signée : PASS LOCAL
 
-Le journal reçu le 15 septembre 2026 confirme la micro-tranche A. Le candidat qualifié utilise **ECDSA P-256 + SHA-256** avec une signature IEEE P1363 et une clé publique X.509 `SubjectPublicKeyInfo` DER. Le payload signé est canonique et versionné ; il lie licence, version de renouvellement, émetteur, clé, produit, installation, capacités et fenêtre de validité.
-
-La recette confirme notamment le refus des altérations de payload/signature, des clés et algorithmes inconnus, du rebinding de clé, des incohérences d’émetteur, d’un mauvais produit ou d’une mauvaise installation, des périodes invalides et d’une représentation signée non canonique. Les contrats/runtime ne dépendent pas de l’adaptateur ECDSA concret et aucune API de signature privée n’est exposée au runtime machine.
+Le journal reçu le 15 septembre 2026 confirme la vérification ECDSA P-256 + SHA-256 du payload canonique et versionné, les liaisons émetteur/clé/produit/installation, la période de validité et le refus des altérations ou représentations signées non canoniques. Les contrats/runtime ne dépendent pas de l’adaptateur ECDSA concret et aucune API de signature privée n’est exposée au runtime machine.
 
 Voir le [dossier T2.3-A](../implementation/T2_3_A_Contrat_Verification_Licence_Signee.md). **État : PASS LOCAL.**
 
-## T2.3-B — identité d’installation, renouvellement et temps de confiance
+## T2.3-B — identité d’installation, renouvellement et temps de confiance : PASS LOCAL
 
-La micro-tranche B est implémentée et décrite dans le [dossier T2.3-B](../implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md).
+Le journal reçu le 15 septembre 2026 confirme l’identité d’installation durable aléatoire, l’anti-rollback de `RenewalVersion`, l’idempotence, la persistance, l’expiration, la détection durable du recul d’horloge, la récupération temporelle signée et la séparation des clés d’émission/récupération. La plus haute version de renouvellement reste autoritative après récupération et aucune clé privée de signature n’est retrouvée dans SQLite.
 
-Elle introduit une identité d’installation durable générée avec 256 bits d’aléa cryptographiquement sûr, une licence installée persistante avec `RenewalVersion` monotone, une borne UTC haute persistée, une mesure monotone pendant le processus et une récupération temporelle explicitement signée et liée à l’installation. La clé de récupération utilisée par la qualification est distincte de la clé d’émission de licence.
+Voir le [dossier T2.3-B](../implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md). **État : PASS LOCAL.**
 
-**État : implémenté/en qualification, pas PASS.** T2.3-C — raccordement de l’autorité de licence aux nouvelles admissions — reste à implémenter après qualification de B.
+## T2.3-C — admission gouvernée par licence
+
+La micro-tranche C est implémentée et décrite dans le [dossier T2.3-C](../implementation/T2_3_C_Admission_Gouvernee_Licence.md).
+
+L’autorité de licence est évaluée à chaque nouvelle admission machine via un contrat générique asynchrone dans Foundation. `Machine.Runtime` ne dépend pas du runtime de licence, de SQLite ou de l’adaptateur cryptographique. `license.install` gouverne l’import d’un artefact déjà signé. Permissions humaines et licence produit restent indépendantes ; les capacités licenciées ne sont jamais fournies par le client.
+
+Une expiration ou une incohérence temporelle doit refuser une **nouvelle** opération, sans réévaluer ni annuler rétroactivement une opération déjà admise. Les runtimes de lecture restent hors de ce verrou de mutation.
+
+**État : implémenté/en qualification, pas PASS.** T2.3 ne sera pas clôturé avant réception du journal local T2.3-C avec les régressions précédentes toujours vertes.
