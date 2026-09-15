@@ -8,9 +8,10 @@ using Platform.Poc.Machine.Contracts.Connectivity;
 namespace MagasinOutil.CoreHost;
 
 internal sealed class DemoSessionApplication(
-    RateLimitedLocalAuthenticator authenticator,
+    LocalAccountService accounts,
     ILocalAccountStore accountStore,
-    LocalIdentityAuthority authority) : IProductSessionService
+    LocalIdentityAuthority authority,
+    IToolInventoryReader inventory) : IProductSessionService, IProductMagazineReadService
 {
     private readonly object _registrationGate = new();
     private readonly HashSet<string> _registeredSubjects = new(StringComparer.Ordinal);
@@ -26,16 +27,16 @@ internal sealed class DemoSessionApplication(
             !ValidText(request.ClientId, 128))
             return new(ProductSignInStatus.InvalidRequest, null, "Demande de connexion invalide.");
 
-        var authentication = await authenticator.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
+        var authentication = await accounts.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
             .ConfigureAwait(false);
         if (!authentication.IsAuthenticated || authentication.Identity is null)
         {
             return authentication.Status switch
             {
-                ProtectedLocalAuthenticationStatus.Throttled =>
-                    new(ProductSignInStatus.Throttled, null, "Trop de tentatives. Réessayer après le délai indiqué.", authentication.RetryAfter),
                 ProtectedLocalAuthenticationStatus.Unavailable =>
                     new(ProductSignInStatus.Unavailable, null, "Autorité d'identité indisponible."),
+                ProtectedLocalAuthenticationStatus.Throttled =>
+                    new(ProductSignInStatus.InvalidCredentials, null, "Authentification temporairement ralentie."),
                 _ => new(ProductSignInStatus.InvalidCredentials, null, "Utilisateur ou mot de passe incorrect."),
             };
         }
@@ -92,6 +93,79 @@ internal sealed class DemoSessionApplication(
 
         authority.Revoke(reference);
         return new(ProductSessionStatus.Revoked, null, "Session fermée.");
+    }
+
+    public async ValueTask<ProductMagazineReadResult> ReadAsync(
+        ProductMagazineReadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.ContractVersion != ProductMagazineReadContract.Version)
+            return new(ProductMagazineReadStatus.Incompatible, null, "Version de contrat incompatible.");
+        if (!ValidText(request.SessionReference, 256) || !ValidText(request.ClientId, 128))
+            return new(ProductMagazineReadStatus.InvalidRequest, null, "Demande de lecture invalide.");
+
+        var session = await ResolveAsync(
+            new ProductSessionRequest(ProductSessionContract.Version, request.SessionReference, request.ClientId),
+            cancellationToken).ConfigureAwait(false);
+        if (!session.IsValid)
+            return new(ProductMagazineReadStatus.SessionInvalid, null, "Session invalide ou expirée.");
+
+        try
+        {
+            var snapshot = await inventory.ReadAsync(
+                new ToolInventoryReadRequest(ToolInventoryContract.Version, ProductSessionContract.TargetId, request.ClientId),
+                cancellationToken).ConfigureAwait(false);
+            return new(ProductMagazineReadStatus.Success, MapSnapshot(snapshot), "Lecture Core confirmée.");
+        }
+        catch (InventoryReadException)
+        {
+            return new(ProductMagazineReadStatus.Unavailable, null, "Snapshot Machine indisponible.");
+        }
+    }
+
+    private static ProductMagazineSnapshot MapSnapshot(ToolInventorySnapshot snapshot)
+    {
+        var locations = new List<Location>(snapshot.Places.Count);
+        foreach (var place in snapshot.Places)
+        {
+            if (!int.TryParse(place.PlaceId, out var number) || !int.TryParse(place.GroupId, out var rack))
+                throw new InvalidDataException("Le snapshot magasin contient un identifiant de place non numérique.");
+
+            Tool? tool = null;
+            if (place.AssignedTool is { } assigned)
+            {
+                if (!Enum.TryParse<ToolPosition>(assigned.Position, ignoreCase: false, out var position) ||
+                    !Enum.TryParse<ToolCondition>(assigned.Condition, ignoreCase: false, out var condition))
+                    throw new InvalidDataException("Le snapshot magasin contient un état outil inconnu.");
+
+                var length = RequiredMeasurement(assigned, "Length");
+                var wear = RequiredMeasurement(assigned, "LengthWear");
+                tool = new Tool(assigned.ToolId, assigned.Name, position, condition, length, wear, assigned.Revision);
+            }
+
+            locations.Add(new Location(number, rack, place.Excluded, place.Blocked, tool));
+        }
+
+        var observation = new ProductMagazineObservation(
+            snapshot.Runtime.TargetId,
+            snapshot.Runtime.RuntimeEpoch,
+            snapshot.Runtime.SessionId,
+            snapshot.Runtime.SessionGeneration,
+            snapshot.Evidence.Quality.ToString(),
+            snapshot.Evidence.Freshness.ToString(),
+            snapshot.Evidence.ObservedAt,
+            snapshot.Evidence.SourceTimestamp,
+            snapshot.Evidence.Origin,
+            snapshot.Consistency);
+        return new ProductMagazineSnapshot(observation, locations);
+    }
+
+    private static decimal RequiredMeasurement(ToolInventoryItem tool, string quantity)
+    {
+        var measurement = tool.Measurements.SingleOrDefault(value => string.Equals(value.Quantity, quantity, StringComparison.Ordinal));
+        if (measurement is null)
+            throw new InvalidDataException($"Mesure requise absente: {quantity}.");
+        return measurement.Value;
     }
 
     private ProductSessionResult? ValidateSessionRequest(ProductSessionRequest request)
