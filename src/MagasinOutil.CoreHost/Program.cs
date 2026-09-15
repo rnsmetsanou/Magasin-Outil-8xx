@@ -131,9 +131,13 @@ var commands = new DemoGovernedCommandApplication(
     admissionStore,
     licenseAuthority,
     installationIdentityService);
+var administration = new DemoAdministrationApplication(
+    sessions,
+    commands,
+    admissionStore.DatabasePath);
 
-await using var host = NamedPipeProductHost.Create(pipe, application, sessions, sessions, commands, commands);
+await using var host = NamedPipeProductHost.Create(pipe, application, sessions, sessions, commands, commands, administration);
 await host.StartAsync();
 Console.WriteLine(
-    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys={approvedKeys.Count}; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; demo-license={(demoLicenseEnabled ? "enabled" : "disabled")}; auth-throttle=durable; governed-magazine-read=enabled; governed-commands=enabled; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
+    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys={approvedKeys.Count}; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; demo-license={(demoLicenseEnabled ? "enabled" : "disabled")}; auth-throttle=durable; governed-magazine-read=enabled; governed-commands=enabled; administration-read=enabled; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
 await host.WaitForShutdownAsync();
