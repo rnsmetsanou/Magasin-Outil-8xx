@@ -1,8 +1,11 @@
+using System.Text.Json;
 using MagasinOutil.CoreHost;
 using MagasinOutil.Platform;
 using MagasinOutil.Transport;
 using Microsoft.Extensions.Hosting;
 using Platform.Poc.Application.Contracts;
+using Platform.Poc.CrossCutting.Runtime.Identity;
+using Platform.Poc.Foundation.Licensing;
 using Platform.Poc.Identity.Contracts;
 using Platform.Poc.Identity.PasswordHashing.Argon2;
 using Platform.Poc.Identity.Persistence.Sqlite;
@@ -11,6 +14,7 @@ using Platform.Poc.Licensing.Contracts;
 using Platform.Poc.Licensing.Cryptography;
 using Platform.Poc.Licensing.Persistence.Sqlite;
 using Platform.Poc.Licensing.Runtime;
+using Platform.Poc.Machine.Contracts.Operations.ToolHandling;
 using Platform.Poc.Persistence.Sqlite;
 
 const string productId = "wm.magasin-outil-8xx";
@@ -18,13 +22,17 @@ const string productId = "wm.magasin-outil-8xx";
 if (!OperatingSystem.IsWindows())
     throw new PlatformNotSupportedException("Ce profil gRPC/tubes nommes requiert Windows.");
 if (args.Length < 4 || args[0] != "--simulation")
-    throw new ArgumentException("Usage: --simulation [nom-du-tube] [repertoire-etat] [tolerance-recul-horloge-secondes] [--demo-users]. Aucune connexion machine reelle disponible.");
+    throw new ArgumentException("Usage: --simulation [nom-du-tube] [repertoire-etat] [tolerance-recul-horloge-secondes] [--demo-users] [--demo-license]. Aucune connexion machine reelle disponible.");
 if (!int.TryParse(args[3], out var maximumBackwardSkewSeconds) || maximumBackwardSkewSeconds < 0)
     throw new ArgumentException("La tolerance de recul d'horloge doit etre fournie explicitement en secondes et etre positive ou nulle.");
 
 var pipe = args[1];
 var stateDirectory = Path.GetFullPath(args[2]);
-var demoUsersEnabled = args.Skip(4).Any(static value => string.Equals(value, "--demo-users", StringComparison.Ordinal));
+var optionalArgs = args.Skip(4).ToArray();
+var demoUsersEnabled = optionalArgs.Any(static value => string.Equals(value, "--demo-users", StringComparison.Ordinal));
+var demoLicenseEnabled = optionalArgs.Any(static value => string.Equals(value, "--demo-license", StringComparison.Ordinal));
+if (demoLicenseEnabled && !demoUsersEnabled)
+    throw new InvalidOperationException("--demo-license est reserve au profil explicite --demo-users.");
 Directory.CreateDirectory(stateDirectory);
 
 var admissionStore = new SqliteDurableAdmissionStore(Path.Combine(stateDirectory, "durable-authority.db"));
@@ -76,10 +84,20 @@ var trustedTime = new OfflineTrustedTimeAuthority(
     licensingStore,
     new TrustedTimePolicy(TimeSpan.FromSeconds(maximumBackwardSkewSeconds)));
 
-// Qualification/demo composition only: no production issuer key is embedded in the pilot.
-// A deployment must inject approved public verification keys before signed-license import is enabled.
+var approvedKeys = new List<LicenseVerificationKey>();
+if (demoLicenseEnabled)
+{
+    var publicKeyPath = Environment.GetEnvironmentVariable("WM_MAGASIN8XX_DEMO_LICENSE_PUBLIC_KEY");
+    if (string.IsNullOrWhiteSpace(publicKeyPath) || !File.Exists(publicKeyPath))
+        throw new InvalidOperationException("WM_MAGASIN8XX_DEMO_LICENSE_PUBLIC_KEY doit pointer vers une cle publique DEMO existante.");
+    var keyJson = await File.ReadAllTextAsync(publicKeyPath);
+    approvedKeys.Add(JsonSerializer.Deserialize<LicenseVerificationKey>(keyJson)
+        ?? throw new InvalidDataException("Cle publique DEMO invalide."));
+}
+
+// No production issuer key is embedded. The explicit demo profile may inject one public DEMO key.
 var verification = new LicenseVerificationService(
-    new ApprovedLicenseVerificationKeySet(Array.Empty<LicenseVerificationKey>()),
+    new ApprovedLicenseVerificationKeySet(approvedKeys),
     [new EcdsaP256Sha256LicenseSignatureVerifier()]);
 var licenseAuthority = new DurableLicenseAuthority(
     productId,
@@ -87,10 +105,35 @@ var licenseAuthority = new DurableLicenseAuthority(
     licensingStore,
     verification,
     trustedTime);
-var licenseState = await licenseAuthority.EvaluateAsync();
 
-await using var host = NamedPipeProductHost.Create(pipe, application, sessions, sessions);
+if (demoLicenseEnabled)
+{
+    var licensePath = Environment.GetEnvironmentVariable("WM_MAGASIN8XX_DEMO_LICENSE_FILE");
+    if (string.IsNullOrWhiteSpace(licensePath) || !File.Exists(licensePath))
+        throw new InvalidOperationException("WM_MAGASIN8XX_DEMO_LICENSE_FILE doit pointer vers une licence signee DEMO existante.");
+    var install = await licenseAuthority.InstallAsync(await File.ReadAllBytesAsync(licensePath));
+    if (install.Status is not (DurableLicenseInstallStatus.Installed or DurableLicenseInstallStatus.AlreadyInstalled))
+        throw new InvalidOperationException($"Installation de la licence DEMO refusee: {install.Status}/{install.VerificationStatus}.");
+}
+
+var licenseState = await licenseAuthority.EvaluateAsync();
+var entitlementAuthority = new DurableLicenseEntitlementAuthority(
+    licenseAuthority,
+    [new KeyValuePair<EntitlementId, LicenseCapabilityId>(
+        ToolHandlingEntitlements.ToolManagement,
+        new LicenseCapabilityId("tool-management"))]);
+var authorization = new PermissionAuthorizationService();
+var commands = new DemoGovernedCommandApplication(
+    sessions,
+    application,
+    authorization,
+    entitlementAuthority,
+    admissionStore,
+    licenseAuthority,
+    installationIdentityService);
+
+await using var host = NamedPipeProductHost.Create(pipe, application, sessions, sessions, commands, commands);
 await host.StartAsync();
 Console.WriteLine(
-    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys=0; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; auth-throttle=durable; governed-magazine-read=enabled; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
+    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys={approvedKeys.Count}; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; demo-license={(demoLicenseEnabled ? "enabled" : "disabled")}; auth-throttle=durable; governed-magazine-read=enabled; governed-commands=enabled; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
 await host.WaitForShutdownAsync();
