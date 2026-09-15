@@ -1,25 +1,16 @@
 # Feuille de route du pilote Magasin 8xx
 
-Date : 15 septembre 2026. Statut : feuille de route actualisée après clôture locale de T2.3 ; décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
+Date : 15 septembre 2026. Statut : T2.3 clôturé ; T2.4-A implémenté et en attente de qualification locale. Décisions acquises référencées dans le [registre](decisions/Registre_Decisions.md).
 
 ## 1. Où en sommes-nous ?
 
-Le socle **T0/T1** est **PASS LOCAL** sur Windows.
+Le socle **T0/T1**, **T2.1**, **T2.2** et **T2.3** sont **PASS LOCAL** et clôturés sur leur périmètre de simulation Windows.
 
-Le lot **T2.1 — autorités durables et stockage** est **PASS LOCAL et clôturé** : contrats fournisseur-indépendants, admission + audit atomiques avant effet technologique, déduplication concurrente, persistance/sauvegarde SQLite et composition du fournisseur côté CoreHost.
+**T2.4-A — secret temporaire de réinitialisation du mot de passe est implémenté et attend sa qualification locale.**
 
-Le lot **T2.2 — identités locales, authentification et sessions** est **PASS LOCAL et clôturé** : comptes nominatifs durables, Argon2id, sessions opaques/révocables, permissions dynamiques, throttling durable, premier administrateur commissionné sans compte universel et stockage borné des faux identifiants.
+Il introduit un secret 256 bits, une durée initiale de 15 minutes, un usage unique, une consommation atomique avec le remplacement du credential, la conservation des permissions, la révocation des sessions existantes du sujet et l’absence d’auto-login.
 
-Le lot **T2.3 — licences hors ligne signées et temps de confiance** est **PASS LOCAL et clôturé** :
-
-- A : format signé et vérification cryptographique ;
-- B : identité d’installation, anti-rollback, temps de confiance et récupération temporelle ;
-- C : admission gouvernée par licence ;
-- D : composition réelle de la licence durable dans `MagasinOutil.CoreHost`.
-
-La prochaine tranche est **T2.4 — audit et chemins de récupération produit**.
-
-La connexion Beckhoff réelle, la récupération produit complète, la qualification du PC industriel et la qualification produit restent hors des jalons déjà clôturés.
+T2.4-B/C/D restent à implémenter. La connexion Beckhoff réelle, le PC industriel cible et la qualification produit restent hors des jalons déjà clôturés.
 
 ## 2. Étapes et critères de sortie
 
@@ -28,7 +19,7 @@ La connexion Beckhoff réelle, la récupération produit complète, la qualifica
 | 0. Prototype et découverte | Parcours magasin simulé, contraintes WM, formats écran et premières sources PLC | Prototype réalisé | Référence de parcours disponible, limites de simulation explicites |
 | 1. Contrat V1 | Périmètre métier, exposition OPC UA, rôles, maintenance et profils | Principales décisions V1 acquises | Questions restantes identifiées avec leur impact |
 | 2. Architecture d’intégration | Répartition plateforme/pilote, contrats, transport, stockage et composition | T0/T1 + T2.1 + T2.2 + T2.3 vérifiés | Frontières communes qualifiées sans duplication des autorités |
-| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, HMI/OPC UA/Fleet | En cours — T2.3 clôturé, T2.4 prochain | Une opération bout en bout avec refus gouvernés, audit durable et coupures exercés |
+| 3. Première tranche intégrée simulée | Identité réelle, opération commune, licence, audit, récupération, HMI/OPC UA/Fleet | En cours — T2.4-A en qualification | Une opération bout en bout avec refus gouvernés, audit durable et chemins de récupération exercés |
 | 4. Couverture fonctionnelle V1 | Outils, correcteurs, usures, maintenance consultative, langues/unités, administration | À réaliser | Matrice V1 couverte et vérifiée en simulation |
 | 5. Raccordement Beckhoff 8xx | Lectures puis écritures/opérations réelles, Secure ADS, synchronisation PLC/CNC | Sources partiellement analysées | Preuves sur banc cible pour chaque capacité annoncée |
 | 6. Qualification produit et livraison pilote | Installation, profils, reprise, matériel réel, dossiers de preuve | À préparer | Critères de recette produit satisfaits et limites acceptées |
@@ -41,109 +32,83 @@ La connexion Beckhoff réelle, la récupération produit complète, la qualifica
 - quatre profils de composition ;
 - OPC UA en exposition V1 et Fleet en lecture seule ;
 - comptes locaux nominatifs utilisables hors ligne ;
-- quatre rôles initiaux : Consultation, Opérateur, Régleur outils, Administrateur ;
+- rôles Consultation, Opérateur, Régleur outils et Administrateur sans hiérarchie implicite ;
 - aucune consultation métier OPC UA anonyme ;
 - sessions opaques liées au sujet, client et cible ;
-- inactivité initiale : 30 min local interactif, 10 min distant interactif ; durée absolue 8 h ;
-- authentification Argon2id avec paramètres versionnés et benchmark à refaire sur cible ;
-- throttling progressif démarrant au cinquième échec ; courbe exacte configurable ;
-- commissioning du premier administrateur par secret d’activation propre à l’installation, à usage unique ;
-- licence locale signée, liée à une identité d’installation et sans clé privée d’émission sur la machine ;
-- renouvellement de licence monotone et récupération du temps par artefact signé ;
-- expiration/incohérence temporelle bloquant les nouvelles opérations licenciées, pas les opérations déjà admises ;
-- `license.install` comme permission explicite d’import d’un artefact déjà signé ;
-- composition concrète de licence uniquement côté CoreHost ;
+- inactivité initiale : 30 min local, 10 min distant ; durée absolue 8 h ;
+- Argon2id derrière un fournisseur remplaçable ; paramètres finaux à benchmarker sur cible ;
+- throttling progressif à partir du cinquième échec ;
+- commissioning du premier administrateur par secret propre à l’installation, à usage unique ;
+- licence hors ligne signée et liée à l’installation, sans clé privée d’émission sur la machine ;
+- renouvellement monotone et récupération du temps signée ;
+- expiration/incohérence bloquant les nouvelles opérations licenciées mais pas les opérations déjà admises ;
+- `license.install` comme permission explicite d’import ;
+- composition concrète des fournisseurs uniquement côté CoreHost ;
 - SQLite et gRPC remplaçables derrière des contrats ;
 - maintenance V1 en consultation seule ;
-- Opérateur autorisé à modifier uniquement les usures, y compris en broche sous conditions, et à Préparer/Charger ;
-- formats 1024 × 768 et 1920 × 1080, tactile, thèmes WM, français requis, anglais souhaité, allemand si possible, mm/pouces.
+- aucune modification PLC requise par T2.
 
-## 4. T2.2 — clôturé
+## 4. Lots clôturés
 
-T2.2-A/B/C/D sont **PASS LOCAL** en simulation Windows. Les invariants de compte, authentification, session, permission, throttling et premier commissioning sont qualifiés.
+### T2.1 — autorités durables et stockage
 
-Le secret temporaire de réinitialisation de mot de passe et la récupération signée du dernier administrateur sont volontairement reportés vers **T2.4**, car ils appartiennent aux chemins fermés de récupération et non au fonctionnement nominal de T2.2.
+**PASS LOCAL — clôturé.** Admission + audit atomiques, persistance, déduplication, sauvegarde/restauration et composition SQLite côté CoreHost.
 
-## 5. T2.3 — licences hors ligne signées et temps de confiance — clôturé
+### T2.2 — identités locales, authentification et sessions
 
-### T2.3-A — contrat de licence et vérification cryptographique : PASS LOCAL
+**PASS LOCAL — clôturé.** Comptes durables, Argon2id, sessions opaques/révocables, permissions dynamiques, throttling, premier administrateur et stockage borné des faux identifiants.
 
-Format versionné/canonique, ECDSA P-256 + SHA-256, clés publiques approuvées, liaisons émetteur/clé/produit/installation, capacités signées, période de validité et refus des altérations.
+### T2.3 — licences hors ligne signées et temps de confiance
 
-### T2.3-B — installation durable et temps de confiance : PASS LOCAL
+**T2.3-A/B/C/D PASS LOCAL — clôturé.** Format signé, identité d’installation, anti-rollback, temps de confiance, admission gouvernée et composition réelle dans `MagasinOutil.CoreHost`.
 
-Identité d’installation durable, persistance/revalidation, anti-rollback de `RenewalVersion`, borne UTC persistée, temps monotone, expiration, détection de recul d’horloge, récupération temporelle signée et absence de clés privées dans le store.
+Voir `implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md`.
 
-### T2.3-C — admission gouvernée par licence : PASS LOCAL
-
-`license.install`, refus des nouvelles mutations lorsque la licence n’est pas autoritative, séparation permission/licence, opérations déjà admises non annulées rétroactivement, capacités côté Core et lectures hors du verrou de mutation.
-
-### T2.3-D — composition réelle CoreHost : PASS LOCAL
-
-`MagasinOutil.CoreHost` compose le store de licence, l’identité d’installation et l’autorité durable. `licensing.db` est réel, l’identité survit au redémarrage et le client de lecture reste indépendant des fournisseurs concrets. Le profil de simulation démarre avec zéro clé publique de production approuvée.
-
-Voir le dossier consolidé `implementation/T2_3_Licences_Hors_Ligne_Validation_Windows_2026-09-15.md`.
-
-**État : T2.3 clôturé en simulation Windows.**
-
-Les durées commerciales, l’outil d’émission de production, les règles de transfert d’iPC, les clés publiques de production et un éventuel scellement TPM restent à définir/qualifier sans rouvrir les invariants techniques T2.3.
-
-## 6. T2.4 — audit et chemins de récupération produit
+## 5. T2.4 — audit et chemins de récupération produit
 
 Objectif : qualifier les chemins exceptionnels sans créer de bypass général des autorités nominales.
 
-Décisions déjà acquises à implémenter :
-
-- liste fermée des opérations de récupération ;
-- aucun bypass général accordé au rôle Administrateur ;
-- secret temporaire de réinitialisation de mot de passe, à usage unique, durée initiale **15 minutes** ;
-- récupération signée du dernier administrateur, liée à l’installation, à usage unique, avec finalité et clé distinctes des licences ;
-- licence expirée + audit disponible : consultation/suivi et renouvellement signé autorisés, aucune nouvelle commande métier ;
-- audit principal indisponible : diagnostic, consultation vérifiable et récupération supervisée du stockage uniquement ;
-- audit principal indisponible + licence expirée : restaurer d’abord l’audit, puis renouveler ;
-- journal de secours local **borné** réservé aux événements de récupération ;
-- ce journal de secours ne peut jamais admettre une commande métier ;
-- si l’identité ou la trace de récupération ne peut pas être vérifiée/persistée, aucune mutation de récupération applicative n’est autorisée.
-
-Découpage proposé :
+Décisions communes : liste fermée des opérations de récupération, aucun bypass Administrateur général, trace durable obligatoire, journal de secours uniquement pour récupération et jamais pour admission métier.
 
 ### T2.4-A — secret temporaire de réinitialisation
 
-- secret généré/provisionné pour une identité ciblée ;
+**État : implémenté — à qualifier localement.**
+
+Implémenté :
+
+- émission/révocation gouvernées par `identity.manage` ;
+- secret aléatoire 256 bits ;
 - durée initiale 15 minutes ;
-- stockage uniquement sous forme dérivée/opaque ;
-- usage unique et consommation atomique ;
-- aucun élargissement de permissions ;
-- révocation/expiration explicites ;
-- réinitialisation de mot de passe auditée.
+- stockage uniquement sous forme dérivée ;
+- une seule autorisation active par sujet ;
+- liaison à la révision de sécurité du compte ;
+- remplacement du credential + consommation dans une transaction SQLite commune ;
+- permissions conservées ;
+- révocation de toutes les sessions existantes du sujet ;
+- aucune session automatique ;
+- expiration, révocation, replay et concurrence traités explicitement.
+
+Recette :
+
+```powershell
+.\eng\Test-T24.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
+```
+
+Critère de sortie : T2.4-A vert avec toute la régression T2.3 verte.
 
 ### T2.4-B — récupération signée du dernier administrateur
 
-- artefact signé versionné ;
-- finalité cryptographique distincte de licence et récupération temporelle ;
-- liaison à l’installation ;
-- séquence/identifiant anti-replay ;
-- usage unique ;
-- création/rétablissement d’une autorité administrative explicite sans permission machine implicite ;
-- refus si un administrateur récupérable existe encore selon la politique définie.
+À implémenter après A. Artefact signé versionné, finalité cryptographique distincte, liaison installation, anti-replay, usage unique, aucune permission machine implicite.
 
 ### T2.4-C — audit dégradé et journal de secours borné
 
-- détection explicite d’indisponibilité de l’audit principal ;
-- matrice fermée des actions encore permises ;
-- journal de secours borné réservé aux événements de récupération ;
-- aucune admission métier via ce journal ;
-- récupération refusée si la trace de récupération ne peut pas être persistée ;
-- restauration de l’audit avant retour au fonctionnement nominal.
+À implémenter. Matrice fermée des actions permises, aucune admission métier via le journal de secours, récupération refusée si la trace ne peut pas être persistée, restauration de l’audit avant retour au nominal.
 
 ### T2.4-D — composition pilote et non-régression
 
-- composition réelle dans `MagasinOutil.CoreHost` ;
-- preuve après redémarrage ;
-- T0/T1 + T2.1 + T2.2 + T2.3 toujours verts ;
-- aucun changement PLC requis.
+À implémenter. Composition réelle côté `MagasinOutil.CoreHost`, persistance après redémarrage, fournisseurs absents des clients, T0/T1 + T2.1 + T2.2 + T2.3 toujours verts.
 
-## 7. Ensuite
+## 6. Ensuite
 
 Après T2.4 :
 
@@ -151,23 +116,17 @@ Après T2.4 :
 - extension de la première tranche à l’opération métier simulée complète, HMI web, OPC UA et Fleet ;
 - raccordement Beckhoff réel par preuves successives.
 
-## 8. Travaux transversaux
+## 7. Travaux transversaux et questions ouvertes
 
-- **Conformité CRA** : chantier produit avec exigences et preuves dédiées ; aucune conformité n’est déclarée ici.
-- **Sécurité produit** : identités, certificats, secrets, droits, reprise et diagnostic dès les contrats.
-- **Déploiement** : installation hors ligne, démarrage système, sauvegarde/restauration, mise à jour et retour arrière.
-- **Expérience opérateur** : tactile, clavier, perte de connexion, refus explicables, données périmées clairement signalées.
-- **Documentation** : conserver séparément décisions, implémentations, preuves simulées et preuves sur cible.
-
-## 9. Questions toujours ouvertes
-
-- paramètres Argon2id finaux sur le PC industriel cible ;
-- politiques commerciales de licence et autorités d’émission ;
-- fournisseur matériel éventuel pour l’identité d’installation et disponibilité TPM ;
-- tolérance produit exacte aux petits reculs de l’horloge ;
-- destination externe et responsabilité opérationnelle des sauvegardes ;
-- détails Fleet, certificats réseau et packaging ;
-- mapping Beckhoff 8xx, unités/échelles, protocole et preuves de complétion ;
-- qualification finale du renderer HMI web.
+- conformité au Cyber Resilience Act (CRA) : chantier produit dédié, aucune conformité déclarée ici ;
+- paramètres Argon2id finaux sur l’iPC cible ;
+- politiques commerciales de licence, clés publiques et outil d’émission produit ;
+- disponibilité/usage éventuel d’un Trusted Platform Module (TPM) ;
+- tolérance produit exacte aux petits reculs d’horloge ;
+- destination externe/responsabilité des sauvegardes ;
+- politique exacte du journal de secours T2.4-C ;
+- définition opérationnelle du scénario « dernier administrateur perdu » T2.4-B ;
+- Fleet, certificats réseau, packaging et renderer HMI web ;
+- mapping Beckhoff 8xx et preuves de complétion réelles.
 
 Aucun de ces points ne remet en cause les PASS LOCAL déjà obtenus pour T0/T1, T2.1, T2.2 ou T2.3.
