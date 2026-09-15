@@ -5,6 +5,15 @@ public static class ProductAdministrationContract
     public const int Version = 1;
 }
 
+public enum ProductAdministrationReadStatus
+{
+    Success = 0,
+    SessionInvalid = 1,
+    Unavailable = 2,
+    InvalidRequest = 3,
+    Incompatible = 4,
+}
+
 public sealed record ProductUserProfileView(
     string UserName,
     string DisplayName,
@@ -34,9 +43,17 @@ public sealed record ProductAdministrationSnapshot(
     string AuditScope,
     string Message);
 
+public sealed record ProductAdministrationReadResult(
+    ProductAdministrationReadStatus Status,
+    ProductAdministrationSnapshot? Snapshot,
+    string Reason)
+{
+    public bool IsSuccess => Status == ProductAdministrationReadStatus.Success && Snapshot is not null;
+}
+
 public interface IProductAdministrationReadService
 {
-    ValueTask<ProductAdministrationSnapshot?> ReadAdministrationAsync(
+    ValueTask<ProductAdministrationReadResult> ReadAdministrationAsync(
         ProductSessionRequest request,
         CancellationToken cancellationToken = default);
 }
