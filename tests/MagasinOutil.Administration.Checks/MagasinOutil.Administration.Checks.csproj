@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../config/platform/Pilot.props" />
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <ProjectReference Include="../../src/MagasinOutil.Transport/MagasinOutil.Transport.csproj" />
+  </ItemGroup>
+</Project>
