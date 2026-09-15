@@ -65,7 +65,8 @@ if (demoUsersEnabled)
     await DemoIdentityBootstrap.EnsureDemoAccountsAsync(localAccounts, identityStore, demoPassword);
 }
 
-var sessions = new DemoSessionApplication(authenticator, identityStore, identityAuthority);
+await using var application = await SimulatedInventoryApplication.StartAsync();
+var sessions = new DemoSessionApplication(authenticator, identityStore, identityAuthority, application);
 
 var licensingStore = new SqliteLicensingStateStore(Path.Combine(stateDirectory, "licensing.db"));
 await licensingStore.InitializeAsync();
@@ -88,9 +89,8 @@ var licenseAuthority = new DurableLicenseAuthority(
     trustedTime);
 var licenseState = await licenseAuthority.EvaluateAsync();
 
-await using var application = await SimulatedInventoryApplication.StartAsync();
-await using var host = NamedPipeProductHost.Create(pipe, application, sessions);
+await using var host = NamedPipeProductHost.Create(pipe, application, sessions, sessions);
 await host.StartAsync();
 Console.WriteLine(
-    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys=0; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; auth-throttle=durable; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
+    $"READY {pipe} — simulation; admission-db={admissionStore.DatabasePath}; identity-db={identityStore.DatabasePath}; licensing-db={licensingStore.DatabasePath}; installation={installationIdentity.InstallationId}; license={licenseState.Status}; approved-license-keys=0; demo-users={(demoUsersEnabled ? "enabled" : "disabled")}; auth-throttle=durable; governed-magazine-read=enabled; clock-backward-skew-seconds={maximumBackwardSkewSeconds}.");
 await host.WaitForShutdownAsync();
