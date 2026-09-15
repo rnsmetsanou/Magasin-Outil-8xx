@@ -10,7 +10,7 @@ using Platform.Poc.Transport.Grpc;
 namespace MagasinOutil.Transport;
 
 [SupportedOSPlatform("windows")]
-public sealed class NamedPipeProductClient : IProductSessionService, IToolInventoryReader, IDisposable
+public sealed class NamedPipeProductClient : IProductSessionService, IProductMagazineReadService, IToolInventoryReader, IDisposable
 {
     private readonly GrpcChannel _channel;
     private readonly CallInvoker _invoker;
@@ -96,6 +96,26 @@ public sealed class NamedPipeProductClient : IProductSessionService, IToolInvent
         catch (RpcException)
         {
             return new ProductSessionResult(ProductSessionStatus.Unavailable, null, "Service de session indisponible.");
+        }
+    }
+
+    public async ValueTask<ProductMagazineReadResult> ReadAsync(
+        ProductMagazineReadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var call = _invoker.AsyncUnaryCall(ProductMagazineRpc.ReadMethod, null,
+                new CallOptions(deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken), request);
+            return await call.ResponseAsync.ConfigureAwait(false);
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (RpcException)
+        {
+            return new ProductMagazineReadResult(ProductMagazineReadStatus.Unavailable, null, "Lecture magasin indisponible.");
         }
     }
 
