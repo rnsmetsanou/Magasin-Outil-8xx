@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MagasinOutil.Core/MagasinOutil.Core.csproj" />
+    <Project Path="src/MagasinOutil.Platform/MagasinOutil.Platform.csproj" />
+    <Project Path="src/MagasinOutil.Transport/MagasinOutil.Transport.csproj" />
+    <Project Path="src/MagasinOutil.CoreHost/MagasinOutil.CoreHost.csproj" />
+    <Project Path="src/MagasinOutil.Desktop/MagasinOutil.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MagasinOutil.Checks/MagasinOutil.Checks.csproj" />
+    <Project Path="tests/MagasinOutil.Session.Checks/MagasinOutil.Session.Checks.csproj" />
+  </Folder>
+</Solution>
