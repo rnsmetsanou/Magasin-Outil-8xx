@@ -45,7 +45,7 @@ Commande :
 .\eng\Test-T23.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-Le journal reçu le 15 septembre 2026 confirme :
+Un premier journal reçu le 15 septembre 2026 a confirmé :
 
 - contrats et runtime durables indépendants de SQLite ;
 - identité d’installation stable et distincte entre installations ;
@@ -67,10 +67,21 @@ Le journal reçu le 15 septembre 2026 confirme :
 - persistance finale de l’identité, de V3 et du temps récupéré ;
 - absence de clé privée d’émission ou de récupération dans les artefacts SQLite.
 
-La même exécution conserve **T0/T1, T2.1, T2.2 et T2.3-A verts**.
+Cette exécution conservait également **T0/T1, T2.1, T2.2 et T2.3-A verts**.
+
+### Requalification après raffinement des statuts d’évaluation
+
+T2.3-C a ensuite introduit des statuts d’évaluation métier explicites `Expired` et `NotYetValid`, afin qu’une admission puisse distinguer une licence expirée d’une licence cryptographiquement invalide.
+
+Le premier rerun après ce raffinement s’est arrêté sur l’assertion B d’expiration parce que le test attendait encore l’ancien contrat `VerificationFailed + Expired`. Le runtime avait bien retourné le nouvel état `InstalledLicenseEvaluationStatus.Expired` ; aucune régression du temps de confiance ou de l’expiration n’a été observée.
+
+Le test a été corrigé pour exiger simultanément :
+
+- `InstalledLicenseEvaluationStatus.Expired` au niveau métier ;
+- `LicenseVerificationStatus.Expired` comme cause de vérification.
 
 ## État
 
-**PASS LOCAL — SIMULATION WINDOWS.**
+**PASS LOCAL historique sur le comportement T2.3-B ; RÉVISION COURANTE À REQUALIFIER après raffinement explicite du statut d’expiration.**
 
-Ce PASS ne qualifie pas encore un TPM, un outil d’émission de production, les règles commerciales de transfert, ni le raccordement des licences aux admissions machine. Ces points restent respectivement des sujets produit/matériel ou T2.3-C.
+Le PASS courant ne sera rétabli qu’après une exécution verte de `Test-T23.ps1` sur cette révision. Ce jalon ne qualifie toujours pas un TPM, un outil d’émission de production, les règles commerciales de transfert, ni le raccordement des licences aux admissions machine.
