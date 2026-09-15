@@ -36,8 +36,9 @@ internal sealed class DemoGovernedCommandApplication(
         var now = DateTimeOffset.UtcNow;
         if (request.ContractVersion != ProductCommandContract.Version)
             return Result(ProductCommandStatus.Incompatible, request, null, null, "", false, "", "NotEvaluated", null, "NotAttempted", "Version de contrat incompatible.", now);
-        if (!Guid.TryParse(request.IntentId, out var intentGuid) || string.IsNullOrWhiteSpace(request.SessionReference) ||
-            string.IsNullOrWhiteSpace(request.ClientId) || request.Location <= 0 || request.ToolId <= 0 || request.ExpectedRevision < 0)
+        if (!Guid.TryParse(request.IntentId, out var intentGuid) || intentGuid == Guid.Empty ||
+            string.IsNullOrWhiteSpace(request.SessionReference) || string.IsNullOrWhiteSpace(request.ClientId) ||
+            request.Location <= 0 || request.ToolId <= 0 || request.ExpectedRevision < 0)
             return Result(ProductCommandStatus.InvalidRequest, request, null, null, "", false, "", "NotEvaluated", null, "NotAttempted", "Commande invalide.", now);
 
         var sessionResult = await sessions.ResolveAsync(
@@ -70,6 +71,41 @@ internal sealed class DemoGovernedCommandApplication(
         await _commandGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            var intentId = new IntentId(intentGuid);
+            var ownerSubject = new SubjectId(session.SubjectId);
+            var ownerClient = new ClientId(request.ClientId.Trim());
+            var canonical = Canonicalize(request);
+
+            DurableAdmissionRecord? existing;
+            try
+            {
+                existing = await admissions.FindAsync(intentId, ownerSubject, ownerClient, Target, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                return Result(ProductCommandStatus.AdmissionUnavailable, request, null, session.SubjectId,
+                    requiredPermission.Value, true, ToolHandlingEntitlements.ToolManagement.Value,
+                    licenseDecision.Status.ToString(), licenseDecision.AuthorityVersion, "LookupUnavailable",
+                    "Admission durable indisponible : aucun effet n’est soumis.", DateTimeOffset.UtcNow);
+            }
+
+            if (existing is not null)
+            {
+                if (existing.CanonicalRequest != canonical)
+                {
+                    return Result(ProductCommandStatus.AdmissionConflict, request, null, session.SubjectId,
+                        requiredPermission.Value, true, ToolHandlingEntitlements.ToolManagement.Value,
+                        licenseDecision.Status.ToString(), licenseDecision.AuthorityVersion, "ContentConflict",
+                        "Intent déjà utilisé avec un contenu différent.", DateTimeOffset.UtcNow);
+                }
+
+                return Result(ProductCommandStatus.AlreadyAdmitted, request, existing.OperationId.ToString(), session.SubjectId,
+                    requiredPermission.Value, true, ToolHandlingEntitlements.ToolManagement.Value,
+                    licenseDecision.Status.ToString(), licenseDecision.AuthorityVersion, "Existing",
+                    "Intent déjà admis : l’effet n’est pas rejoué.", DateTimeOffset.UtcNow);
+            }
+
             var preflight = Preflight(request);
             if (preflight is not null)
             {
@@ -81,29 +117,39 @@ internal sealed class DemoGovernedCommandApplication(
                     licenseDecision.Status.ToString(), licenseDecision.AuthorityVersion, "NotAttempted", preflight.Message, DateTimeOffset.UtcNow);
             }
 
-            var intentId = new IntentId(intentGuid);
             var operationId = OperationId.New();
-            var canonical = Canonicalize(request);
             var admittedAt = DateTimeOffset.UtcNow;
             var record = new DurableAdmissionRecord(
                 intentId,
                 operationId,
-                new SubjectId(session.SubjectId),
-                new ClientId(request.ClientId.Trim()),
+                ownerSubject,
+                ownerClient,
                 Target,
                 canonical,
                 new DurableAdmissionAuditEntry(
                     "audit-" + Guid.NewGuid().ToString("N"),
                     admittedAt,
-                    new SubjectId(session.SubjectId),
-                    new ClientId(request.ClientId.Trim()),
+                    ownerSubject,
+                    ownerClient,
                     Target,
                     Action(request.Kind),
                     "Admitted",
                     session.PolicyRevision),
                 admittedAt);
 
-            var committed = await admissions.TryCommitAsync(record, cancellationToken).ConfigureAwait(false);
+            DurableAdmissionCommitResult committed;
+            try
+            {
+                committed = await admissions.TryCommitAsync(record, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                return Result(ProductCommandStatus.AdmissionUnavailable, request, null, session.SubjectId,
+                    requiredPermission.Value, true, ToolHandlingEntitlements.ToolManagement.Value,
+                    licenseDecision.Status.ToString(), licenseDecision.AuthorityVersion, "Unavailable",
+                    "Admission durable indisponible : aucun effet n’est soumis.", DateTimeOffset.UtcNow);
+            }
+
             if (committed.Status == DurableAdmissionCommitStatus.Existing && committed.Record is not null)
             {
                 return Result(ProductCommandStatus.AlreadyAdmitted, request, committed.Record.OperationId.ToString(), session.SubjectId,
