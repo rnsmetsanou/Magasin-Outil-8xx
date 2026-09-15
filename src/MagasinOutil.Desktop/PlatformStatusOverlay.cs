@@ -33,7 +33,7 @@ internal static class PlatformStatusOverlay
             VerticalAlignment = VerticalAlignment.Bottom,
             Child = text,
         };
-        Panel.SetZIndex(badge, 100);
+        // The badge is added after the original content so it is rendered above it.
         host.Children.Add(badge);
         window.Content = host;
 
