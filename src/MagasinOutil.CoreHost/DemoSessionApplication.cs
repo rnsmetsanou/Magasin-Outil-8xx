@@ -8,7 +8,7 @@ using Platform.Poc.Machine.Contracts.Connectivity;
 namespace MagasinOutil.CoreHost;
 
 internal sealed class DemoSessionApplication(
-    LocalAccountService accounts,
+    RateLimitedLocalAuthenticator authenticator,
     ILocalAccountStore accountStore,
     LocalIdentityAuthority authority,
     IToolInventoryReader inventory) : IProductSessionService, IProductMagazineReadService
@@ -27,7 +27,7 @@ internal sealed class DemoSessionApplication(
             !ValidText(request.ClientId, 128))
             return new(ProductSignInStatus.InvalidRequest, null, "Demande de connexion invalide.");
 
-        var authentication = await accounts.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
+        var authentication = await authenticator.AuthenticateAsync(request.UserName, request.Password, cancellationToken)
             .ConfigureAwait(false);
         if (!authentication.IsAuthenticated || authentication.Identity is null)
         {
@@ -107,8 +107,10 @@ internal sealed class DemoSessionApplication(
         var session = await ResolveAsync(
             new ProductSessionRequest(ProductSessionContract.Version, request.SessionReference, request.ClientId),
             cancellationToken).ConfigureAwait(false);
-        if (!session.IsValid)
+        if (!session.IsValid || session.Session is null)
             return new(ProductMagazineReadStatus.SessionInvalid, null, "Session invalide ou expirée.");
+        if (!session.Session.Permissions.Contains(ProductMagazineReadContract.ReadPermission, StringComparer.Ordinal))
+            return new(ProductMagazineReadStatus.Forbidden, null, "Permission magazine.read requise.");
 
         try
         {
