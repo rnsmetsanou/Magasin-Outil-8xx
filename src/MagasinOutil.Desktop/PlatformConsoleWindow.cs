@@ -65,22 +65,25 @@ internal sealed class PlatformConsoleWindow : Window
 
     private async Task LoadAsync()
     {
-        ProductAdministrationSnapshot? snapshot;
+        ProductAdministrationReadResult result;
         try
         {
-            snapshot = await _service.ReadAdministrationAsync(_request);
+            result = await _service.ReadAdministrationAsync(_request);
         }
         catch
         {
-            snapshot = null;
+            result = new ProductAdministrationReadResult(
+                ProductAdministrationReadStatus.Unavailable,
+                null,
+                "CoreHost indisponible.");
         }
 
         _content.Children.Clear();
-        if (snapshot is null)
+        if (!result.IsSuccess || result.Snapshot is not { } snapshot)
         {
             _content.Children.Add(new TextBlock
             {
-                Text = "La session n'est plus valide ou le CoreHost est indisponible.",
+                Text = result.Reason,
                 Margin = new Thickness(22),
                 FontSize = 16,
             });
