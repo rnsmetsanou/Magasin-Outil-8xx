@@ -36,7 +36,11 @@ internal sealed class DemoSessionApplication(
                 ProtectedLocalAuthenticationStatus.Unavailable =>
                     new(ProductSignInStatus.Unavailable, null, "Autorité d'identité indisponible."),
                 ProtectedLocalAuthenticationStatus.Throttled =>
-                    new(ProductSignInStatus.InvalidCredentials, null, "Authentification temporairement ralentie."),
+                    new(
+                        ProductSignInStatus.Throttled,
+                        null,
+                        "Authentification temporairement ralentie.",
+                        authentication.RetryAfter),
                 _ => new(ProductSignInStatus.InvalidCredentials, null, "Utilisateur ou mot de passe incorrect."),
             };
         }
@@ -109,8 +113,8 @@ internal sealed class DemoSessionApplication(
             cancellationToken).ConfigureAwait(false);
         if (!session.IsValid || session.Session is null)
             return new(ProductMagazineReadStatus.SessionInvalid, null, "Session invalide ou expirée.");
-        if (!session.Session.Permissions.Contains(ProductMagazineReadContract.ReadPermission, StringComparer.Ordinal))
-            return new(ProductMagazineReadStatus.Forbidden, null, "Permission magazine.read requise.");
+        if (!session.Session.Permissions.Contains("magazine.read", StringComparer.Ordinal))
+            return new(ProductMagazineReadStatus.SessionInvalid, null, "Lecture magasin non autorisée.");
 
         try
         {
