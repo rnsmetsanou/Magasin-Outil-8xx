@@ -3,15 +3,17 @@ namespace MagasinOutil.Core;
 public static class ProductMagazineReadContract
 {
     public const int Version = 1;
+    public const string ReadPermission = "magazine.read";
 }
 
 public enum ProductMagazineReadStatus
 {
     Success = 0,
     SessionInvalid = 1,
-    Unavailable = 2,
-    InvalidRequest = 3,
-    Incompatible = 4,
+    Forbidden = 2,
+    Unavailable = 3,
+    InvalidRequest = 4,
+    Incompatible = 5,
 }
 
 public sealed record ProductMagazineReadRequest(
