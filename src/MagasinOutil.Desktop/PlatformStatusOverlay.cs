@@ -9,7 +9,11 @@ namespace MagasinOutil.Desktop;
 
 internal static class PlatformStatusOverlay
 {
-    public static void Attach(MainWindow window, IIntegratedMagazineService magazine, ProductSessionView session)
+    public static void Attach(
+        MainWindow window,
+        IIntegratedMagazineService magazine,
+        ProductSessionView session,
+        Action openPlatform)
     {
         if (window.Content is not Control original) return;
 
@@ -29,13 +33,27 @@ internal static class PlatformStatusOverlay
             Background = new SolidColorBrush(Color.Parse("#20304F")),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(10, 6),
+            Child = text,
+        };
+        var platformButton = new Button
+        {
+            Content = "Plateforme",
+            MinHeight = 38,
+            Padding = new Thickness(14, 6),
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        platformButton.Click += (_, _) => openPlatform();
+
+        var surface = new StackPanel
+        {
+            Spacing = 6,
             Margin = new Thickness(16, 0, 16, 8),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Child = text,
         };
-        // The badge is added after the original content so it is rendered above it.
-        host.Children.Add(badge);
+        surface.Children.Add(platformButton);
+        surface.Children.Add(badge);
+        host.Children.Add(surface);
         window.Content = host;
 
         void RefreshLabel()
