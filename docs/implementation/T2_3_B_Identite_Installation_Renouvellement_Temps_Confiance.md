@@ -6,138 +6,71 @@ Branche plateforme : `pilot/t2-3-offline-signed-licenses`.
 
 ## Objectif
 
-Cette micro-tranche complète la vérification cryptographique T2.3-A avec une autorité de licence durable utilisable hors ligne :
+Cette micro-tranche complète T2.3-A avec une autorité de licence durable utilisable hors ligne : identité d’installation persistante, licence signée installée, version de renouvellement monotone, temps de confiance durable, détection de recul d’horloge et récupération temporelle signée.
 
-- identité d’installation créée une seule fois et persistée ;
-- licence installée conservée sous sa forme signée ;
-- version de renouvellement monotone ;
-- temps de confiance persistant entre redémarrages ;
-- détection d’un retour arrière de l’horloge ;
-- récupération du temps par une autorisation signée explicite.
-
-Elle ne raccorde pas encore la décision de licence à l’admission métier des commandes : ce raccordement appartient à T2.3-C.
+Elle ne raccorde pas encore la décision de licence à l’admission métier ; ce point appartient à T2.3-C.
 
 ## Architecture
 
-Nouveaux contrats fournisseur-indépendants dans `Platform.Poc.Licensing.Contracts` :
-
-- `IInstallationIdentityStore` ;
-- `IInstalledLicenseStore` ;
-- `ITrustedTimeStore` ;
-- enregistrements d’identité, licence installée et état de temps ;
-- statuts d’installation, d’évaluation et de récupération signée.
-
-Le runtime contient :
-
-- `InstallationIdentityService` ;
-- `DurableLicenseAuthority` ;
-- `OfflineTrustedTimeAuthority` ;
-- `TrustedTimeRecoveryService`.
-
-L’adaptateur `Platform.Poc.Licensing.Persistence.Sqlite` implémente les trois stores sans introduire SQLite dans les contrats ou le runtime.
+Les contrats fournisseur-indépendants de `Platform.Poc.Licensing.Contracts` couvrent `IInstallationIdentityStore`, `IInstalledLicenseStore`, `ITrustedTimeStore`, les enregistrements durables et les statuts d’installation/évaluation/récupération. Le runtime contient `InstallationIdentityService`, `DurableLicenseAuthority`, `OfflineTrustedTimeAuthority` et `TrustedTimeRecoveryService`. SQLite reste dans `Platform.Poc.Licensing.Persistence.Sqlite`.
 
 ## Identité d’installation V1
 
-L’identité d’installation est générée avec **256 bits d’aléa cryptographiquement sûr** et encodée sous la forme `inst1_...`.
+L’identité est générée avec **256 bits d’aléa cryptographiquement sûr** et encodée `inst1_...`. Elle ne dépend ni d’une adresse MAC, ni d’un disque, ni du nom Windows, ni du réseau. Elle est créée une seule fois et reste stable après recréation du store.
 
-Elle ne dépend pas :
-
-- d’une adresse MAC ;
-- d’un numéro de disque ;
-- du nom Windows ;
-- d’une adresse réseau.
-
-Une fois créée, elle est persistée comme identité autoritative de l’installation et réutilisée après redémarrage.
-
-### Limite explicite
-
-T2.3-B ne prétend pas que cette identité logicielle est matériellement non clonable. Le contrat permet de remplacer ultérieurement le fournisseur par un mécanisme adossé à un matériel de confiance, par exemple un fournisseur CNG utilisant un Trusted Platform Module (TPM), après qualification de l’iPC cible.
-
-Un remplacement d’iPC reste un événement de réémission/migration gouvernée de licence ; aucune règle commerciale de transfert n’est déduite de cette implémentation.
+Cette identité logicielle n’est pas déclarée matériellement non clonable. Un futur fournisseur adossé à un matériel de confiance peut remplacer l’implémentation sans modifier les contrats. Un remplacement d’iPC reste un événement de migration/réémission gouvernée.
 
 ## Licence installée et anti-rollback
 
-Le store conserve pour chaque produit :
+Le store conserve la plus haute `RenewalVersion`, l’enveloppe signée originale, son empreinte SHA-256, l’instant d’installation et une révision optimiste.
 
-- la plus haute `RenewalVersion` acceptée ;
-- l’enveloppe signée originale ;
-- son empreinte SHA-256 ;
-- l’instant d’installation ;
-- une révision optimiste.
-
-Règles :
-
-- première licence valide : installation ;
-- même enveloppe et même version : idempotence ;
-- même `RenewalVersion` avec un autre contenu signé : conflit ;
-- `RenewalVersion` inférieure : rollback refusé ;
-- version supérieure correctement signée : renouvellement accepté.
-
-La borne de renouvellement est rattachée au produit et à l’installation, pas seulement au `LicenseId`, afin qu’un ancien artefact signé ne puisse pas récupérer de l’autorité en changeant d’identifiant de licence.
+Règles qualifiées : première installation valide ; idempotence de la même enveloppe ; conflit si une même version porte un autre contenu ; refus d’une version plus basse ; acceptation d’une version supérieure correctement signée. La borne de renouvellement appartient au produit/installation et ne se réinitialise pas avec un nouvel identifiant de licence.
 
 ## Temps de confiance hors ligne
 
-Le mécanisme combine deux notions distinctes :
+Le mécanisme distingue :
 
-1. **temps UTC mural** : utilisé comme date civile et persisté sous forme de borne haute entre redémarrages ;
-2. **temps monotone du processus** : `TimeProvider.GetTimestamp()` / `GetElapsedTime()`, utilisé pour vérifier que le temps ne recule pas pendant l’exécution.
+1. le temps UTC mural, utilisé pour les périodes de licence et persisté comme borne haute ;
+2. le temps monotone de `TimeProvider`, utilisé pendant le processus pour empêcher un recul silencieux.
 
-La politique possède une tolérance explicite `MaximumBackwardSkew`. La recette utilise une valeur de test de deux minutes ; cette valeur n’est pas déclarée comme politique produit finale.
+Un saut vers l’avant progresse la borne haute. Un retour arrière ultérieur ne restitue pas la validité et produit un état d’incohérence durable. Une récupération explicite signée et liée à l’installation peut réinitialiser la borne avec une séquence strictement croissante.
 
-Un saut vers l’avant est accepté comme observation et fait progresser la borne haute. S’il entraîne l’expiration de la licence, remettre ensuite l’horloge Windows en arrière ne restitue pas la validité : l’état devient `ClockRollbackDetected`.
+Un renouvellement plus récent peut être installé pendant cet état de récupération, mais il ne répare pas à lui seul l’incohérence temporelle.
 
-Cet état persiste après recréation du store.
+## Validation locale reçue
 
-## Récupération signée du temps
-
-Une récupération du temps utilise un payload signé distinct contenant :
-
-- version de format ;
-- identifiant de récupération ;
-- séquence strictement croissante ;
-- émetteur ;
-- clé de signature ;
-- identité d’installation ;
-- UTC attesté.
-
-La recette compose une **clé et un émetteur distincts** de ceux de la licence pour la récupération temporelle.
-
-Une récupération valide peut explicitement abaisser la borne haute si la séquence augmente. La même séquence ne peut pas être rejouée. Une autorisation destinée à une autre installation ou dont la signature est modifiée est refusée.
-
-Un renouvellement de licence peut être installé pendant un état temporel incohérent en utilisant la borne effective non décroissante, mais **il ne répare pas lui-même l’horloge**. La récupération signée reste nécessaire avant de reprendre les nouvelles mutations licenciées.
-
-## Recette T2.3-B
-
-Commande globale :
+Commande :
 
 ```powershell
 .\eng\Test-T23.ps1 -PilotRepository D:/Projets/Magasin-Outil-8xx
 ```
 
-La section B doit notamment vérifier :
+Le journal reçu le 15 septembre 2026 confirme :
 
-- indépendance des contrats/runtime vis-à-vis de SQLite ;
-- identité d’installation stable après recréation et distincte sur une autre installation ;
-- installation durable d’une licence V1 ;
-- capacité signée autorisée et capacité absente refusée ;
-- installation idempotente de la même enveloppe ;
-- persistance après recréation ;
-- renouvellement V2 ;
-- conflit de deux contenus portant la même version ;
-- refus du retour V2 → V1 ;
+- contrats et runtime durables indépendants de SQLite ;
+- identité d’installation stable et distincte entre installations ;
+- clés d’émission de licence et de récupération temporelle distinctes dans la composition de qualification ;
+- installation durable V1 et évaluation d’une capacité signée ;
+- refus d’une capacité absente ;
+- réinstallation idempotente ;
+- persistance après recréation du store ;
+- renouvellement vers une version supérieure et prise d’autorité des nouvelles capacités ;
+- conflit sur même version/contenu différent ;
+- refus du rollback vers une ancienne version signée ;
 - expiration après progression du temps ;
-- impossibilité de récupérer la validité en reculant l’horloge ;
-- persistance de cette détection après redémarrage ;
-- installation d’un renouvellement V3 sans effacer l’incohérence temporelle ;
-- récupération signée liée à l’installation ;
-- refus du replay de récupération ;
-- refus d’une récupération pour une autre installation ;
-- refus d’une signature de récupération altérée ;
-- conservation de la plus haute version de renouvellement après récupération du temps ;
+- impossibilité de retrouver la validité par recul de l’horloge ;
+- persistance de la détection après recréation ;
+- installation d’un renouvellement plus récent sans effacer l’incohérence temporelle ;
+- récupération temporelle signée, liée à l’installation et non rejouable ;
+- refus d’une récupération destinée à une autre installation ou dont la signature est modifiée ;
+- conservation de la plus haute version de renouvellement après récupération ;
+- persistance finale de l’identité, de V3 et du temps récupéré ;
 - absence de clé privée d’émission ou de récupération dans les artefacts SQLite.
+
+La même exécution conserve **T0/T1, T2.1, T2.2 et T2.3-A verts**.
 
 ## État
 
-**IMPLÉMENTÉ — À QUALIFIER LOCALEMENT.**
+**PASS LOCAL — SIMULATION WINDOWS.**
 
-Aucun PASS T2.3-B n’est déclaré avant réception du journal `Test-T23.ps1` correspondant. T2.3-A est déjà PASS LOCAL.
+Ce PASS ne qualifie pas encore un TPM, un outil d’émission de production, les règles commerciales de transfert, ni le raccordement des licences aux admissions machine. Ces points restent respectivement des sujets produit/matériel ou T2.3-C.
