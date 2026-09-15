@@ -10,13 +10,13 @@ internal sealed class DemoAdministrationApplication(
 {
     private readonly string _admissionDatabasePath = Path.GetFullPath(admissionDatabasePath);
 
-    public async ValueTask<ProductAdministrationSnapshot?> ReadAdministrationAsync(
+    public async ValueTask<ProductAdministrationReadResult> ReadAdministrationAsync(
         ProductSessionRequest request,
         CancellationToken cancellationToken = default)
     {
         var sessionResult = await sessions.ResolveAsync(request, cancellationToken).ConfigureAwait(false);
         if (!sessionResult.IsValid || sessionResult.Session is null)
-            return null;
+            return new(ProductAdministrationReadStatus.SessionInvalid, null, "Session invalide ou expirée.");
 
         var session = sessionResult.Session;
         var license = await licenses.ReadLicenseAsync(request, cancellationToken).ConfigureAwait(false);
@@ -29,7 +29,7 @@ internal sealed class DemoAdministrationApplication(
             ? await ReadAdmissionAuditAsync(cancellationToken).ConfigureAwait(false)
             : [];
 
-        return new ProductAdministrationSnapshot(
+        var snapshot = new ProductAdministrationSnapshot(
             session,
             license,
             canViewUsers,
@@ -38,6 +38,7 @@ internal sealed class DemoAdministrationApplication(
             audit,
             "Audit durable des admissions de commandes",
             "Vue produit gouvernée par la session CoreHost.");
+        return new(ProductAdministrationReadStatus.Success, snapshot, "Lecture administration confirmée.");
     }
 
     private async ValueTask<IReadOnlyCollection<ProductAuditEntryView>> ReadAdmissionAuditAsync(
