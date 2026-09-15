@@ -32,6 +32,13 @@ public sealed class MainWindow : Window
     private readonly TextBlock _rackTitle = new();
     private readonly Button _spindle;
     private readonly Button _prepared;
+    private readonly StackPanel _headerActions = new()
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 6,
+        VerticalAlignment = VerticalAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Right,
+    };
     private int _selected = 27, _rack = 2, _page;
     private bool _dark, _review, _offsets;
     private EditTool? _draft;
@@ -54,7 +61,7 @@ public sealed class MainWindow : Window
     {
         _service = service;
         _themeChanged = themeChanged;
-        Title = "Gestion des outils — WM — Simulation";
+        Title = "Gestion des outils — WM";
         Width = 1024; Height = 768; MinWidth = 1024; MinHeight = 768;
         CanResize = true;
         UseLayoutRounding = true;
@@ -71,10 +78,9 @@ public sealed class MainWindow : Window
         title.Children.Add(Label("Gestion des outils", 23));
         title.Children.Add(Label("Plateforme Multi-Technologie · Données simulées", 13));
         Put(header, title, 0, 1);
-        var themes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        themes.Children.Add(Action("Clair", () => ApplyTheme(false)));
-        themes.Children.Add(Action("Sombre", () => ApplyTheme(true)));
-        Put(header, themes, 0, 2);
+        _headerActions.Children.Add(Action("Clair", () => ApplyTheme(false)));
+        _headerActions.Children.Add(Action("Sombre", () => ApplyTheme(true)));
+        Put(header, _headerActions, 0, 2);
         Put(_shell, header, 0, 0);
         var current = new Grid { ColumnDefinitions = new("*,*"), Margin = new(16, 0, 16, 10) };
         _spindle = Action("", () => SelectPosition(ToolPosition.Spindle));
@@ -90,7 +96,7 @@ public sealed class MainWindow : Window
         Put(_body, _leftPanel, 0, 0); Put(_body, _rightPanel, 0, 1);
         Put(_shell, _body, 2, 0);
         var footer = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(16, 0, 16, 10) };
-        Put(footer, _notice, 0, 0); Put(footer, Label("Simulation · aucune liaison machine", 12), 0, 1);
+        Put(footer, _notice, 0, 0); Put(footer, Label("Simulation", 12), 0, 1);
         Put(_shell, footer, 3, 0);
         _left.Children.Add(Label("Magasin · 137 places physiques", 18));
         _left.Children.Add(_search); _left.Children.Add(_rackArea);
@@ -102,6 +108,9 @@ public sealed class MainWindow : Window
         Content = _shell;
         ApplyTheme(initialDark);
     }
+
+    internal void AddHeaderAction(Control control) => _headerActions.Children.Add(control);
+
     private static void Put(Grid parent, Control child, int row, int column)
     { Grid.SetRow(child, row); Grid.SetColumn(child, column); parent.Children.Add(child); }
     private static TextBlock Label(string text, double size = 16) => new()
