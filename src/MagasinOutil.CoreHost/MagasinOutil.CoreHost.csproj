@@ -5,6 +5,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../MagasinOutil.Platform/MagasinOutil.Platform.csproj" />
     <ProjectReference Include="../MagasinOutil.Transport/MagasinOutil.Transport.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="Platform.Poc.Foundation" Version="[0.1.0-pilot.t21.1]" />
     <PackageReference Include="Platform.Poc.Machine.Contracts" Version="[0.1.0-pilot.t21.1]" />
     <PackageReference Include="Platform.Poc.Application.Contracts" Version="[0.1.0-pilot.t21.1]" />
