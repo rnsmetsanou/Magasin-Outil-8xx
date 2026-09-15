@@ -40,7 +40,7 @@ public sealed class App : Application
     [SupportedOSPlatform("windows")]
     private void ShowLogin(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var login = new LoginWindow(SignInAsync, session => OpenProduct(desktop, session));
+        var login = new LoginWindow(SignInAsync, session => OpenProductAsync(desktop, session));
         login.Closed += (_, _) =>
         {
             if (ReferenceEquals(desktop.MainWindow, login))
@@ -67,15 +67,25 @@ public sealed class App : Application
     }
 
     [SupportedOSPlatform("windows")]
-    private void OpenProduct(IClassicDesktopStyleApplicationLifetime desktop, ProductSessionView session)
+    private async Task OpenProductAsync(IClassicDesktopStyleApplicationLifetime desktop, ProductSessionView session)
     {
-        if (_client is null) return;
+        if (_client is null) throw new InvalidOperationException("Client local indisponible.");
+
+        var remoteMagazine = new RemoteMagazineService(_client, session.SessionReference, _clientId);
+        await remoteMagazine.RefreshAsync();
+        if (!remoteMagazine.PlatformStatus.Connected || remoteMagazine.Read().Count == 0)
+        {
+            await _client.SignOutAsync(new ProductSessionRequest(
+                ProductSessionContract.Version,
+                session.SessionReference,
+                _clientId));
+            throw new InvalidOperationException("Le CoreHost n'a pas fourni de snapshot magasin exploitable.");
+        }
+
         var login = desktop.MainWindow;
         _session = session;
-        var main = new MainWindow(new SimulatedMagazine())
-        {
-            Title = $"Gestion des outils — WM — {session.DisplayName} · session locale",
-        };
+        var main = new MainWindow(remoteMagazine);
+        PlatformStatusOverlay.Attach(main, remoteMagazine, session);
         main.Closed += async (_, _) =>
         {
             if (_client is not null && _session is not null)
