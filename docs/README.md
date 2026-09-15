@@ -8,6 +8,8 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 
 ## À lire en premier
 
+- [T2.2-C — limitation des tentatives et commissioning du premier administrateur](implementation/T2_2_C_Throttling_Commissioning_Premier_Administrateur.md) : implémenté, **qualification locale requise** ; throttling durable à partir de cinq échecs et commissioning d’installation à usage unique sans administrateur universel.
+
 - [T2.2-B — comptes durables et authentification Argon2id](implementation/T2_2_B_Comptes_Durables_Authentification_Argon2id.md) : **PASS LOCAL** ; contrats fournisseur-indépendants, adaptateurs Argon2id et SQLite séparés, authentification hors ligne, révisions de sécurité optimistes et mesure pilote de 309 ms par hash.
 
 - [T2.2-A — noyau d’autorité des identités et sessions](implementation/T2_2_A_Noyau_Autorite_Identites_Sessions.md) : **PASS LOCAL** ; deux identités nominatives, sessions opaques, liaison client/cible, expiration, activité humaine, révocation, désactivation et permissions dynamiques.
@@ -34,9 +36,11 @@ Ne pas réécrire les analyses historiques pour leur faire décrire les décisio
 - [Déploiement, OPC UA et Fleet](analyse/Analyse_Deploiement_OPCUA_Fleet_Magasin_8xx_2026-09-14.md) : analyse de la plateforme et profils de déploiement.
 - [État du prototype Avalonia](hmi/README.md) : documentation du code actuellement présent, distincte de la cible web.
 
-## T2.2-C — prochaine micro-tranche
+## T2.2-C — état
 
-Le prochain sous-jalon couvre le commissioning à usage unique du premier administrateur et la limitation des tentatives d’authentification répétées. Le seuil de départ de la temporisation est fixé à cinq échecs ; la courbe exacte reste configurable et n’est pas figée silencieusement comme politique produit. Le secret d’activation du commissioning est propre à l’installation, fourni par un canal séparé et ne doit jamais être stocké en clair. Aucun administrateur universel ni mot de passe par défaut n’est introduit.
+Le sous-jalon couvre le commissioning à usage unique du premier administrateur et la limitation des tentatives d’authentification répétées. Le seuil de départ de la temporisation est fixé à cinq échecs ; la courbe exacte reste configurable et n’est pas figée silencieusement comme politique produit. La recette utilise `1 s → 2 s → 4 s → 8 s` uniquement comme fixture de test. Le secret d’activation du commissioning est propre à l’installation, fourni par un canal séparé et ne doit jamais être stocké en clair. Aucun administrateur universel ni mot de passe par défaut n’est introduit.
+
+**État : implémenté — à qualifier localement.**
 
 ## Analyses historiques
 
