@@ -43,10 +43,12 @@ Actualisé le 15 septembre 2026. Source : validations explicites dans les échan
 - T2.2 : le seuil de temporisation progressive après cinq échecs est acquis, mais la courbe/durée exacte reste à définir et qualifier. La fixture de test `1 s → 2 s → 4 s → 8 s` n’est pas une décision produit. Le secret temporaire de réinitialisation et la récupération signée restent à implémenter dans une tranche de récupération ultérieure.
 - Pour une exposition réseau de l’authentification, ajouter une limitation indépendante par source/contexte réseau en complément du throttling par compte. Cette protection appartient au transport et ne doit pas être simulée comme une propriété du store d’identité.
 - T2.3 : durées commerciales, autorités d’émission et règles de transfert restent à définir par WM ; ces questions ne bloquent pas la qualification technique du format signé, de l’identité d’installation et du comportement d’expiration.
+- L’identité d’installation logicielle T2.3-B est cryptographiquement aléatoire mais pas encore matériellement scellée. La disponibilité et l’usage éventuel d’un Trusted Platform Module (TPM) ou d’un autre matériel de confiance restent à qualifier sur l’iPC cible.
+- La tolérance exacte aux petits reculs d’horloge reste une politique produit à définir. La recette T2.3-B utilise deux minutes uniquement comme paramètre de qualification.
 
 ## État de réalisation
 
-Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows. Le lot **T2.2 — identités locales, authentification et sessions** est également clôturé en simulation Windows : **T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont PASS LOCAL**, avec régression T0/T1 + T2.1 verte. **T2.3-A est implémenté sur `pilot/t2-3-offline-signed-licenses` et attend sa qualification locale.** Les licences produit durables, le temps de confiance, le serveur OPC UA intégré, le raccordement Fleet et le connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
+Le prototype Avalonia reste autonome. Le socle de lecture séparé utilisant les paquets plateforme est vérifié en simulation sur Windows (T0/T1). Le lot **T2.1 — autorités durables et stockage** est clôturé en simulation Windows. Le lot **T2.2 — identités locales, authentification et sessions** est également clôturé en simulation Windows : **T2.2-A, T2.2-B durci, T2.2-C et T2.2-D sont PASS LOCAL**, avec régression T0/T1 + T2.1 verte. **T2.3-A est PASS LOCAL. T2.3-B est implémenté et attend sa qualification locale.** Le raccordement de la licence aux admissions, le serveur OPC UA intégré, le raccordement Fleet et le connecteur Beckhoff sécurisé ne sont pas encore déclarés réalisés par ces preuves.
 
 ## Avancement — matrice maintenance
 
@@ -94,12 +96,18 @@ Voir les dossiers [A](../implementation/T2_2_A_Noyau_Autorite_Identites_Sessions
 
 **État : T2.2 clôturé en simulation Windows.** Aucune qualification Beckhoff réelle ni validation finale du matériel cible n’en découle.
 
-## T2.3-A — contrat et vérification de licence hors ligne signée
+## T2.3-A — contrat et vérification de licence hors ligne signée : PASS LOCAL
 
-La micro-tranche A est implémentée et décrite dans le [dossier T2.3-A](../implementation/T2_3_A_Contrat_Verification_Licence_Signee.md).
+Le journal reçu le 15 septembre 2026 confirme la micro-tranche A. Le candidat qualifié utilise **ECDSA P-256 + SHA-256** avec une signature IEEE P1363 et une clé publique X.509 `SubjectPublicKeyInfo` DER. Le payload signé est canonique et versionné ; il lie licence, version de renouvellement, émetteur, clé, produit, installation, capacités et fenêtre de validité.
 
-Le candidat de qualification utilise **ECDSA P-256 + SHA-256** avec une signature IEEE P1363 et une clé publique X.509 `SubjectPublicKeyInfo` DER. Le payload signé est canonique et versionné ; il lie licence, version de renouvellement, émetteur, clé, produit, installation, capacités et fenêtre de validité. Les contrats/runtime ne dépendent pas de l’adaptateur ECDSA concret et aucune API de signature privée n’est exposée au runtime machine.
+La recette confirme notamment le refus des altérations de payload/signature, des clés et algorithmes inconnus, du rebinding de clé, des incohérences d’émetteur, d’un mauvais produit ou d’une mauvaise installation, des périodes invalides et d’une représentation signée non canonique. Les contrats/runtime ne dépendent pas de l’adaptateur ECDSA concret et aucune API de signature privée n’est exposée au runtime machine.
 
-La recette doit refuser notamment toute altération, clé inconnue, algorithme inconnu, rebinding de clé, incohérence d’émetteur, mauvais produit, mauvaise installation, licence hors période et représentation signée non canonique.
+Voir le [dossier T2.3-A](../implementation/T2_3_A_Contrat_Verification_Licence_Signee.md). **État : PASS LOCAL.**
 
-**État : implémenté/en qualification, pas PASS.** T2.3-B et T2.3-C ne sont pas encore implémentés.
+## T2.3-B — identité d’installation, renouvellement et temps de confiance
+
+La micro-tranche B est implémentée et décrite dans le [dossier T2.3-B](../implementation/T2_3_B_Identite_Installation_Renouvellement_Temps_Confiance.md).
+
+Elle introduit une identité d’installation durable générée avec 256 bits d’aléa cryptographiquement sûr, une licence installée persistante avec `RenewalVersion` monotone, une borne UTC haute persistée, une mesure monotone pendant le processus et une récupération temporelle explicitement signée et liée à l’installation. La clé de récupération utilisée par la qualification est distincte de la clé d’émission de licence.
+
+**État : implémenté/en qualification, pas PASS.** T2.3-C — raccordement de l’autorité de licence aux nouvelles admissions — reste à implémenter après qualification de B.
