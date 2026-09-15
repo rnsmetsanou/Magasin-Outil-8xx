@@ -10,7 +10,13 @@ using Platform.Poc.Transport.Grpc;
 namespace MagasinOutil.Transport;
 
 [SupportedOSPlatform("windows")]
-public sealed class NamedPipeProductClient : IProductSessionService, IProductMagazineReadService, IToolInventoryReader, IDisposable
+public sealed class NamedPipeProductClient :
+    IProductSessionService,
+    IProductMagazineReadService,
+    IProductMagazineCommandService,
+    IProductLicenseReadService,
+    IToolInventoryReader,
+    IDisposable
 {
     private readonly GrpcChannel _channel;
     private readonly CallInvoker _invoker;
@@ -21,7 +27,7 @@ public sealed class NamedPipeProductClient : IProductSessionService, IProductMag
         _channel = GrpcChannel.ForAddress("http://localhost", new GrpcChannelOptions
         {
             MaxReceiveMessageSize = 4 * 1024 * 1024,
-            MaxSendMessageSize = 16 * 1024,
+            MaxSendMessageSize = 64 * 1024,
             DisposeHttpClient = true,
             HttpHandler = new SocketsHttpHandler
             {
@@ -116,6 +122,58 @@ public sealed class NamedPipeProductClient : IProductSessionService, IProductMag
         catch (RpcException)
         {
             return new ProductMagazineReadResult(ProductMagazineReadStatus.Unavailable, null, "Lecture magasin indisponible.");
+        }
+    }
+
+    public async ValueTask<ProductCommandResult> ExecuteAsync(
+        ProductCommandRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var call = _invoker.AsyncUnaryCall(ProductCommandRpc.ExecuteMethod, null,
+                new CallOptions(deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken), request);
+            return await call.ResponseAsync.ConfigureAwait(false);
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (RpcException)
+        {
+            return new ProductCommandResult(
+                ProductCommandStatus.AdmissionUnavailable,
+                request.IntentId,
+                null,
+                null,
+                string.Empty,
+                false,
+                string.Empty,
+                "Unavailable",
+                null,
+                "Unavailable",
+                "Service de commande indisponible.",
+                DateTimeOffset.UtcNow);
+        }
+    }
+
+    public async ValueTask<ProductLicenseView> ReadLicenseAsync(
+        ProductSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var call = _invoker.AsyncUnaryCall(ProductCommandRpc.ReadLicenseMethod, null,
+                new CallOptions(deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken), request);
+            return await call.ResponseAsync.ConfigureAwait(false);
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (RpcException)
+        {
+            return new ProductLicenseView("Unavailable", string.Empty, null, null, null, null, [], "Service de licence indisponible.");
         }
     }
 
