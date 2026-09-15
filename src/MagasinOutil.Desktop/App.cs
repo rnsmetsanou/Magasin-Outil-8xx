@@ -71,7 +71,12 @@ public sealed class App : Application
     {
         if (_client is null) throw new InvalidOperationException("Client local indisponible.");
 
-        var remoteMagazine = new RemoteMagazineService(_client, session.SessionReference, _clientId);
+        var remoteMagazine = new RemoteMagazineService(
+            _client,
+            _client,
+            _client,
+            session.SessionReference,
+            _clientId);
         await remoteMagazine.RefreshAsync();
         if (!remoteMagazine.PlatformStatus.Connected || remoteMagazine.Read().Count == 0)
         {
